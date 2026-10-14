@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import Image from "next/image";
+import AuthHeroPanel from "./AuthHeroPanel";
 import { SUGGESTED_LANGUAGE, OTHER_LANGUAGES } from "../data/onboarding-data";
 
 interface LanguageSelectionProps {
@@ -13,17 +13,14 @@ interface LanguageSelectionProps {
 export default function LanguageSelection({
   currentLanguageId = "en",
   onSave,
-  onBackToIntro,
 }: LanguageSelectionProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(currentLanguageId);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // All combined languages
   const allLanguages = useMemo(() => {
     return [SUGGESTED_LANGUAGE, ...OTHER_LANGUAGES];
   }, []);
 
-  // Filtered options for the "ALL LANGUAGES" grid
   const filteredOtherLanguages = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return OTHER_LANGUAGES;
@@ -39,104 +36,48 @@ export default function LanguageSelection({
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-white">
-      {/* Top Header */}
-      <header className="w-full flex items-center justify-between py-4 px-4 sm:px-8 lg:px-12 border-b border-neutral-100 bg-white z-20">
-        <div className="flex items-center gap-3">
-          <Image
-            src="/icons/logoMain.svg"
-            alt="BlueFixx Logo"
-            width={100}
-            height={32}
-            priority
-            className="h-8 sm:h-9 w-auto object-contain cursor-pointer"
-            onClick={onBackToIntro}
-          />
-        </div>
+    <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
+      {/* Left Panel: Hero Graphic covering 100% full height to the top */}
+      <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+        <AuthHeroPanel
+          image="/images/customers.png"
+          imageAlt="Artisan and customer in community"
+          headline="Local expertise, in the language that feels natural."
+          description="BlueFixx is built for the communities we serve, so every booking and agreement stays clear."
+          showFooterTags={false}
+        />
+      </div>
 
-        <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-600">
-          <span>Need help?</span>
-          <button
-            onClick={() => alert("Support: support@bluefixxllp.com")}
-            className="inline-flex items-center gap-1.5 font-medium text-[#001B40] hover:underline cursor-pointer"
-          >
-            {/* Headset Support Icon */}
-            <svg
-              className="w-4 h-4 text-[#001B40]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
+      {/* Right Panel: Support link at top, centered selection card */}
+      <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+        {/* Top Right Support Header (Only on right half) */}
+        <div className="w-full flex items-center justify-end text-xs sm:text-sm text-neutral-600 pb-4">
+          <div className="flex items-center gap-2">
+            <span>Need help?</span>
+            <button
+              onClick={() => alert("Support: support@bluefixxllp.com")}
+              className="inline-flex items-center gap-1.5 font-medium text-[#001B40] hover:underline cursor-pointer"
             >
-              <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
-            </svg>
-            <span>Contact support</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Two-Panel Section */}
-      <main className="flex-1 w-full grid grid-cols-1 lg:grid-cols-2">
-        {/* Left Panel: Hero Graphic with bottom gradient */}
-        <div className="relative min-h-[360px] lg:min-h-full w-full bg-neutral-900 overflow-hidden select-none flex flex-col justify-between p-6 sm:p-10 lg:p-14">
-          <Image
-            src="/images/customers.png"
-            alt="Artisan and customer in community"
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            className="object-cover object-center"
-          />
-
-          {/* Dark Overlay Gradient for Readable Text */}
-          <div
-            className="absolute inset-0 bg-gradient-to-t from-[#00132B]/95 via-[#001B40]/40 to-transparent"
-            aria-hidden="true"
-          />
-
-          {/* Top Logo placeholder on mobile if needed */}
-          <div className="relative z-10" />
-
-          {/* Bottom Narrative Callout */}
-          <div className="relative z-10 max-w-lg">
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white mb-4">
               <svg
-                className="w-3.5 h-3.5 text-white"
+                className="w-4 h-4 text-[#001B40]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2.5"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
               >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="m9 12 2 2 4-4" />
+                <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
               </svg>
-              <span className="font-sans font-bold text-[10px] sm:text-[11px] tracking-wider uppercase">
-                VERIFIED SERVICE MARKETPLACE
-              </span>
-            </div>
-
-            {/* Headline */}
-            <h2 className="font-sans font-bold text-2xl sm:text-3xl lg:text-[34px] leading-snug text-white tracking-tight mb-2.5">
-              Local expertise, in the language that feels natural.
-            </h2>
-
-            {/* Subtitle */}
-            <p className="font-sans text-xs sm:text-sm text-neutral-200 leading-relaxed max-w-md">
-              BlueFixx is built for the communities we serve, so every booking and agreement stays clear.
-            </p>
+              <span>Contact support</span>
+            </button>
           </div>
         </div>
 
-        {/* Right Panel: Language Selection Modal/Card */}
-        <div className="flex items-center justify-center p-4 sm:p-8 lg:p-12 bg-neutral-100/50">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/80 w-full max-w-[440px] flex flex-col">
+        {/* Center Card */}
+        <div className="w-full flex items-center justify-center my-auto py-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[440px] flex flex-col">
             {/* Header Category Tag */}
             <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
               LANGUAGE
@@ -170,7 +111,7 @@ export default function LanguageSelection({
                   aria-checked={selectedLanguage === SUGGESTED_LANGUAGE.id}
                   tabIndex={0}
                 >
-                  {/* Clean text label without flag */}
+                  {/* Clean text label without flag as explicitly requested */}
                   <span className="font-sans font-semibold text-sm sm:text-base text-neutral-900">
                     {SUGGESTED_LANGUAGE.name}
                   </span>
@@ -296,7 +237,10 @@ export default function LanguageSelection({
             </div>
           </div>
         </div>
-      </main>
+
+        {/* Bottom spacing to keep vertical balance */}
+        <div className="hidden lg:block h-4" />
+      </div>
     </div>
   );
 }

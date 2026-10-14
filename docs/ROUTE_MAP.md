@@ -8,8 +8,8 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 
 | Route Path | Application Area | Page Purpose | Shared Layout | Implementation Status | Relevant Design Reference |
 |---|---|---|---|---|---|
-| `/` | Foundation / Overview | Frontend foundation overview and component showcase | `app/layout.tsx` | Complete (Foundation) | Bluefixx Design System Baseline |
-| `/onboarding` | Onboarding / Welcome | Complete 5-step onboarding sequence: splash, value propositions carousel, and language preferences | `app/layout.tsx` | Complete | `REF-ONB-001` through `REF-ONB-005` |
+| `/` | Onboarding / App Entry | Primary entry point starting directly with the complete Onboarding and Authentication flow | `app/layout.tsx` | Complete | `REF-ONB-001` through `REF-ONB-010` |
+| `/onboarding` | Onboarding / Welcome | Dedicated onboarding flow route | `app/layout.tsx` | Complete | `REF-ONB-001` through `REF-ONB-010` |
 
 ---
 

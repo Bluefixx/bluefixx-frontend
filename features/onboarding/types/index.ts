@@ -1,4 +1,11 @@
-export type OnboardingStep = "splash" | "intro" | "language";
+export type OnboardingStep =
+  | "splash"
+  | "intro"
+  | "language"
+  | "welcome"
+  | "email-signin"
+  | "create-account"
+  | "phone-verify";
 
 export interface IntroSlideData {
   id: number;

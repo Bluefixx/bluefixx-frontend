@@ -1,60 +1,61 @@
 # Current Session Handoff
 
-*Last updated: 2026-10-14 (Onboarding Screens 1–5 Implementation)*
+*Last updated: 2026-10-14 (Onboarding & Authentication Flow Completion)*
 
 ---
 
 ## 1. Current Task
-Implement the initial batch of Onboarding screens from the supplied Figma screenshots:
-1. Splash and loading (`REF-ONB-001`)
-2. Introduction — Verified Artisans (`REF-ONB-002`)
-3. Introduction — Book with Confidence (`REF-ONB-003`)
-4. Introduction — Careers and Skills (`REF-ONB-004`)
-5. Language Selection (`REF-ONB-005` with flag requirement removed as requested)
+Complete the onboarding and authentication flow per user feedback and the new batch of Figma designs:
+1. Entry point configured directly at `/` (initial foundation page removed).
+2. Refined Splash Screen pattern with exact organic diagonal curves.
+3. Screen preview toolbar removed.
+4. Corrected left column layout: image extends full height to top with the white logo positioned inside the image.
+5. Implemented Welcome & Social Sign-In (`REF-ONB-006`).
+6. Implemented Email Sign-In and Invalid Email error state (`REF-ONB-007`, `REF-ONB-008`).
+7. Implemented Create Account Step 1 of 6 (`REF-ONB-009`).
+8. Implemented Phone Verification Step 2 of 6 (`REF-ONB-010`).
 
 ## 2. Relevant Files
-- `app/onboarding/page.tsx`: Route for the complete onboarding flow.
-- `app/page.tsx`: Foundation landing page updated with Onboarding launch banner.
-- `features/onboarding/components/SplashScreen.tsx`: Splash screen with animated spinner and brand curves.
-- `features/onboarding/components/OnboardingHeader.tsx`: Header with brand logo, skip button, and language pill.
-- `features/onboarding/components/IntroSlide.tsx`: Two-column value proposition slide layout with stat cards and carousel dots.
-- `features/onboarding/components/LanguageSelection.tsx`: Split layout with hero artwork narrative and language selection card (no flags).
-- `features/onboarding/components/OnboardingFlow.tsx`: Interactive coordinator with screen preview navigator.
-- `features/onboarding/data/onboarding-data.ts`: Text data, assets, and language options.
-- `features/onboarding/types/index.ts`: Onboarding contracts and interfaces.
-- `public/images/`: `customers.png`, `workers.png`, `talents.png`.
-- `public/icons/`: `logoMain.svg`, `BFLogoW.svg`, verified icons.
+- `app/page.tsx`: Direct entry point rendering the Onboarding Flow.
+- `app/onboarding/page.tsx`: Route for direct onboarding access.
+- `features/onboarding/components/SplashScreen.tsx`: Splash screen with exact diagonal brand curves.
+- `features/onboarding/components/OnboardingHeader.tsx`: Header for intro carousel.
+- `features/onboarding/components/IntroSlide.tsx`: 2-column value proposition slides.
+- `features/onboarding/components/AuthHeroPanel.tsx`: Full-height left hero image with white logo and bottom narrative.
+- `features/onboarding/components/LanguageSelection.tsx`: Language selection (no country flags).
+- `features/onboarding/components/WelcomeSocialSignIn.tsx`: Welcome screen with Google, Apple, and Email login.
+- `features/onboarding/components/EmailSignIn.tsx`: Email sign-in with full validation error state.
+- `features/onboarding/components/CreateAccount.tsx`: Registration form (Step 1 of 6).
+- `features/onboarding/components/PhoneVerification.tsx`: Phone verification keypad (Step 2 of 6).
+- `features/onboarding/components/OnboardingFlow.tsx`: Master flow controller.
+- `features/onboarding/types/index.ts`: Contracts and step types.
+- `features/onboarding/data/onboarding-data.ts`: Slides and languages data.
 
 ## 3. Relevant Design References
-- `REF-ONB-001`: Splash and loading
-- `REF-ONB-002`: Introduction — verified artisans
-- `REF-ONB-003`: Introduction — book with confidence
-- `REF-ONB-004`: Introduction — careers and skills
-- `REF-ONB-005`: Language selection
+- `REF-ONB-001` through `REF-ONB-010` (all cataloged in `docs/design/DESIGN_REFERENCE_INDEX.md`).
 
 ## 4. Existing Components Ready to Reuse
-- `SplashScreen`: Full-screen dark loading state.
-- `IntroSlide`: Generalizable 2-column carousel slide.
-- `LanguageSelection`: Dedicated language selection interface.
-- `OnboardingHeader`: Reusable modal/onboarding top bar.
-- `Button`, `Input`, `Card`, `Badge`: Foundational primitives.
+- `AuthHeroPanel`: Full-height left image layout with top-left white logo.
+- `SplashScreen`: Full-screen dark splash state.
+- `IntroSlide`: 2-column carousel slide.
+- `WelcomeSocialSignIn`, `EmailSignIn`, `CreateAccount`, `PhoneVerification`.
+- Primitive UI components (`Button`, `Input`, `TextArea`, `Card`, `Badge`).
 
 ## 5. Current Progress & Recent Changes
-- All 5 onboarding screens implemented with exact visual fidelity to Figma designs.
-- Language selection implemented without country flags per specific user request.
-- Verified TypeScript strict compliance (`npx tsc --noEmit` passed with 0 errors).
-- Route map and component inventory updated.
+- All 10 screens faithfully implemented and verified.
+- Seamless flow progression: Splash &rarr; Intro &rarr; Language &rarr; Welcome &rarr; Email Sign-In &rarr; Create Account (Step 1 of 6) &rarr; Phone Verification (Step 2 of 6).
+- Strict TypeScript verification passing with 0 errors.
 
 ## 6. Remaining Tasks
-- Receive the next batch of screenshots for the rest of the onboarding process.
-- Implement subsequent onboarding steps (e.g. role selection, profile setup, preferences).
+- Receive the next set of screens (e.g. OTP code verification keypad, role selection, profile setup).
+- Continue iterative implementation following `docs/workflows/implement-page.md`.
 
 ## 7. Known Issues
 - None.
 
 ## 8. Validation Performed
-- Static code inspection and strict TypeScript verification completed (`npx tsc --noEmit` exited with code 0).
+- Static code analysis and strict TypeScript checking (`npx tsc --noEmit` exited with code 0).
 - User rule respected: Builds and development servers are left for the user to execute directly.
 
 ## 9. Next Recommended Action
-- Inspect the onboarding flow at `/onboarding` and provide the next set of onboarding screenshots.
+- Test the full flow starting at `/` and provide the next batch of screenshots.

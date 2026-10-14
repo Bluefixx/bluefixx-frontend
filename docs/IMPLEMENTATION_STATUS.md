@@ -2,43 +2,43 @@
 
 This document tracks current progress, backlog, known issues, and next actions for `bluefixx-frontend`.
 
-*Last updated: 2026-10-14 (Onboarding Flow Implementation)*
+*Last updated: 2026-10-14 (Complete Onboarding & Auth Flow Phase 1 & 2)*
 
 ---
 
 ## 1. Completed Work
-- [x] **Repository Inspection**: Analyzed existing Next.js 16.4, React 19.3, and Tailwind CSS v4 setup.
-- [x] **Design System Token Synchronization**: Imported brand colors (Primary 900 `#001B40`, Secondary 700 `#074292`, neutrals, semantics), typography scale classes, button typography, and custom shadows into `app/globals.css`.
-- [x] **Brand Typography & Metadata**: Configured Montserrat and Poppins fonts in `app/layout.tsx`.
-- [x] **Brand Assets**: Copied brand icons, white logo (`BFLogoW.svg`), and illustrations (`customers.png`, `workers.png`, `talents.png`) from `bluefixx-website`.
-- [x] **Core Reusable Primitives**: `Button`, `Input`, `TextArea`, `Card`, `Badge`.
-- [x] **Feedback Components**: `EmptyState`, `ErrorDisplay`.
-- [x] **Onboarding Screens (Figma Implemented)**:
-  - **Screen 1**: Splash and loading (`features/onboarding/components/SplashScreen.tsx`) with dark navy `#001B40` background, brand curves, white logo, title, and animated loader.
-  - **Screen 2**: Introduction — Verified Artisans (`features/onboarding/components/IntroSlide.tsx` Slide 1) with `customers.png`, top-left verified badge, bottom-left "100%" check card, and active dot 1.
-  - **Screen 3**: Introduction — Book with Confidence (`IntroSlide.tsx` Slide 2) with `workers.png`, "1 thread" stat card, and active dot 2.
-  - **Screen 4**: Introduction — Careers and Skills (`IntroSlide.tsx` Slide 3) with `talents.png`, "One app" stat card, and active dot 3.
-  - **Screen 5**: Language Selection (`features/onboarding/components/LanguageSelection.tsx`) with left handshake hero narrative and right selection card for English, Igbo, Hausa, Yorùbá, and Pidgin. *Flag requirement omitted as instructed*. Includes real-time search.
-  - **Interactive Orchestrator**: `features/onboarding/components/OnboardingFlow.tsx` linking all 5 screens with smooth state transitions, slide dot navigation, skip button, and quick-access dev toolbar.
-  - **Route**: `app/onboarding/page.tsx` accessible at `/onboarding`.
-- [x] **Showcase Landing Page**: `app/page.tsx` updated with an interactive launcher banner for the Onboarding flow.
-- [x] **Strict Type Verification**: Verified via `npx tsc --noEmit` with 0 errors.
+- [x] **Primary Entry Route (`/`)**: Updated `app/page.tsx` so the application begins directly with the Onboarding and Authentication flow.
+- [x] **Splash Screen Pattern Refinement**: Corrected `features/onboarding/components/SplashScreen.tsx` with the exact organic diagonal swooping curves matching the Figma design.
+- [x] **Removed Preview Header**: Eliminated the screen preview toolbar so the app renders purely as designed.
+- [x] **Positioning of Left Hero Column**: Updated `features/onboarding/components/AuthHeroPanel.tsx` so the illustration covers the entire left column (100% height from top y=0 to bottom) with the white BlueFixx logo pinned directly inside the top-left of the image. The right column header contains `Need help? Contact support` with zero logo duplication.
+- [x] **Screen 1**: Splash and loading (`REF-ONB-001`).
+- [x] **Screen 2**: Introduction — Verified Artisans (`REF-ONB-002`).
+- [x] **Screen 3**: Introduction — Book with Confidence (`REF-ONB-003`).
+- [x] **Screen 4**: Introduction — Careers and Skills (`REF-ONB-004`).
+- [x] **Screen 5**: Language Selection (`REF-ONB-005`) with full-height left hero image and no country flags as instructed.
+- [x] **Screen 6**: Welcome and Social Sign-In (`REF-ONB-006`) with Google, Apple, and Email sign-in options.
+- [x] **Screen 7**: Email Sign-In (`REF-ONB-007`) with email/password inputs, Show/Hide password toggle, and remember me.
+- [x] **Screen 8**: Email Sign-In Error State (`REF-ONB-008`) with red border, error caption, and `1 field needs attention` indicator.
+- [x] **Screen 9**: Create Account (`REF-ONB-009` — Step 1 of 6) with Stepper indicator, Full Name, Phone, Email, Password, Confirm Password, and Terms checkbox.
+- [x] **Screen 10**: Phone Verification Keypad (`REF-ONB-010` — Step 2 of 6) with Stepper indicator and phone code dispatch.
+- [x] **Master Flow Orchestrator**: `features/onboarding/components/OnboardingFlow.tsx` linking all screens with seamless state transitions.
+- [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---
 
 ## 2. Work in Progress
-- Ready to receive the next batch of onboarding screenshots from the user.
+- Ready to receive the next screens (e.g. OTP keypad input, role selection, customer/worker onboarding details).
 
 ---
 
 ## 3. Upcoming Work
-- Implement remaining onboarding screens as provided by the user.
-- Build subsequent auth and marketplace flows.
+- Implement OTP code entry screen and remainder of the 6-step registration process.
+- Implement post-onboarding dashboard views.
 
 ---
 
 ## 4. Known Issues / Missing Assets
-- None for the current scope. All 5 initial onboarding screens are implemented and verified.
+- None for the current scope. All 10 screens are implemented and verified.
 
 ---
 
@@ -48,4 +48,4 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 6. Next Recommended Action
-- Review the implemented onboarding flow at `/onboarding` and share the screenshots for the rest of the onboarding process.
+- Test the full onboarding and authentication sequence on `/` and share the next screens (Steps 3 through 6 of registration or OTP).

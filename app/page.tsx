@@ -1,8 +1,9 @@
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/Card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { APP_CONFIG } from "@/lib/constants";
 
 export default function Home() {
@@ -34,6 +35,27 @@ export default function Home() {
             <Badge variant="neutral">TypeScript Strict</Badge>
           </div>
         </header>
+
+        {/* Featured Live Screen: Onboarding Flow */}
+        <section className="bg-gradient-to-r from-primary-900 to-secondary-700 text-white rounded-2xl p-8 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="flex items-center gap-2">
+              <Badge variant="success" size="small">Implemented Screen</Badge>
+              <span className="text-xs text-white/80 font-medium uppercase tracking-wider">
+                Figma Design Baseline
+              </span>
+            </div>
+            <h2 className="text-h4 font-bold text-white">Onboarding Flow &amp; Language Selection</h2>
+            <p className="text-b3 text-neutral-200">
+              Interactive 5-screen onboarding sequence: Splash &amp; loading screen, 3-step value proposition carousel (Verified Artisans, Book with Confidence, Careers &amp; Skills), and localized Language Selection without flags.
+            </p>
+          </div>
+          <Link href="/onboarding" className="shrink-0">
+            <Button variant="white" size="large" className="font-bold shadow-lg">
+              Launch Onboarding Flow &rarr;
+            </Button>
+          </Link>
+        </section>
 
         {/* Foundation Overview Grid */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -2,70 +2,50 @@
 
 This document tracks current progress, backlog, known issues, and next actions for `bluefixx-frontend`.
 
-*Last updated: 2026-10-13 (Foundation Phase)*
+*Last updated: 2026-10-14 (Onboarding Flow Implementation)*
 
 ---
 
 ## 1. Completed Work
 - [x] **Repository Inspection**: Analyzed existing Next.js 16.4, React 19.3, and Tailwind CSS v4 setup.
-- [x] **Design System Token Synchronization**: Imported brand colors (Primary 900 `#001B40`, Secondary 700 `#074292`, neutrals, semantics), typography scale classes (`.text-h1` - `.text-h5`, `.text-b1` - `.text-b4`, `.text-s1`, `.text-s2`, `.text-c1` - `.text-c3`), button typography, and custom shadows into `app/globals.css`.
-- [x] **Brand Typography & Metadata**: Configured Montserrat and Poppins fonts via `next/font/google` in `app/layout.tsx`.
-- [x] **Brand Assets**: Copied brand icons and logos (`logoMain.svg`, etc.) to `public/icons/`.
-- [x] **Core Reusable Primitives**:
-  - `Button` (`components/ui/Button.tsx`) — variants, sizes, loading/disabled states.
-  - `Input` (`components/ui/Input.tsx`) — accessible labels, errors, helpers, icon slot.
-  - `TextArea` (`components/ui/TextArea.tsx`) — accessible labels, errors, token styling.
-  - `Card` (`components/ui/Card.tsx`) — container, header, title, description, content, footer.
-  - `Badge` (`components/ui/Badge.tsx`) — semantic status badges.
-- [x] **Feedback Components**:
-  - `EmptyState` (`components/feedback/EmptyState.tsx`)
-  - `ErrorDisplay` (`components/feedback/ErrorDisplay.tsx`)
-- [x] **Data & API Baseline**:
-  - `lib/api/client.ts` with `ApiError` class and typed JSON fetch.
-  - `types/api.ts` & `types/common.ts` contracts.
-  - `.env.example` template.
-- [x] **Repository Documentation Suite**:
-  - `AGENTS.md`
-  - `docs/AI_CONTEXT.md`
-  - `docs/PROJECT_OVERVIEW.md`
-  - `docs/ARCHITECTURE.md`
-  - `docs/DESIGN_SYSTEM.md`
-  - `docs/COMPONENT_INVENTORY.md`
-  - `docs/ROUTE_MAP.md`
-  - `docs/API_CONTRACTS.md`
-  - `docs/DECISIONS.md`
-  - `docs/IMPLEMENTATION_STATUS.md`
-  - `docs/design/DESIGN_REFERENCE_INDEX.md`
-  - `docs/handoffs/CURRENT_HANDOFF.md`
-  - `docs/workflows/implement-page.md`
-  - `docs/workflows/review-page.md`
-  - `docs/workflows/handoff.md`
-- [x] **Showcase Landing Page**: `app/page.tsx` displaying foundation health and component preview.
+- [x] **Design System Token Synchronization**: Imported brand colors (Primary 900 `#001B40`, Secondary 700 `#074292`, neutrals, semantics), typography scale classes, button typography, and custom shadows into `app/globals.css`.
+- [x] **Brand Typography & Metadata**: Configured Montserrat and Poppins fonts in `app/layout.tsx`.
+- [x] **Brand Assets**: Copied brand icons, white logo (`BFLogoW.svg`), and illustrations (`customers.png`, `workers.png`, `talents.png`) from `bluefixx-website`.
+- [x] **Core Reusable Primitives**: `Button`, `Input`, `TextArea`, `Card`, `Badge`.
+- [x] **Feedback Components**: `EmptyState`, `ErrorDisplay`.
+- [x] **Onboarding Screens (Figma Implemented)**:
+  - **Screen 1**: Splash and loading (`features/onboarding/components/SplashScreen.tsx`) with dark navy `#001B40` background, brand curves, white logo, title, and animated loader.
+  - **Screen 2**: Introduction — Verified Artisans (`features/onboarding/components/IntroSlide.tsx` Slide 1) with `customers.png`, top-left verified badge, bottom-left "100%" check card, and active dot 1.
+  - **Screen 3**: Introduction — Book with Confidence (`IntroSlide.tsx` Slide 2) with `workers.png`, "1 thread" stat card, and active dot 2.
+  - **Screen 4**: Introduction — Careers and Skills (`IntroSlide.tsx` Slide 3) with `talents.png`, "One app" stat card, and active dot 3.
+  - **Screen 5**: Language Selection (`features/onboarding/components/LanguageSelection.tsx`) with left handshake hero narrative and right selection card for English, Igbo, Hausa, Yorùbá, and Pidgin. *Flag requirement omitted as instructed*. Includes real-time search.
+  - **Interactive Orchestrator**: `features/onboarding/components/OnboardingFlow.tsx` linking all 5 screens with smooth state transitions, slide dot navigation, skip button, and quick-access dev toolbar.
+  - **Route**: `app/onboarding/page.tsx` accessible at `/onboarding`.
+- [x] **Showcase Landing Page**: `app/page.tsx` updated with an interactive launcher banner for the Onboarding flow.
+- [x] **Strict Type Verification**: Verified via `npx tsc --noEmit` with 0 errors.
 
 ---
 
 ## 2. Work in Progress
-- Ready to receive the first Figma screenshot / page design for implementation.
+- Ready to receive the next batch of onboarding screenshots from the user.
 
 ---
 
 ## 3. Upcoming Work
-- Implement incoming pages as provided (e.g. Sign In, Sign Up, Customer Dashboard, Worker Profile).
-- Expand component inventory as unique design patterns are introduced.
-- Connect real API endpoints once backend contracts are published.
+- Implement remaining onboarding screens as provided by the user.
+- Build subsequent auth and marketplace flows.
 
 ---
 
 ## 4. Known Issues / Missing Assets
-- **Figma Screenshots**: No page-specific Figma screenshots supplied yet.
-- **Backend Endpoints**: Backend services not yet specified.
+- None for the current scope. All 5 initial onboarding screens are implemented and verified.
 
 ---
 
 ## 5. Technical Debt
-- None. Codebase is clean, strict TypeScript compliant, and zero unnecessary dependencies.
+- None.
 
 ---
 
 ## 6. Next Recommended Action
-- Provide the first Figma screenshot or design reference to begin iterative page construction using `docs/workflows/implement-page.md`.
+- Review the implemented onboarding flow at `/onboarding` and share the screenshots for the rest of the onboarding process.

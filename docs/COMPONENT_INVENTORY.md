@@ -92,3 +92,42 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - `onRetry?: () => void`
   - `className?: string`
 - **Used In**: Failed query sections, form error banners
+
+---
+
+## 3. Feature Components (`features/`)
+
+### `SplashScreen`
+- **File**: `features/onboarding/components/SplashScreen.tsx`
+- **Category**: Feature (`onboarding`)
+- **Purpose**: Splash screen with dark `#001B40` background, brand curves, white logo mark, headline, and animated circular spinner.
+- **Props**: `onComplete?: () => void`, `autoAdvance?: boolean`, `durationMs?: number`
+- **Used In**: `/onboarding`
+
+### `OnboardingHeader`
+- **File**: `features/onboarding/components/OnboardingHeader.tsx`
+- **Category**: Feature (`onboarding`)
+- **Purpose**: Header with BlueFixx logo, "Skip introduction" button, and Language pill selector.
+- **Props**: `onSkip?: () => void`, `onOpenLanguage?: () => void`, `selectedLanguageName?: string`
+- **Used In**: `/onboarding`
+
+### `IntroSlide`
+- **File**: `features/onboarding/components/IntroSlide.tsx`
+- **Category**: Feature (`onboarding`)
+- **Purpose**: Two-column layout for value proposition slides with artwork, top-left verified badge, bottom-left stat card, overline tag, headline, body, callout box, 3-dot step indicator, and Continue button.
+- **Props**: `slide: IntroSlideData`, `currentIndex: number`, `totalSlides: number`, `onContinue: () => void`, `onDotClick: (index: number) => void`
+- **Used In**: `/onboarding`
+
+### `LanguageSelection`
+- **File**: `features/onboarding/components/LanguageSelection.tsx`
+- **Category**: Feature (`onboarding`)
+- **Purpose**: Split layout screen with left handshake hero narrative and right elevated card for selecting English, Igbo, Hausa, Yorùbá, or Pidgin without flags. Supports real-time search.
+- **Props**: `currentLanguageId?: string`, `onSave?: (id: string) => void`, `onBackToIntro?: () => void`
+- **Used In**: `/onboarding`
+
+### `OnboardingFlow`
+- **File**: `features/onboarding/components/OnboardingFlow.tsx`
+- **Category**: Feature (`onboarding`)
+- **Purpose**: Master coordinator controlling step transitions, slide progression, language state, and preview bar.
+- **Props**: `initialStep?: OnboardingStep`, `initialSlideIndex?: number`
+- **Used In**: `app/onboarding/page.tsx`

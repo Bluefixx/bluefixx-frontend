@@ -18,6 +18,7 @@ export default function SignupPage() {
     verificationCode,
     setVerificationCode,
     setUser,
+    setActiveRole,
     isLoading,
     setIsLoading,
   } = useAuth();
@@ -337,6 +338,7 @@ export default function SignupPage() {
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         setRegistrationData({ role: selectedRole });
+        setActiveRole(selectedRole);
 
         // Save authenticated user profile to global store
         setUser({
@@ -356,8 +358,8 @@ export default function SignupPage() {
           selectedRole === "customer" ? "a Customer" : selectedRole === "artisan" ? "an Artisan" : "an Apprentice"
         }.`);
 
-        // Navigate to customer / artisan dashboard or home
-        router.push("/");
+        // Navigate to dashboard
+        router.push("/dashboard");
       } catch {
         toast.error("Failed to complete registration.");
       } finally {
@@ -365,7 +367,7 @@ export default function SignupPage() {
       }
     },
     [
-      selectedRole, setIsLoading, setRegistrationData, setUser,
+      selectedRole, setIsLoading, setRegistrationData, setActiveRole, setUser,
       registrationData, fullName, email, verificationPhone, phone,
       avatarPreview, selectedState, selectedCity, streetAddress, router,
     ]

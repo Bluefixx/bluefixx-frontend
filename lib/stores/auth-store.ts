@@ -42,6 +42,14 @@ export type RegistrationStep = 1 | 2 | 3 | 4 | 5 | 6;
 export interface AuthState {
   /** Currently authenticated user, null when logged out */
   user: AuthUser | null;
+  /** Active role currently viewing the application */
+  activeRole: "customer" | "artisan" | "apprentice";
+  /** Whether the user has completed apprentice training (unlocks artisan role) */
+  apprenticeTrainingCompleted: boolean;
+  /** Available wallet balance */
+  walletBalance: number;
+  /** Active location display string */
+  locationName: string;
   /** Whether an auth request is in progress */
   isLoading: boolean;
   /** Registration flow: partial data collected so far */
@@ -61,6 +69,14 @@ export interface AuthState {
 }
 
 export interface AuthActions {
+  /** Update active role */
+  setActiveRole: (role: "customer" | "artisan" | "apprentice") => void;
+  /** Set whether apprentice training is completed */
+  setApprenticeTrainingCompleted: (completed: boolean) => void;
+  /** Set wallet balance */
+  setWalletBalance: (balance: number) => void;
+  /** Set active location display */
+  setLocationName: (location: string) => void;
   /** Update partial registration data */
   setRegistrationData: (data: Partial<RegistrationData>) => void;
   /** Advance or set the registration step */
@@ -92,7 +108,21 @@ export type AuthStore = AuthState & AuthActions;
 // ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_AUTH_STATE: AuthState = {
-  user: null,
+  user: {
+    id: "usr-daniel-eze",
+    fullName: "Daniel Eze",
+    email: "daniel.eze@bluefixx.com",
+    phone: "+234 803 245 0182",
+    state: "Enugu",
+    city: "Independence Layout",
+    streetAddress: "14 Ziks Avenue",
+    role: "customer",
+    isVerified: true,
+  },
+  activeRole: "customer",
+  apprenticeTrainingCompleted: false,
+  walletBalance: 85000,
+  locationName: "Independence Layout, Enugu",
   isLoading: false,
   registrationData: {},
   registrationStep: 1,

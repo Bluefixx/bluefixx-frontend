@@ -185,3 +185,53 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 - **Purpose**: App-wide notification toasts powered by `react-hot-toast` with brand styling (`#001B40`, rounded-xl, details shadow).
 - **Used In**: `app/layout.tsx`
 
+---
+
+## 5. Dashboard Components (`features/dashboard/`)
+
+### `DashboardSidebar`
+- **File**: `features/dashboard/components/DashboardSidebar.tsx`
+- **Purpose**: Primary dashboard navigation sidebar featuring brand logo, navigation links (`Home`, `Explore`, `Post a Job`, `Bookings`, `Messages`, `Profile`), and bottom user profile card and settings.
+- **Used In**: `app/dashboard/layout.tsx`
+
+### `DashboardHeader`
+- **File**: `features/dashboard/components/DashboardHeader.tsx`
+- **Purpose**: Top dashboard header with interactive location selector, user type toggle button (`↕`), notification bell with orange pip, wallet balance display, and avatar dropdown trigger.
+- **Used In**: `app/dashboard/layout.tsx`
+
+### `UserRoleSwitcherModal`
+- **File**: `features/dashboard/components/UserRoleSwitcherModal.tsx`
+- **Purpose**: Modal to switch active profile between Customer, Artisan, and Apprentice. Enforces the rule that an Apprentice account cannot switch to Artisan unless training is completed, while Customer access is always available.
+- **Used In**: `app/dashboard/layout.tsx`, `features/dashboard/components/ApprenticeHomeView.tsx`
+
+### `AccountMenuDropdown`
+- **File**: `features/dashboard/components/AccountMenuDropdown.tsx`
+- **Purpose**: User profile dropdown menu opened from avatar, displaying user name, role, links to profile, settings, and logout action.
+- **Used In**: `features/dashboard/components/DashboardHeader.tsx`
+
+### `CustomerHomeView`
+- **File**: `features/dashboard/components/CustomerHomeView.tsx`
+- **Purpose**: Home dashboard for customers featuring search card with popular tags, wallet balance, escrow protection, 7-day warranty cards, quick action banner, categorized service cards, and verified artisan cards.
+- **Used In**: `app/dashboard/page.tsx`
+
+### `ArtisanHomeView`
+- **File**: `features/dashboard/components/ArtisanHomeView.tsx`
+- **Purpose**: Home dashboard for artisans featuring job lead stats, earnings summary, rating, open customer job requests in their area, and quote submission actions.
+- **Used In**: `app/dashboard/page.tsx`
+
+### `ApprenticeHomeView`
+- **File**: `features/dashboard/components/ApprenticeHomeView.tsx`
+- **Purpose**: Home dashboard for apprentices featuring current curriculum progress, master artisan mentorship info, practical hours tracker, and graduation simulation controller.
+- **Used In**: `app/dashboard/page.tsx`
+
+### `BrowseServicesView`
+- **File**: `features/dashboard/components/BrowseServicesView.tsx`
+- **Purpose**: Marketplace discovery interface featuring category filters, search input, and service grid with starting prices and direct quote request triggers.
+- **Used In**: `app/dashboard/explore/page.tsx`
+
+### `PostJobWizard`
+- **File**: `features/dashboard/components/PostJobWizard.tsx`
+- **Purpose**: 8-step service request wizard (Service, Details, Photos & voice, Budget, Address, Preferred time, Review, Job live) with interactive task chips, live summary preview, and problem description.
+- **Used In**: `app/dashboard/post-job/page.tsx`
+
+

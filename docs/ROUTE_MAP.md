@@ -13,6 +13,13 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 | `/login` | Authentication | Dedicated Sign In page with email validation, remember me, error alerts, and toast notifications | `app/layout.tsx` | Complete | Customer Web · Sign In |
 | `/signup` | Authentication / Registration | 6-step registration flow: 1. Create Account, 2. Phone entry, 3. OTP verification, 4. Profile photo, 5. Location, 6. Role selection | `app/layout.tsx` | Complete | Customer Web · Registration Steps 1–6 |
 | `/forgot-password` | Authentication / Recovery | Password recovery via phone number and SMS OTP code | `app/layout.tsx` | Complete | Customer Web · Forgot password |
+| `/dashboard` | Core Dashboard | Unified marketplace dashboard dynamically displaying Customer, Artisan, or Apprentice views | `app/dashboard/layout.tsx` | Complete | Customer Web · Home dashboard |
+| `/dashboard/explore` | Marketplace Discovery | Browse 29 services across 5 categories with search, category filtering, and direct quote requests | `app/dashboard/layout.tsx` | Complete | Customer Web · Browse services |
+| `/dashboard/post-job` | Service Booking | 8-step job posting wizard matching services, details, urgency, photos, budget, and location | `app/dashboard/layout.tsx` | Complete | Customer Web · Post a job |
+| `/dashboard/bookings` | Bookings & Escrow | Active and completed booking milestones, artisan en route status, and escrow releases | `app/dashboard/layout.tsx` | Complete | Marketplace standard |
+| `/dashboard/messages` | Real-time Communication | Direct chat communication between customers and artisans with live quote discussion | `app/dashboard/layout.tsx` | Complete | Marketplace standard |
+| `/dashboard/profile` | Account & Verification | User profile, location display, verified badge, and contact information | `app/dashboard/layout.tsx` | Complete | Customer Web · Account menu |
+| `/dashboard/settings` | Settings & Preferences | Notification preferences and multi-language support (English, Igbo, Hausa, Yorùbá, Pidgin) | `app/dashboard/layout.tsx` | Complete | Customer Web · Account menu |
 
 ---
 

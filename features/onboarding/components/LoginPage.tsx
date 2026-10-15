@@ -58,9 +58,7 @@ export default function LoginPage() {
         });
 
         toast.success("Welcome back to BlueFixx!");
-
-        // TODO: Navigate to dashboard when implemented
-        // router.push("/dashboard");
+        router.push("/dashboard");
       } catch {
         toast.error("Login failed. Please check your credentials and try again.");
       } finally {

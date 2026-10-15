@@ -2,7 +2,7 @@
 
 This document tracks current progress, backlog, known issues, and next actions for `bluefixx-frontend`.
 
-*Last updated: 2026-10-15 (Dedicated Routing, Toast Notifications, Global Auth State, 6-Step Registration & Forgot Password)*
+*Last updated: 2026-10-15 (Customer, Artisan & Apprentice Dashboards, Explore Services, 8-Step Post a Job & Role Switching)*
 
 ---
 
@@ -13,28 +13,40 @@ This document tracks current progress, backlog, known issues, and next actions f
   - `/signup`: Standalone 6-step Registration flow with stepper dots and back navigation.
   - `/forgot-password`: Standalone Account Recovery page with phone number input and SMS reset code handling.
   - `/onboarding`: Dedicated onboarding route.
-- [x] **Toast Notifications**: Integrated `react-hot-toast` across all authentication and onboarding actions, eliminating raw `alert()` dialogs.
-- [x] **Global Auth State Management**: Built `lib/stores/auth-store.ts` and `components/shared/AuthProvider.tsx` to handle user session, registration steps, OTP status, language selection, location, and role preference pending backend API integration.
-- [x] **Registration Flow (All 6 Steps Implemented)**:
-  - **Step 1 of 6**: *Create Account* (`media_1792012590124.png`) — Full Name, Phone, Email, Password, Confirm Password, Terms Agreement.
-  - **Step 2 of 6**: *Phone Verification (Number Entry)* (`media_1792012626816.png`) — Phone input with SMS dispatch trigger.
-  - **Step 3 of 6**: *Verification Code Entry* (`media_1792086335736.png`) — 6 individual OTP digit boxes with auto-focus, backspace handling, invalid/expired code error state, change phone number link, and resend code action.
-  - **Step 4 of 6**: *Add Profile Photo* (`media_1792086369556.png`) — Avatar preview, camera badge, Upload photo / Take a photo triggers, guideline checklist, Continue and Skip for now actions.
-  - **Step 5 of 6**: *Set Your Location* (`media_1792086588958.png`) — Geolocation detection button, State dropdown, City/area dropdown, street address input.
-  - **Step 6 of 6**: *Personalise Experience / Role Selection* (`media_1792086650509.png`) — Three selection cards ("I need an artisan", "I am an artisan", "I want to learn a trade") with dynamic CTA button ("Continue as Customer", "Continue as Artisan", "Continue as Apprentice").
-- [x] **Forgot Password Screen** (`media_1792086709928.png`): Dedicated recovery page at `/forgot-password` with SMS 6-digit reset code workflow.
+  - `/dashboard`: Core marketplace home dashboard dynamically rendering Customer, Artisan, or Apprentice views based on `activeRole`.
+  - `/dashboard/explore`: Comprehensive service discovery directory covering 29 services across 5 categories with real-time category filtering and search.
+  - `/dashboard/post-job`: Full 8-step job posting wizard with interactive task selection, live summary card, budget ranges, and location confirmation.
+  - `/dashboard/bookings`: Active & completed bookings management view.
+  - `/dashboard/messages`: Live communication chat interface between customers and artisans.
+  - `/dashboard/profile`: Verified user profile management view.
+  - `/dashboard/settings`: Multi-language preferences and security notification settings.
+- [x] **Sidebar Navigation**:
+  - Implemented with "Post a Job" placed immediately after "Explore" as requested.
+  - Navigation links: Home, Explore, Post a Job, Bookings, Messages, Profile.
+  - Footer items: Settings, Help & Support, and My Account role indicator.
+- [x] **User Type Toggle Button & Modal Switcher**:
+  - Menu button next to notification bell with toggle arrows (`↕`) for switching between Customer, Artisan, and Apprentice profiles.
+  - **Business Rule Enforced**:
+    - Customers can switch to Artisan or Apprentice.
+    - Artisans can switch to Customer or Apprentice.
+    - Apprentices can switch to Customer, but the Artisan switch is strictly locked until apprenticeship training is completed (includes simulation toggle for testing).
+- [x] **Top Header Controls**:
+  - Location selector with quick change modal.
+  - Notification bell with orange badge pip.
+  - Wallet balance display widget (`₦85,000`).
+  - User avatar with account dropdown menu (Profile, Settings, Log out).
 - [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---
 
 ## 2. Work in Progress
-- Next phase: Core marketplace dashboard views (Customer dashboard, Artisan dashboard, Apprentice portal) and backend API contract integration.
+- Backend API endpoints integration via `lib/api/client.ts`.
 
 ---
 
 ## 3. Upcoming Work
-- Implement Customer Dashboard / Service Marketplace discovery browsing.
-- Connect API client to live auth endpoints when available.
+- Real-time WebSockets/SSE for live chat and artisan location tracking.
+- Escrow payment gateway integration (Paystack/Flutterwave).
 
 ---
 
@@ -49,5 +61,6 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 6. Next Recommended Action
-- Run `npm run dev` to verify the complete interactive experience across `/`, `/login`, `/signup`, and `/forgot-password`.
+- Run `npm run dev` to test the full end-to-end customer and artisan journey across `/dashboard`, `/dashboard/explore`, `/dashboard/post-job`, and the user type switcher.
+
 

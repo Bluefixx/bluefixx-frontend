@@ -20,6 +20,14 @@ interface AuthProviderProps {
  */
 export default function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(DEFAULT_AUTH_STATE.user);
+  const [activeRole, setActiveRole] = useState<"customer" | "artisan" | "apprentice">(
+    DEFAULT_AUTH_STATE.activeRole
+  );
+  const [apprenticeTrainingCompleted, setApprenticeTrainingCompleted] = useState(
+    DEFAULT_AUTH_STATE.apprenticeTrainingCompleted
+  );
+  const [walletBalance, setWalletBalance] = useState(DEFAULT_AUTH_STATE.walletBalance);
+  const [locationName, setLocationName] = useState(DEFAULT_AUTH_STATE.locationName);
   const [isLoading, setIsLoading] = useState(DEFAULT_AUTH_STATE.isLoading);
   const [registrationData, setRegistrationDataRaw] = useState<Partial<RegistrationData>>(
     DEFAULT_AUTH_STATE.registrationData
@@ -58,6 +66,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   const resetAuth = useCallback(() => {
     setUser(null);
+    setActiveRole("customer");
+    setApprenticeTrainingCompleted(false);
     setIsLoading(false);
     resetRegistration();
     setSelectedLanguageId("en");
@@ -67,6 +77,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const store: AuthStore = useMemo(
     () => ({
       user,
+      activeRole,
+      apprenticeTrainingCompleted,
+      walletBalance,
+      locationName,
       isLoading,
       registrationData,
       registrationStep,
@@ -76,6 +90,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       selectedLanguageId,
       introCompleted,
       setUser,
+      setActiveRole,
+      setApprenticeTrainingCompleted,
+      setWalletBalance,
+      setLocationName,
       setIsLoading,
       setRegistrationData,
       setRegistrationStep,
@@ -89,6 +107,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     }),
     [
       user,
+      activeRole,
+      apprenticeTrainingCompleted,
+      walletBalance,
+      locationName,
       isLoading,
       registrationData,
       registrationStep,

@@ -1,68 +1,68 @@
 # Current Session Handoff
 
-*Last updated: 2026-10-15 (Dedicated Routing, Toast Notifications, Global Auth Store, 6-Step Registration & Forgot Password)*
+*Last updated: 2026-10-15 (Customer, Artisan & Apprentice Dashboards, Explore Services, 8-Step Post a Job & Role Switching)*
 
 ---
 
 ## 1. Current Task
-Completed full overhaul and expansion based on the latest Figma screens and user requirements:
-1. **Dedicated Route Architecture**:
-   - `/`: Starts the Onboarding Flow (Splash -> Intro -> Language -> Welcome).
-   - `/login`: Standalone Sign In page with email validation, remember me, error alerts, and toast feedback.
-   - `/signup`: Standalone 6-step Registration flow with stepper dots and back navigation.
-   - `/forgot-password`: Standalone Account Recovery page with phone number input and SMS reset code handling.
-   - `/onboarding`: Dedicated onboarding route.
-2. **Toast Notifications**: Integrated `react-hot-toast` across all authentication and onboarding actions, eliminating all `alert()` calls.
-3. **Global Auth State Management**: Built `lib/stores/auth-store.ts` and `components/shared/AuthProvider.tsx` to handle user session, registration steps, OTP status, language selection, location, and role preference pending backend API integration.
-4. **Complete 6-Step Registration Flow**:
-   - Step 1: *Create Account* (Name, phone, email, password, confirm password, terms).
-   - Step 2: *Phone Verification* (Enter phone number, send code).
-   - Step 3: *Verification Code Entry* (6 individual OTP digit boxes, backspace support, invalid code handling, resend).
-   - Step 4: *Add Profile Photo* (Avatar preview, upload/take photo, guideline checklist, continue, skip for now).
-   - Step 5: *Set Your Location* (Geolocation detection, State dropdown, City dropdown, street address).
-   - Step 6: *Personalise Experience / Role Selection* (Customer, Artisan, Apprentice selection cards with dynamic CTA).
-5. **Forgot Password**: Password reset via phone and SMS OTP code.
+Implemented the core BlueFixx marketplace dashboard matching the latest Figma designs and user rules:
+1. **Unified Dashboard Layout**:
+   - `features/dashboard/components/DashboardSidebar.tsx` with **Post a Job** placed right after **Explore**.
+   - `features/dashboard/components/DashboardHeader.tsx` featuring location selector with dropdown, notification bell with pip, wallet display (`₦85,000`), avatar with `AccountMenuDropdown`, and the **User Type Switcher Button** (`↕`) next to the notification bell.
+2. **User Type Toggle Logic**:
+   - Implemented via `features/dashboard/components/UserRoleSwitcherModal.tsx`.
+   - Customers can switch to Artisan or Apprentice.
+   - Artisans can switch to Customer or Apprentice.
+   - Apprentices can switch to Customer, while the Artisan switch is strictly locked until their apprenticeship training is completed (includes simulation toggle for demo/testing).
+3. **Customer Home Dashboard (`/dashboard`)**:
+   - Matching Figma design (`media_1792095034608.png`):
+   - Hero search card with popular category tags.
+   - Wallet balance, Escrow protection, and 7-day warranty cards.
+   - Quick action banner ("Need help now? Find an available verified professional near you").
+   - Categorized service cards (Home & Construction, Repairs & Technical, Automotive, Fashion & Beauty, Facility & Property).
+   - Verified local artisan cards (John Okafor, David Eze) with ratings, experience, starting prices, and availability badges.
+4. **Artisan & Apprentice Dashboard Views**:
+   - Artisan dashboard with available local job leads, active quotes, earnings, and quote submission.
+   - Apprentice dashboard with program progress, master artisan mentorship info, and graduation simulator.
+5. **Explore & Browse Services (`/dashboard/explore`)**:
+   - Matching Figma design (`media_1792095068994.png`):
+   - 29 services across 5 categories with real-time category filtering, search, and direct quote requests.
+6. **Post a Job 8-Step Wizard (`/dashboard/post-job`)**:
+   - Matching Figma designs (`media_1792095133658.png` & `media_1792095166418.png`):
+   - Service selection with category columns.
+   - Job details with task chips, description textarea, urgency pills, and live summary card preview.
+   - Steps for photos & voice note, budget estimation, address confirmation, arrival timing, review, and live publication.
 
 ## 2. Relevant Files
-- `app/layout.tsx`: Root layout with `AuthProvider` and `ToastProvider`.
-- `app/page.tsx`: Primary entry rendering `OnboardingFlow`.
-- `app/login/page.tsx`: Standalone `/login` page rendering `LoginPage`.
-- `app/signup/page.tsx`: Standalone `/signup` page rendering `SignupPage`.
-- `app/forgot-password/page.tsx`: Standalone `/forgot-password` page rendering `ForgotPasswordPage`.
-- `app/onboarding/page.tsx`: Standalone `/onboarding` route.
-- `features/onboarding/components/OnboardingFlow.tsx`: Onboarding flow coordinator.
-- `features/onboarding/components/LoginPage.tsx`: Login page component.
-- `features/onboarding/components/SignupPage.tsx`: Full 6-step registration component.
-- `features/onboarding/components/ForgotPasswordPage.tsx`: Account recovery component.
-- `features/onboarding/components/AuthHeroPanel.tsx`: Full-height left hero visual column.
-- `lib/stores/auth-store.ts`: Auth types, state, and `useAuth` hook.
-- `components/shared/AuthProvider.tsx`: React Context provider for auth.
-- `components/shared/ToastProvider.tsx`: Brand-styled toast container.
+- `app/dashboard/layout.tsx`: Shared dashboard layout with sidebar and header.
+- `app/dashboard/page.tsx`: Dynamic dashboard route rendering Customer, Artisan, or Apprentice view.
+- `app/dashboard/explore/page.tsx`: Browse services route.
+- `app/dashboard/post-job/page.tsx`: Post a job wizard route.
+- `app/dashboard/bookings/page.tsx`: Bookings and escrow milestone tracking.
+- `app/dashboard/messages/page.tsx`: Messaging chat with matched artisans.
+- `app/dashboard/profile/page.tsx`: Profile details.
+- `app/dashboard/settings/page.tsx`: Settings, languages, and notifications.
+- `features/dashboard/components/DashboardSidebar.tsx`
+- `features/dashboard/components/DashboardHeader.tsx`
+- `features/dashboard/components/CustomerHomeView.tsx`
+- `features/dashboard/components/ArtisanHomeView.tsx`
+- `features/dashboard/components/ApprenticeHomeView.tsx`
+- `features/dashboard/components/BrowseServicesView.tsx`
+- `features/dashboard/components/PostJobWizard.tsx`
+- `features/dashboard/components/UserRoleSwitcherModal.tsx`
+- `features/dashboard/components/AccountMenuDropdown.tsx`
+- `features/dashboard/data/mock-dashboard-data.ts`
+- `lib/stores/auth-store.ts` & `components/shared/AuthProvider.tsx`
 
-## 3. Relevant Design References
-- `REF-ONB-001` through `REF-ONB-010`
-- Customer Web · Verification code entry (`media_1792086335736.png`)
-- Customer Web · Profile photo (`media_1792086369556.png`)
-- Customer Web · Set your location (`media_1792086588958.png`)
-- Customer Web · Role selection (`media_1792086650509.png`)
-- Customer Web · Forgot password (`media_1792086709928.png`)
-
-## 4. Current Progress & Recent Changes
-- All 6 registration steps and forgot password screen implemented and verified.
-- Dedicated Next.js routes configured for `/login`, `/signup`, `/forgot-password`.
-- Strict TypeScript verification passing with 0 errors (`npx tsc --noEmit`).
-
-## 5. Remaining Tasks
-- Implement Post-onboarding Marketplace Dashboards (Customer dashboard, Artisan dashboard, Apprentice portal).
-- Connect API client to live auth endpoints when available.
-
-## 6. Known Issues
-- None. All requested screens, routes, and states are complete and verified.
-
-## 7. Validation Performed
+## 3. Validation Performed
 - Static code analysis and strict TypeScript checking (`npx tsc --noEmit` exited with code 0).
-- User rule respected: Builds and development servers are left for the user to execute directly.
+- User rule respected: Dev servers and builds are run manually by the user.
 
-## 8. Next Recommended Action
-- Run `npm run dev` to test the full end-to-end flow from onboarding to login, signup (all 6 steps), and password reset.
+## 4. Next Recommended Action
+- Run `npm run dev` and navigate to `/dashboard` to test:
+  1. Customer home dashboard layout, cards, and search.
+  2. The role toggle button next to the notification bell (test Customer $\leftrightarrow$ Apprentice $\leftrightarrow$ Artisan and verify apprentice lock).
+  3. Explore page (`/dashboard/explore`) and category filters.
+  4. Post a Job wizard (`/dashboard/post-job`) starting from sidebar or header CTA.
+
 

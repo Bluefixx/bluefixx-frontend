@@ -2,43 +2,44 @@
 
 This document tracks current progress, backlog, known issues, and next actions for `bluefixx-frontend`.
 
-*Last updated: 2026-10-14 (Complete Onboarding & Auth Flow Phase 1 & 2)*
+*Last updated: 2026-10-15 (Dedicated Routing, Toast Notifications, Global Auth State, 6-Step Registration & Forgot Password)*
 
 ---
 
 ## 1. Completed Work
-- [x] **Primary Entry Route (`/`)**: Updated `app/page.tsx` so the application begins directly with the Onboarding and Authentication flow.
-- [x] **Splash Screen Pattern Refinement**: Corrected `features/onboarding/components/SplashScreen.tsx` with the exact organic diagonal swooping curves matching the Figma design.
-- [x] **Removed Preview Header**: Eliminated the screen preview toolbar so the app renders purely as designed.
-- [x] **Positioning of Left Hero Column**: Updated `features/onboarding/components/AuthHeroPanel.tsx` so the illustration covers the entire left column (100% height from top y=0 to bottom) with the white BlueFixx logo pinned directly inside the top-left of the image. The right column header contains `Need help? Contact support` with zero logo duplication.
-- [x] **Screen 1**: Splash and loading (`REF-ONB-001`).
-- [x] **Screen 2**: Introduction — Verified Artisans (`REF-ONB-002`).
-- [x] **Screen 3**: Introduction — Book with Confidence (`REF-ONB-003`).
-- [x] **Screen 4**: Introduction — Careers and Skills (`REF-ONB-004`).
-- [x] **Screen 5**: Language Selection (`REF-ONB-005`) with full-height left hero image and no country flags as instructed.
-- [x] **Screen 6**: Welcome and Social Sign-In (`REF-ONB-006`) with Google, Apple, and Email sign-in options.
-- [x] **Screen 7**: Email Sign-In (`REF-ONB-007`) with email/password inputs, Show/Hide password toggle, and remember me.
-- [x] **Screen 8**: Email Sign-In Error State (`REF-ONB-008`) with red border, error caption, and `1 field needs attention` indicator.
-- [x] **Screen 9**: Create Account (`REF-ONB-009` — Step 1 of 6) with Stepper indicator, Full Name, Phone, Email, Password, Confirm Password, and Terms checkbox.
-- [x] **Screen 10**: Phone Verification Keypad (`REF-ONB-010` — Step 2 of 6) with Stepper indicator and phone code dispatch.
-- [x] **Master Flow Orchestrator**: `features/onboarding/components/OnboardingFlow.tsx` linking all screens with seamless state transitions.
+- [x] **Primary Entry Route (`/`)**: Starts with the onboarding flow (Splash -> Intro -> Language Selection -> Welcome).
+- [x] **Dedicated Route Architecture**:
+  - `/login`: Standalone Sign In page with email format validation, error alerts, and toast feedback.
+  - `/signup`: Standalone 6-step Registration flow with stepper dots and back navigation.
+  - `/forgot-password`: Standalone Account Recovery page with phone number input and SMS reset code handling.
+  - `/onboarding`: Dedicated onboarding route.
+- [x] **Toast Notifications**: Integrated `react-hot-toast` across all authentication and onboarding actions, eliminating raw `alert()` dialogs.
+- [x] **Global Auth State Management**: Built `lib/stores/auth-store.ts` and `components/shared/AuthProvider.tsx` to handle user session, registration steps, OTP status, language selection, location, and role preference pending backend API integration.
+- [x] **Registration Flow (All 6 Steps Implemented)**:
+  - **Step 1 of 6**: *Create Account* (`media_1792012590124.png`) — Full Name, Phone, Email, Password, Confirm Password, Terms Agreement.
+  - **Step 2 of 6**: *Phone Verification (Number Entry)* (`media_1792012626816.png`) — Phone input with SMS dispatch trigger.
+  - **Step 3 of 6**: *Verification Code Entry* (`media_1792086335736.png`) — 6 individual OTP digit boxes with auto-focus, backspace handling, invalid/expired code error state, change phone number link, and resend code action.
+  - **Step 4 of 6**: *Add Profile Photo* (`media_1792086369556.png`) — Avatar preview, camera badge, Upload photo / Take a photo triggers, guideline checklist, Continue and Skip for now actions.
+  - **Step 5 of 6**: *Set Your Location* (`media_1792086588958.png`) — Geolocation detection button, State dropdown, City/area dropdown, street address input.
+  - **Step 6 of 6**: *Personalise Experience / Role Selection* (`media_1792086650509.png`) — Three selection cards ("I need an artisan", "I am an artisan", "I want to learn a trade") with dynamic CTA button ("Continue as Customer", "Continue as Artisan", "Continue as Apprentice").
+- [x] **Forgot Password Screen** (`media_1792086709928.png`): Dedicated recovery page at `/forgot-password` with SMS 6-digit reset code workflow.
 - [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---
 
 ## 2. Work in Progress
-- Ready to receive the next screens (e.g. OTP keypad input, role selection, customer/worker onboarding details).
+- Next phase: Core marketplace dashboard views (Customer dashboard, Artisan dashboard, Apprentice portal) and backend API contract integration.
 
 ---
 
 ## 3. Upcoming Work
-- Implement OTP code entry screen and remainder of the 6-step registration process.
-- Implement post-onboarding dashboard views.
+- Implement Customer Dashboard / Service Marketplace discovery browsing.
+- Connect API client to live auth endpoints when available.
 
 ---
 
 ## 4. Known Issues / Missing Assets
-- None for the current scope. All 10 screens are implemented and verified.
+- None. All requested screens, routes, and states are complete and verified.
 
 ---
 
@@ -48,4 +49,5 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 6. Next Recommended Action
-- Test the full onboarding and authentication sequence on `/` and share the next screens (Steps 3 through 6 of registration or OTP).
+- Run `npm run dev` to verify the complete interactive experience across `/`, `/login`, `/signup`, and `/forgot-password`.
+

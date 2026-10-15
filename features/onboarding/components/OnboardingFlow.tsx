@@ -1,98 +1,81 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import SplashScreen from "./SplashScreen";
 import OnboardingHeader from "./OnboardingHeader";
 import IntroSlide from "./IntroSlide";
 import LanguageSelection from "./LanguageSelection";
 import WelcomeSocialSignIn from "./WelcomeSocialSignIn";
-import EmailSignIn from "./EmailSignIn";
-import CreateAccount from "./CreateAccount";
-import PhoneVerification from "./PhoneVerification";
 import { INTRO_SLIDES, SUGGESTED_LANGUAGE, OTHER_LANGUAGES } from "../data/onboarding-data";
-import { OnboardingStep } from "../types";
+import { useAuth } from "@/lib/stores/auth-store";
 
-interface OnboardingFlowProps {
-  initialStep?: OnboardingStep;
-  initialSlideIndex?: number;
-}
+type OnboardingPhase = "splash" | "intro" | "language" | "welcome";
 
-export default function OnboardingFlow({
-  initialStep = "splash",
-  initialSlideIndex = 0,
-}: OnboardingFlowProps) {
-  const [step, setStep] = useState<OnboardingStep>(initialStep);
-  const [slideIndex, setSlideIndex] = useState<number>(initialSlideIndex);
-  const [selectedLanguageId, setSelectedLanguageId] = useState<string>("en");
-  const [registeredPhone, setRegisteredPhone] = useState<string>("+234 803 245");
+export default function OnboardingFlow() {
+  const router = useRouter();
+  const { selectedLanguageId, setSelectedLanguageId, setIntroCompleted } = useAuth();
 
-  // Helper to find selected language display name
+  const [phase, setPhase] = useState<OnboardingPhase>("splash");
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  // Derive selected language display name
   const allLanguages = [SUGGESTED_LANGUAGE, ...OTHER_LANGUAGES];
   const selectedLangObj = allLanguages.find((l) => l.id === selectedLanguageId);
   const selectedLanguageName = selectedLangObj ? selectedLangObj.name : "English";
 
-  // Flow Navigation Handlers
-  const handleSplashDone = () => {
-    setStep("intro");
-    setSlideIndex(0);
-  };
+  // ── Phase handlers ──────────────────────────────────────────
 
-  const handleContinueIntro = () => {
+  const handleSplashDone = useCallback(() => {
+    setPhase("intro");
+    setSlideIndex(0);
+  }, []);
+
+  const handleContinueIntro = useCallback(() => {
     if (slideIndex < INTRO_SLIDES.length - 1) {
       setSlideIndex((prev) => prev + 1);
     } else {
-      // Finished 3 intro slides -> advance to Language selection
-      setStep("language");
+      setIntroCompleted(true);
+      setPhase("language");
     }
-  };
+  }, [slideIndex, setIntroCompleted]);
 
-  const handleSkipIntro = () => {
-    setStep("language");
-  };
+  const handleSkipIntro = useCallback(() => {
+    setIntroCompleted(true);
+    setPhase("language");
+  }, [setIntroCompleted]);
 
-  const handleOpenLanguage = () => {
-    setStep("language");
-  };
+  const handleOpenLanguage = useCallback(() => {
+    setPhase("language");
+  }, []);
 
-  const handleSaveLanguage = (newLanguageId: string) => {
-    setSelectedLanguageId(newLanguageId);
-    // Move to Welcome and Social sign-in
-    setStep("welcome");
-  };
+  const handleSaveLanguage = useCallback(
+    (newLanguageId: string) => {
+      setSelectedLanguageId(newLanguageId);
+      setPhase("welcome");
+    },
+    [setSelectedLanguageId]
+  );
 
-  const handleGoToEmailSignIn = () => {
-    setStep("email-signin");
-  };
+  // ── Route to dedicated login/signup pages ───────────────────
 
-  const handleGoToSignUp = () => {
-    setStep("create-account");
-  };
+  const handleGoToEmailSignIn = useCallback(() => {
+    router.push("/login");
+  }, [router]);
 
-  const handleBackToWelcome = () => {
-    setStep("welcome");
-  };
-
-  const handleCreateAccountSuccess = (userData: { fullName: string; phone: string; email: string }) => {
-    if (userData.phone) {
-      setRegisteredPhone(userData.phone);
-    }
-    // Proceed to Step 2 of 6: Phone verification
-    setStep("phone-verify");
-  };
-
-  const handleBackToCreateAccount = () => {
-    setStep("create-account");
-  };
+  const handleGoToSignUp = useCallback(() => {
+    router.push("/signup");
+  }, [router]);
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col font-sans select-none">
       {/* 1. Splash & Loading Screen */}
-      {step === "splash" && (
+      {phase === "splash" && (
         <SplashScreen onComplete={handleSplashDone} autoAdvance={true} durationMs={2800} />
       )}
 
       {/* 2. Introduction Carousel (Slides 1, 2, 3) */}
-      {step === "intro" && (
+      {phase === "intro" && (
         <div className="flex-1 flex flex-col justify-between">
           <OnboardingHeader
             onSkip={handleSkipIntro}
@@ -112,51 +95,22 @@ export default function OnboardingFlow({
       )}
 
       {/* 3. Language Selection Screen */}
-      {step === "language" && (
+      {phase === "language" && (
         <LanguageSelection
           currentLanguageId={selectedLanguageId}
           onSave={handleSaveLanguage}
           onBackToIntro={() => {
-            setStep("intro");
+            setPhase("intro");
             setSlideIndex(0);
           }}
         />
       )}
 
       {/* 4. Welcome & Social Sign-In Screen */}
-      {step === "welcome" && (
+      {phase === "welcome" && (
         <WelcomeSocialSignIn
           onContinueWithEmail={handleGoToEmailSignIn}
           onGoToSignUp={handleGoToSignUp}
-        />
-      )}
-
-      {/* 5. Email Sign-In Screen */}
-      {step === "email-signin" && (
-        <EmailSignIn
-          onBack={handleBackToWelcome}
-          onGoToSignUp={handleGoToSignUp}
-          onSuccess={() => alert("Logged in successfully! Welcome to BlueFixx.")}
-        />
-      )}
-
-      {/* 6. Create Account Screen (Step 1 of 6) */}
-      {step === "create-account" && (
-        <CreateAccount
-          onBack={handleBackToWelcome}
-          onGoToSignIn={handleGoToEmailSignIn}
-          onSubmitSuccess={handleCreateAccountSuccess}
-        />
-      )}
-
-      {/* 7. Phone Verification Screen (Step 2 of 6) */}
-      {step === "phone-verify" && (
-        <PhoneVerification
-          initialPhoneNumber={registeredPhone}
-          onBack={handleBackToCreateAccount}
-          onSendCode={() => {
-            alert("Verification code sent via SMS.");
-          }}
         />
       )}
     </div>

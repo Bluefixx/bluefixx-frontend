@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
 
 interface WelcomeSocialSignInProps {
@@ -36,7 +37,7 @@ export default function WelcomeSocialSignIn({
           <div className="flex items-center gap-2">
             <span>Need help?</span>
             <button
-              onClick={() => alert("Support: support@bluefixxllp.com")}
+              onClick={() => toast("Reach us at support@bluefixxllp.com", { icon: "📧" })}
               className="inline-flex items-center gap-1.5 font-medium text-[#001B40] hover:underline cursor-pointer"
             >
               <svg

@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function OnboardingPage() {
-  return <OnboardingFlow initialStep="splash" />;
+  return <OnboardingFlow />;
 }

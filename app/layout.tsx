@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Montserrat, Poppins } from "next/font/google";
 import "./globals.css";
+import AuthProvider from "@/components/shared/AuthProvider";
+import ToastProvider from "@/components/shared/ToastProvider";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -52,7 +54,10 @@ export default function RootLayout({
       className={`${montserrat.variable} ${poppins.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-neutral-1000">
-        {children}
+        <AuthProvider>
+          {children}
+          <ToastProvider />
+        </AuthProvider>
       </body>
     </html>
   );

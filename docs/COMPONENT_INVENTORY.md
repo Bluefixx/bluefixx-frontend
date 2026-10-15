@@ -143,6 +143,45 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `OnboardingFlow`
 - **File**: `features/onboarding/components/OnboardingFlow.tsx`
-- **Purpose**: Master coordinator controlling step transitions and progression across all 7 screens without any artificial preview headers.
-- **Props**: `initialStep?: OnboardingStep`, `initialSlideIndex?: number`
+- **Purpose**: Master coordinator controlling step transitions and progression across Onboarding phases (Splash -> Intro -> Language Selection -> Welcome).
+- **Props**: None (reads language and progression from `useAuth`)
 - **Used In**: `app/page.tsx` & `app/onboarding/page.tsx`
+
+### `LoginPage`
+- **File**: `features/onboarding/components/LoginPage.tsx`
+- **Purpose**: Dedicated sign-in page (`/login`) featuring full-height hero artwork, real-time email format validation, password visibility toggling, "Remember me", link to `/forgot-password`, link to `/signup`, toast notifications, and `useAuth` user session storage.
+- **Props**: None
+- **Used In**: `app/login/page.tsx`
+
+### `SignupPage`
+- **File**: `features/onboarding/components/SignupPage.tsx`
+- **Purpose**: Dedicated multi-step registration flow (`/signup`) covering all 6 steps from Figma:
+  1. *Create Account* (Name, phone, email, password, terms agreement)
+  2. *Phone Verification (Number entry)* (SMS dispatch)
+  3. *Verification Code Entry* (6 individual OTP boxes, backspace support, invalid code handling, resend)
+  4. *Add a profile photo* (Avatar preview, upload/take photo actions, guideline checklist, skip option)
+  5. *Set your location* (Current location detection, state/city dropdowns, street address)
+  6. *Personalise experience / Role selection* (Customer, Artisan, Apprentice selection cards with dynamic CTA)
+- **Props**: None
+- **Used In**: `app/signup/page.tsx`
+
+### `ForgotPasswordPage`
+- **File**: `features/onboarding/components/ForgotPasswordPage.tsx`
+- **Purpose**: Dedicated account recovery page (`/forgot-password`) with phone entry, SMS reset code timer info, 6-digit code entry, password reset fields, and return to sign in.
+- **Props**: None
+- **Used In**: `app/forgot-password/page.tsx`
+
+---
+
+## 4. Providers & Global State (`components/shared/`, `lib/stores/`)
+
+### `AuthProvider` & `useAuth`
+- **File**: `components/shared/AuthProvider.tsx`, `lib/stores/auth-store.ts`
+- **Purpose**: Global authentication and onboarding registration state management context. Tracks user session, registration steps, OTP status, language selection, and user profile data pending backend API availability.
+- **Used In**: `app/layout.tsx`
+
+### `ToastProvider`
+- **File**: `components/shared/ToastProvider.tsx`
+- **Purpose**: App-wide notification toasts powered by `react-hot-toast` with brand styling (`#001B40`, rounded-xl, details shadow).
+- **Used In**: `app/layout.tsx`
+

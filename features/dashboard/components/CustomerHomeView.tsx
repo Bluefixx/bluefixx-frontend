@@ -16,14 +16,14 @@ export default function CustomerHomeView() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) {
-      router.push("/dashboard/explore");
+      router.push("/explore");
       return;
     }
-    router.push(`/dashboard/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+    router.push(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   const handlePopularTagClick = (tag: string) => {
-    router.push(`/dashboard/explore?q=${encodeURIComponent(tag)}`);
+    router.push(`/explore?q=${encodeURIComponent(tag)}`);
   };
 
   return (
@@ -40,7 +40,7 @@ export default function CustomerHomeView() {
         </div>
 
         <Link
-          href="/dashboard/post-job"
+          href="/post-job"
           className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#001B40] hover:bg-[#052F5F] active:scale-[0.99] text-white font-sans font-semibold text-xs sm:text-sm shadow-xs transition-all cursor-pointer w-fit"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -160,8 +160,18 @@ export default function CustomerHomeView() {
       <div className="rounded-2xl p-4 sm:p-5 bg-[#1D72FE] text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-white">
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            <svg
+              className="w-5 h-5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="3" transform="rotate(45 12 12)" />
+              <path d="M12 9v6" />
+              <path d="M9 12h6" />
             </svg>
           </div>
           <div>
@@ -173,7 +183,7 @@ export default function CustomerHomeView() {
         </div>
 
         <Link
-          href="/dashboard/explore"
+          href="/explore"
           className="inline-flex items-center gap-1.5 font-sans font-bold text-xs sm:text-sm text-white hover:underline cursor-pointer w-fit"
         >
           <span>Find a professional</span>
@@ -191,7 +201,7 @@ export default function CustomerHomeView() {
             Browse services
           </h3>
           <Link
-            href="/dashboard/explore"
+            href="/explore"
             className="text-xs sm:text-sm font-semibold text-[#001B40] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>All categories</span>
@@ -206,13 +216,25 @@ export default function CustomerHomeView() {
           {CATEGORIES.filter((c) => c.id !== "all").map((cat) => (
             <Link
               key={cat.id}
-              href={`/dashboard/explore?category=${cat.id}`}
+              href={`/explore?category=${cat.id}`}
               className="bg-white rounded-2xl p-4 border border-neutral-200/80 hover:border-[#001B40] hover:shadow-md transition-all group flex flex-col justify-between"
             >
               <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mb-3 group-hover:bg-[#001B40] group-hover:text-white transition-colors">
                 {cat.id === "home-construction" && (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" />
+                    <path d="M17.64 15 22 10.64" />
+                    <path d="m20.91 3.26-4 4" />
+                    <path d="m14.82 4.24 3.9 3.9" />
+                    <path d="m11.5 8.5 3-3" />
                   </svg>
                 )}
                 {cat.id === "repairs-technical" && (
@@ -265,7 +287,7 @@ export default function CustomerHomeView() {
           </h3>
           <button
             type="button"
-            onClick={() => router.push("/dashboard/explore")}
+            onClick={() => router.push("/explore")}
             className="text-xs sm:text-sm font-semibold text-[#001B40] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>See all</span>

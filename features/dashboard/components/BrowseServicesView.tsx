@@ -145,7 +145,7 @@ export default function BrowseServicesView() {
               Describe your problem and let matched artisans send you a quote.
             </p>
             <Link
-              href="/dashboard/post-job"
+              href="/post-job"
               className="w-full inline-flex items-center justify-center py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-semibold text-xs sm:text-sm transition-all shadow-xs"
             >
               Post a job

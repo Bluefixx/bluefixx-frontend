@@ -8,10 +8,12 @@ import AccountMenuDropdown from "./AccountMenuDropdown";
 
 interface DashboardHeaderProps {
   onOpenRoleSwitcher: () => void;
+  onOpenMobileMenu?: () => void;
 }
 
 export default function DashboardHeader({
   onOpenRoleSwitcher,
+  onOpenMobileMenu,
 }: DashboardHeaderProps) {
   const { user, locationName, setLocationName, walletBalance } = useAuth();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
@@ -30,17 +32,19 @@ export default function DashboardHeader({
   };
 
   return (
-    <header className="h-20 bg-white border-b border-neutral-200/80 px-6 sm:px-8 flex items-center justify-between sticky top-0 z-40 select-none">
-      {/* Left: Location Selector */}
-      <div className="relative">
-        <button
-          onClick={() => setIsLocationModalOpen(!isLocationModalOpen)}
-          className="flex items-center gap-2.5 text-left cursor-pointer group py-1.5 px-2 rounded-xl hover:bg-neutral-50 transition-colors"
-        >
-          {/* Blue Map Pin Icon */}
-          <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0 text-blue-600 group-hover:bg-blue-100 transition-colors">
+    <header className="h-20 bg-white border-b border-neutral-200/80 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-40 select-none">
+      {/* Left: Mobile Hamburger + Location Selector */}
+      <div className="flex items-center gap-2">
+        {/* Mobile Hamburger Toggle Button */}
+        {onOpenMobileMenu && (
+          <button
+            type="button"
+            onClick={onOpenMobileMenu}
+            className="lg:hidden p-2 -ml-1 rounded-xl text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer"
+            aria-label="Open sidebar menu"
+          >
             <svg
-              className="w-4 h-4 text-blue-600"
+              className="w-5 h-5"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -48,10 +52,33 @@ export default function DashboardHeader({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-              <circle cx="12" cy="10" r="3" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
-          </div>
+          </button>
+        )}
+
+        <div className="relative">
+          <button
+            onClick={() => setIsLocationModalOpen(!isLocationModalOpen)}
+            className="flex items-center gap-2 sm:gap-2.5 text-left cursor-pointer group py-1.5 px-2 rounded-xl hover:bg-neutral-50 transition-colors"
+          >
+            {/* Blue Map Pin Icon */}
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center shrink-0 text-blue-600 group-hover:bg-blue-100 transition-colors">
+              <svg
+                className="w-4 h-4 text-blue-600"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            </div>
 
           <div>
             <span className="block font-sans text-[11px] text-neutral-400 font-medium">

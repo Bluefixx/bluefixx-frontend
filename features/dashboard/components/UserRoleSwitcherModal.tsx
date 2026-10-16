@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 
@@ -13,6 +14,7 @@ export default function UserRoleSwitcherModal({
   isOpen,
   onClose,
 }: UserRoleSwitcherModalProps) {
+  const router = useRouter();
   const {
     activeRole,
     setActiveRole,
@@ -47,6 +49,12 @@ export default function UserRoleSwitcherModal({
       } profile`
     );
     onClose();
+
+    if (newRole === "artisan") {
+      router.push("/artisan");
+    } else {
+      router.push("/dashboard");
+    }
   };
 
   const handleToggleGraduation = () => {

@@ -133,6 +133,7 @@ export default function DashboardHeader({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Right Controls: Role Switcher + Notifications + Wallet + Profile Avatar */}

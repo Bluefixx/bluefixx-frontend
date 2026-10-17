@@ -8,33 +8,26 @@ This document tracks current progress, backlog, known issues, and next actions f
 
 ## 1. Completed Work
 - [x] **Primary Entry Route (`/`)**: Starts with the onboarding flow (Splash -> Intro -> Language Selection -> Welcome).
-- [x] **Dedicated Route Architecture**:
-  - `/login`: Standalone Sign In page with email format validation, error alerts, and toast feedback.
-  - `/signup`: Standalone 6-step Registration flow with stepper dots and back navigation.
-  - `/forgot-password`: Standalone Account Recovery page with phone number input and SMS reset code handling.
-  - `/onboarding`: Dedicated onboarding route.
-  - `/dashboard`: Core marketplace home dashboard dynamically rendering Customer, Artisan, or Apprentice views based on `activeRole`.
-  - `/dashboard/explore`: Comprehensive service discovery directory covering 29 services across 5 categories with real-time category filtering and search.
-  - `/dashboard/post-job`: Full 8-step job posting wizard with interactive task selection, live summary card, budget ranges, and location confirmation.
-  - `/dashboard/bookings`: Active & completed bookings management view.
-  - `/dashboard/messages`: Live communication chat interface between customers and artisans.
-  - `/dashboard/profile`: Verified user profile management view.
-  - `/dashboard/settings`: Multi-language preferences and security notification settings.
-- [x] **Sidebar Navigation**:
-  - Implemented with "Post a Job" placed immediately after "Explore" as requested.
-  - Navigation links: Home, Explore, Post a Job, Bookings, Messages, Profile.
-  - Footer items: Settings, Help & Support, and My Account role indicator.
+- [x] **Next.js App Router Route Groups `(dashboard)` & `(artisan)`**:
+  - `app/(dashboard)` for all customer routes (`/dashboard`, `/explore`, `/post-job`, `/bookings`, `/messages`, `/profile`, `/settings`).
+  - `app/(artisan)` for artisan routes (`/artisan`).
+- [x] **Mobile Responsiveness**:
+  - Hamburger toggle button in `DashboardHeader` (`lg:hidden`).
+  - Mobile drawer overlay sidebar with backdrop blur and close `✕` button.
+  - Responsive padding and gutters across mobile, tablet, and desktop (`p-4 sm:p-6 lg:p-8`).
+- [x] **Sidebar Submenus & Active Pills**:
+  - `Explore`: subitems `Browse services` (`/explore`), `Post a job` (`/post-job`).
+  - `Bookings`: subitems `Job posts`, `Active bookings`, `Completed`.
+  - `Settings`: subitems `Account & security`, `Language`, `Safety & support`.
+  - Submenu active states render as soft light pills (`bg-[#EBF1F7] text-[#001B40] font-bold`).
+- [x] **Dashboard Icon Alignments**:
+  - "Need help now?" quick action card icon updated to rotated diamond badge with center sparkle cross (`rect rotate(45)`).
+  - "Home & Construction" category icon updated to claw hammer tilted outline icon (`Hammer` at 45°).
+- [x] **Post a Job Step 1 & 3 Fidelity**:
+  - Step 1: 3 category cards on top row (`Home & Construction [8]`, `Repairs & Technical [6]`, `Automotive [5]`), 2 category cards on bottom row (`Fashion & Beauty [5]`, `Facility & Property [5]`), search bar, `#001B40` selected service pill with white checkmark `✓`.
+  - Step 3: Photo cards with circular top-right `✕` remove buttons + dashed Add box, Voice note player with waveform audio bars and red Delete button, full-width `Hold to record` button, summary preview card, and camera tip card.
 - [x] **User Type Toggle Button & Modal Switcher**:
-  - Menu button next to notification bell with toggle arrows (`↕`) for switching between Customer, Artisan, and Apprentice profiles.
-  - **Business Rule Enforced**:
-    - Customers can switch to Artisan or Apprentice.
-    - Artisans can switch to Customer or Apprentice.
-    - Apprentices can switch to Customer, but the Artisan switch is strictly locked until apprenticeship training is completed (includes simulation toggle for testing).
-- [x] **Top Header Controls**:
-  - Location selector with quick change modal.
-  - Notification bell with orange badge pip.
-  - Wallet balance display widget (`₦85,000`).
-  - User avatar with account dropdown menu (Profile, Settings, Log out).
+  - Switcher button (`↕`) next to notification bell with enforced business rules (Customer $\leftrightarrow$ Artisan $\leftrightarrow$ Apprentice; Apprentice $\rightarrow$ Artisan locked until training completion).
 - [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---

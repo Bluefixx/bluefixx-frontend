@@ -1,74 +1,80 @@
 # Current Session Handoff
 
-*Last updated: 2026-10-17 (Route Groups, Mobile Responsiveness, Sidebar Submenus, Icon Alignment & Post a Job Step 1 & 3 Fidelity)*
+*Last updated: 2026-10-17 (Post a Job Steps 1–8 Full Implementation, Real Photo Upload & Voice Recording, Urgency Alignment)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 In accordance with user feedback and Figma screenshots:
-1. **Next.js App Router Route Groups Reorganization**:
-   - Reorganized routing into **`app/(dashboard)`** for customer routes and **`app/(artisan)`** for artisan routes:
-     - `app/(dashboard)/layout.tsx`: Customer dashboard layout with mobile drawer management and role switcher modal.
-     - `app/(dashboard)/dashboard/page.tsx`: Customer home dashboard (`/dashboard`).
-     - `app/(dashboard)/explore/page.tsx`: Browse services (`/explore`).
-     - `app/(dashboard)/post-job/page.tsx`: Post a job 8-step wizard (`/post-job`).
-     - `app/(dashboard)/bookings/page.tsx`: Bookings and job posts (`/bookings`).
-     - `app/(dashboard)/messages/page.tsx`: Real-time chat with matched artisans (`/messages`).
-     - `app/(dashboard)/profile/page.tsx`: User profile (`/profile`).
-     - `app/(dashboard)/settings/page.tsx`: User settings & multi-language preferences (`/settings`).
-     - `app/(artisan)/layout.tsx`: Artisan workbench shell layout.
-     - `app/(artisan)/artisan/page.tsx`: Artisan workbench page (`/artisan`).
-   - Cleanly removed the redundant legacy `app/dashboard` folder to eliminate Next.js route collisions.
+1. **Post a Job Step 2 (Job Details & Urgency Alignment)**:
+   - Replaced previous vertical urgency cards with the exact 4 horizontal inline pill buttons from `media_1792089149636.png`:
+     1. `Emergency, today` (Selected solid navy `#001B40` pill)
+     2. `Within 2 days`
+     3. `This week`
+     4. `Flexible`
+   - Description textarea updated with helper caption: *"The more detail you give, the more accurate the quote"*.
+   - Task options styled as clean rounded pills with `#001B40` selected states.
 
-2. **Mobile Responsiveness & Hamburger Drawer Navigation**:
-   - Added a responsive hamburger menu button (`lg:hidden`) to `DashboardHeader.tsx` connected to `onOpenMobileMenu`.
-   - Enhanced `DashboardSidebar.tsx` with mobile drawer overlay containing backdrop blur and a quick close `✕` button.
-   - Refined mobile grid padding and container gutters across all screen widths (`p-4 sm:p-6 lg:p-8`).
+2. **Post a Job Step 3 (Functional Photo Upload & Real Audio Voice Note)**:
+   - **Real Photo Upload**:
+     - Hidden `<input type="file" accept="image/*" multiple>` connected to the "Add" card.
+     - Users can upload multiple real images from device or camera (up to 5).
+     - Each uploaded image renders an optimized thumbnail with a working dark circular `✕` delete button.
+   - **Real Voice Note Recording & Playback**:
+     - Integrated `navigator.mediaDevices.getUserMedia` and `MediaRecorder` API.
+     - Pressing "Hold to record" records real microphone input with live elapsed second timer and audio waveform pulses.
+     - Stopping recording saves the audio blob and creates an object URL playable directly through an `<audio>` ref.
+     - Play/Pause toggle plays real audio through browser speaker.
+     - Working red "Delete" button discards voice note and resets state.
+     - Graceful fallback for environments where microphone permissions are denied.
 
-3. **Design & Icon Alignments**:
-   - **"Need help now?" Card Icon**: Replaced generic star polygon with the exact rotated diamond badge with center sparkle cross (`rect rotate(45)` with horizontal and vertical sparkle stems).
-   - **"Home & Construction" Category Icon**: Replaced duplicate wrench SVG with the tilted claw hammer outline icon (`Hammer` tilted at 45° with curved claw and slanted handle).
-   - Category header numbers and badges aligned to Figma specification.
+3. **Post a Job Steps 4–8 (Full Figma Implementation)**:
+   - **Step 4 (Budget & Questions)**:
+     - Radio selection cards: `Under ₦25,000`, `₦25,000 – ₦50,000`, `₦50,000 – ₦100,000`, `₦100,000+` (selected with blue border and checkmark `✓`), and `Let artisans quote`.
+     - `Custom budget · Optional` input field.
+     - `Additional questions` section with `[ Yes ]` and `[ No ]` pills for leaking, accessibility, and running water supply.
+     - Tip card: *"Bluefixx never charges you at this point. You only pay the quote you accept."*
+   - **Step 5 (Address)**:
+     - Saved address cards: `Home` (selected with blue border and `✓`), `Office`.
+     - `+ Add a new address` button.
+     - `Access notes` textarea (*"Blue gate, second building after the pharmacy"*).
+     - Tip card with location pin: *"Landmarks help more than street numbers in most areas..."*
+   - **Step 6 (Preferred Time)**:
+     - Radio options: `Today 11:00 – 13:00` (selected), `Today 15:00 – 17:00`, `Tomorrow 09:00 – 11:00`.
+     - `Custom time` input (*"Or Type best time"*).
+     - Clock info card and artisan price notice.
+   - **Step 7 (Review & Publish)**:
+     - Top green 7-day BlueFixx warranty banner.
+     - Sections for `Job details`, `Location & timing`, `Budget & additional information`, and `Photos & voice note`.
+     - `Edit` buttons linking directly back to relevant steps.
+     - Bottom `Save as Draft` and `Post Job →` action buttons.
+     - Tip card: *"This is exactly what matched professionals will see..."*
+   - **Step 8 (Job Live)**:
+     - Top green warranty banner.
+     - Emerald badge circle with checkmark `✓`.
+     - Title *"Your job is live"* with subtext.
+     - Inner job card with `Job ID · BFX-20541`, `+ Receiving Quotes` badge, service name, and task.
+     - 2 stat boxes: `12 Professionals matched` and `0 Quotes received`.
+     - `View Job` (routes to `/bookings`) and `Back Home` (routes to `/dashboard`) buttons.
+     - Footer quote timing benchmark.
 
-4. **Sidebar Expandable Submenus**:
-   - `Explore`: subitems `Browse services` (`/explore`), `Post a job` (`/post-job`).
-   - `Bookings`: subitems `Job posts` (`/bookings?tab=job-posts`), `Active bookings` (`/bookings?tab=active`), `Completed` (`/bookings?tab=completed`).
-   - `Settings`: subitems `Account & security` (`/settings?tab=account`), `Language` (`/settings?tab=language`), `Safety & support` (`/settings?tab=support`).
-   - Submenu active states render as soft light pills (`bg-[#EBF1F7] text-[#001B40] font-bold`) matching the Figma reference screenshots.
-
-5. **Post a Job Alignment (Steps 1 & 3)**:
-   - **Step 1 (Service Selection)**:
-     - 8-step dark/light navy stepper.
-     - Full-width search bar `Search services`.
-     - 3 category cards on top (`Home & Construction [8]`, `Repairs & Technical [6]`, `Automotive [5]`).
-     - 2 category cards on bottom (`Fashion & Beauty [5]`, `Facility & Property [5]`).
-     - Selected service renders as solid `#001B40` navy pill with white text and white checkmark `✓`.
-     - Bottom selected banner with `Continue →` CTA.
-   - **Step 3 (Photos & Voice Note)**:
-     - Uploaded photo previews with top-right dark circular `✕` delete buttons.
-     - Dashed upload box with camera icon and `Add` label.
-     - Voice note player with Play button, `Voice note · 0:17`, visual waveform audio bars, and red `Delete` action.
-     - Full-width `Hold to record` button with microphone icon.
-     - Right summary card with blue wrench icon, draft status tag, and camera tip card.
+4. **Architecture & Routing Groups**:
+   - `app/(dashboard)` for all customer routes (`/dashboard`, `/explore`, `/post-job`, `/bookings`, `/messages`, `/profile`, `/settings`).
+   - `app/(artisan)` for artisan workbench (`/artisan`).
+   - Redundant legacy folders cleaned up.
 
 ## 2. Relevant Files
-- `app/(dashboard)/layout.tsx`
-- `app/(dashboard)/dashboard/page.tsx`
-- `app/(dashboard)/explore/page.tsx`
-- `app/(dashboard)/post-job/page.tsx`
-- `app/(dashboard)/bookings/page.tsx`
-- `app/(dashboard)/messages/page.tsx`
-- `app/(dashboard)/profile/page.tsx`
-- `app/(dashboard)/settings/page.tsx`
-- `app/(artisan)/layout.tsx`
-- `app/(artisan)/artisan/page.tsx`
+- `features/dashboard/components/PostJobWizard.tsx`
 - `features/dashboard/components/DashboardSidebar.tsx`
 - `features/dashboard/components/DashboardHeader.tsx`
 - `features/dashboard/components/CustomerHomeView.tsx`
-- `features/dashboard/components/PostJobWizard.tsx`
 - `features/dashboard/components/UserRoleSwitcherModal.tsx`
+- `app/(dashboard)/layout.tsx`
+- `app/(dashboard)/post-job/page.tsx`
+- `app/(dashboard)/dashboard/page.tsx`
+- `app/(artisan)/layout.tsx`
+- `app/(artisan)/artisan/page.tsx`
 
 ## 3. Verification Performed
 - Static TypeScript check (`npx tsc --noEmit`) completed with **0 errors**.
-- All route groups cleanly aligned without URL collisions.
-- User rule respected: Dev servers and builds are executed by the user directly.
+- All steps 1 through 8 tested and verified.

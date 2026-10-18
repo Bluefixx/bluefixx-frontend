@@ -59,8 +59,8 @@ export default function DashboardSidebar({
 
   // Bookings subtabs
   const isBookingsRoot = pathname === "/bookings" || pathname === "/dashboard/bookings";
-  const isJobPostsActive = isBookingsRoot && currentTab === "job-posts";
-  const isActiveBookingsActive = isBookingsRoot && (currentTab === "active" || !currentTab);
+  const isJobPostsActive = isBookingsRoot && (currentTab === "job-posts" || !currentTab);
+  const isActiveBookingsActive = isBookingsRoot && currentTab === "active";
   const isCompletedActive = isBookingsRoot && currentTab === "completed";
 
   // Settings subtabs

@@ -231,7 +231,19 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `PostJobWizard`
 - **File**: `features/dashboard/components/PostJobWizard.tsx`
-- **Purpose**: 8-step service request wizard (Service, Details, Photos & voice, Budget, Address, Preferred time, Review, Job live) with interactive task chips, live summary preview, and problem description.
-- **Used In**: `app/dashboard/post-job/page.tsx`
+- **Purpose**: 8-step service request wizard (Service, Details, Photos & voice, Budget, Address, Preferred time, Review, Job live) with interactive task chips, live summary preview, and problem description. Features device photo uploads with remove actions, audio recording with MediaRecorder and playback, urgency selector pills, and verified checkmark badge.
+- **Used In**: `app/(dashboard)/post-job/page.tsx`
+
+### `JobPostingsView`
+- **File**: `features/dashboard/components/JobPostingsView.tsx`
+- **Purpose**: Comprehensive view for managing posted jobs and viewing incoming quotes. Supports:
+  - Empty state (`media_1792270117606.png`) with calendar icon and `+ Post a job` button.
+  - Posted jobs list view showing active postings with status pills (`Receiving quotes`, `No quotes yet`, `Expired`).
+  - Job detail view with 3 design states:
+    1. `receiving-quotes`: 3 quote cards (Emeka Okafor, Blessing Nwankwo, Chidi Nweze), uploaded job details, photos, 9-step timeline, and protection notice.
+    2. `no-quotes-yet`: Warning banner, `No quotes yet` card, `Manage posting` actions, `Matching activity` stats.
+    3. `expired`: 14-day limit notice, `This posting has expired` card, `Manage posting`, `Listing summary` stats.
+  - Cancel Job Dialog Modal (`media_1792270182127.png`) with reason selection presets and detail textarea for cancellation reason.
+- **Used In**: `app/(dashboard)/bookings/page.tsx`
 
 

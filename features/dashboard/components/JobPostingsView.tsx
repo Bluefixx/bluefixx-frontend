@@ -5,8 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import CompareQuotesView, { DetailedQuote, DETAILED_QUOTES } from "./CompareQuotesView";
+import QuoteAcceptedView from "./QuoteAcceptedView";
+import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
 
 export type JobStatus = "receiving-quotes" | "no-quotes-yet" | "expired" | "cancelled";
+export type JobSubView = "details" | "compare" | "accepted" | "artisan-profile";
 
 export interface ArtisanQuote {
   id: string;
@@ -146,7 +150,11 @@ export default function JobPostingsView() {
   // Job data state
   const [jobs, setJobs] = useState<PostedJob[]>(INITIAL_POSTED_JOBS);
   const [selectedJobId, setSelectedJobId] = useState<string | null>("BFX-20541");
-  const [isEmptyStateMode, setIsEmptyStateMode] = useState<boolean>(false);
+
+  // Navigation subviews
+  const [currentSubView, setCurrentSubView] = useState<JobSubView>("details");
+  const [activeArtisanId, setActiveArtisanId] = useState<string>("emeka-okafor");
+  const [acceptedQuote, setAcceptedQuote] = useState<DetailedQuote | null>(null);
 
   // Cancellation modal state
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
@@ -157,15 +165,6 @@ export default function JobPostingsView() {
   // Active selected job
   const selectedJob = jobs.find((j) => j.id === selectedJobId) || jobs[0];
 
-  // Helper to change current job status for demo/testing
-  const handleUpdateCurrentStatus = (newStatus: JobStatus) => {
-    if (!selectedJob) return;
-    setJobs((prev) =>
-      prev.map((j) => (j.id === selectedJob.id ? { ...j, status: newStatus } : j))
-    );
-    toast.success(`Job status switched to: ${newStatus.replace("-", " ")}`);
-  };
-
   // Perform cancellation
   const handleConfirmCancel = () => {
     if (!selectedJob) return;
@@ -173,9 +172,7 @@ export default function JobPostingsView() {
     setTimeout(() => {
       setJobs((prev) =>
         prev.map((j) =>
-          j.id === selectedJob.id
-            ? { ...j, status: "cancelled" }
-            : j
+          j.id === selectedJob.id ? { ...j, status: "cancelled" } : j
         )
       );
       setIsCancelling(false);
@@ -190,24 +187,66 @@ export default function JobPostingsView() {
   };
 
   // ══════════════════════════════════════════════════════════
+  // SUBVIEW A: COMPARE QUOTES (Matching media_1792437256603)
+  // ══════════════════════════════════════════════════════════
+  if (currentSubView === "compare" && selectedJob) {
+    return (
+      <CompareQuotesView
+        jobTitle={selectedJob.title}
+        onBack={() => setCurrentSubView("details")}
+        onOpenProfile={(artisanId) => {
+          setActiveArtisanId(artisanId);
+          setCurrentSubView("artisan-profile");
+        }}
+        onAcceptSuccess={(quote) => {
+          setAcceptedQuote(quote);
+          setCurrentSubView("accepted");
+        }}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // SUBVIEW B: QUOTE ACCEPTED (Matching media_1792437409407)
+  // ══════════════════════════════════════════════════════════
+  if (currentSubView === "accepted" && selectedJob) {
+    return (
+      <QuoteAcceptedView
+        jobTitle={selectedJob.title}
+        customerName="Daniel C."
+        quoteAmount={acceptedQuote?.totalQuote || 120000}
+        submittedTime="Today · 11:37"
+        estimatedCompletion={acceptedQuote?.duration || "1 week"}
+        warranty={acceptedQuote?.warranty || "30 days"}
+        onBack={() => setCurrentSubView("compare")}
+        onViewJob={() => setCurrentSubView("details")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // SUBVIEW C: ARTISAN PUBLIC PROFILE (Matching media_1792437458303)
+  // ══════════════════════════════════════════════════════════
+  if (currentSubView === "artisan-profile") {
+    return (
+      <ArtisanPublicProfileView
+        artisanId={activeArtisanId}
+        onBack={() => setCurrentSubView("compare")}
+        onContinue={() => setCurrentSubView("compare")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
   // VIEW 1: EMPTY STATE (Matching media_1792270117606.png)
   // ══════════════════════════════════════════════════════════
-  if (isEmptyStateMode || jobs.length === 0) {
+  if (jobs.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div>
           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#001B40] tracking-tight">
             My bookings
           </h1>
-
-          {/* Quick toggle to show jobs for testing */}
-          <button
-            type="button"
-            onClick={() => setIsEmptyStateMode(false)}
-            className="text-xs text-blue-600 hover:underline font-medium"
-          >
-            Switch to has posted jobs (Demo)
-          </button>
         </div>
 
         {/* Empty State Card */}
@@ -264,13 +303,6 @@ export default function JobPostingsView() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsEmptyStateMode(true)}
-              className="text-xs text-neutral-500 hover:text-neutral-800 font-medium px-3 py-2 rounded-lg border border-neutral-200 bg-white"
-            >
-              Preview Empty State
-            </button>
             <Link
               href="/post-job"
               className="px-4 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-semibold text-xs transition-colors shadow-2xs inline-flex items-center gap-1.5"
@@ -291,7 +323,10 @@ export default function JobPostingsView() {
             return (
               <div
                 key={job.id}
-                onClick={() => setSelectedJobId(job.id)}
+                onClick={() => {
+                  setSelectedJobId(job.id);
+                  setCurrentSubView("details");
+                }}
                 className="bg-white rounded-2xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-[#001B40]/30 hover:shadow-xs transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-5"
               >
                 <div className="space-y-2 flex-1">
@@ -380,6 +415,7 @@ export default function JobPostingsView() {
 
   // ══════════════════════════════════════════════════════════
   // VIEW 3: JOB DETAILS (Screenshots 2, 3, 4, 5)
+  // Clean production UI without debug/review actions bar
   // ══════════════════════════════════════════════════════════
   const isReceiving = selectedJob.status === "receiving-quotes";
   const isNoQuotes = selectedJob.status === "no-quotes-yet";
@@ -388,64 +424,6 @@ export default function JobPostingsView() {
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto">
-      {/* State Switcher Bar for Review & Testing */}
-      <div className="bg-neutral-50 rounded-xl p-3 border border-neutral-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedJobId(null)}
-            className="inline-flex items-center gap-1 font-semibold text-neutral-700 hover:text-[#001B40] cursor-pointer"
-          >
-            ← Back to All Posted Jobs
-          </button>
-          <span className="text-neutral-300">|</span>
-          <span className="text-neutral-500">Design States:</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => handleUpdateCurrentStatus("receiving-quotes")}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-              isReceiving
-                ? "bg-[#0254D8] text-white font-bold"
-                : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
-            }`}
-          >
-            1. Receiving Quotes (Img 2)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleUpdateCurrentStatus("no-quotes-yet")}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-              isNoQuotes
-                ? "bg-amber-600 text-white font-bold"
-                : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
-            }`}
-          >
-            2. No Quotes Yet (Img 3)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleUpdateCurrentStatus("expired")}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-              isExpired
-                ? "bg-neutral-800 text-white font-bold"
-                : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
-            }`}
-          >
-            3. Expired (Img 4)
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsEmptyStateMode(true)}
-            className="px-2.5 py-1 rounded-lg font-medium bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100"
-          >
-            4. Empty State (Img 1)
-          </button>
-        </div>
-      </div>
-
       {/* Breadcrumb & Main Header */}
       <div>
         <div className="flex items-center gap-1 text-xs text-neutral-500 font-medium">
@@ -558,7 +536,7 @@ export default function JobPostingsView() {
             </div>
             <button
               type="button"
-              onClick={() => toast("Comparing quotes side by side...")}
+              onClick={() => setCurrentSubView("compare")}
               className="font-sans text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
             >
               Compare all
@@ -610,7 +588,7 @@ export default function JobPostingsView() {
                 <div className="pt-4">
                   <button
                     type="button"
-                    onClick={() => toast(`Opening quote details from ${quote.artisanName}...`)}
+                    onClick={() => setCurrentSubView("compare")}
                     className="w-full py-2.5 rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                   >
                     View quote

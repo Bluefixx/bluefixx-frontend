@@ -244,6 +244,19 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
     2. `no-quotes-yet`: Warning banner, `No quotes yet` card, `Manage posting` actions, `Matching activity` stats.
     3. `expired`: 14-day limit notice, `This posting has expired` card, `Manage posting`, `Listing summary` stats.
   - Cancel Job Dialog Modal (`media_1792270182127.png`) with reason selection presets and detail textarea for cancellation reason.
-- **Used In**: `app/(dashboard)/bookings/page.tsx`
+### `CompareQuotesView`
+- **File**: `features/dashboard/components/CompareQuotesView.tsx`
+- **Purpose**: Quote comparison interface matching `media_1792437256603.png`. Features 7-day Bluefixx warranty banner, sorting/filter pills (`Recommended`, `Lowest price`, `Highest rated`, `Closest`, `Fastest`), side-by-side artisan quote cards with labor and material breakdowns, Quote Detail Dialog (`media_1792437315267.png`), and Accept Quote Dialog (`media_1792437355974.png`).
+- **Used In**: `features/dashboard/components/JobPostingsView.tsx`
+
+### `QuoteAcceptedView`
+- **File**: `features/dashboard/components/QuoteAcceptedView.tsx`
+- **Purpose**: Confirmation screen for accepted artisan quote matching `media_1792437409407.png`. Displays paper plane badge, total agreed amount, job summary table (Customer, Job, Submitted, Amount, Completion time, Warranty), and action buttons `Continue to Payment` and `View Job`.
+- **Used In**: `features/dashboard/components/JobPostingsView.tsx`
+
+### `ArtisanPublicProfileView`
+- **File**: `features/dashboard/components/ArtisanPublicProfileView.tsx`
+- **Purpose**: Artisan public profile view matching `media_1792437458303.png`. Features dark blue hero banner with avatar, experience, Expert Artisan gold badge, trust score, and key stats (Rating 4.9, Jobs done 318, Replies in 8m). Interactive tabs: `About`, `Services`, `Portfolio`, `Reviews`, `Verification`, along with a sticky action card with `Continue` and `Message` buttons.
+- **Used In**: `features/dashboard/components/JobPostingsView.tsx`
 
 

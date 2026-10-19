@@ -256,7 +256,14 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `ArtisanPublicProfileView`
 - **File**: `features/dashboard/components/ArtisanPublicProfileView.tsx`
-- **Purpose**: Artisan public profile view matching `media_1792437458303.png`. Features dark blue hero banner with avatar, experience, Expert Artisan gold badge, trust score, and key stats (Rating 4.9, Jobs done 318, Replies in 8m). Interactive tabs: `About`, `Services`, `Portfolio`, `Reviews`, `Verification`, along with a sticky action card with `Continue` and `Message` buttons.
+- **Purpose**: Artisan public profile view matching `media_1792437458303.png`, `media_1792439474717.png`, `media_1792439523516.png`, `media_1792439614969.png`, and `media_1792439655096.png`. Features:
+  - Dark blue hero banner with avatar, trade, experience, Expert Artisan gold badge, trust score, and key stats (Rating 4.9, Jobs done 318, Replies in 8m).
+  - **About Tab**: Biography, verified completed jobs, same-day availability, and written warranty highlights.
+  - **Services Tab**: Indicative price list for leak repair, water heater install, re-piping, and pump servicing, with escrow negotiation notice.
+  - **Portfolio Tab**: Project gallery with an immersive, full-screen **Lightbox Modal** supporting keyboard navigation (left/right/escape), prev/next controls, location metadata, and zoom styling.
+  - **Reviews Tab**: Customer review cards (Tunde A., Okeke O.) with star ratings, quality tags (`On time`, `Neat work`, `Fair price`), and attached repair photos.
+  - **Verification Tab**: Multi-tier status cards (`Verified Artisan`, `Certified Professional`, `Expert Artisan`, `Master Artisan [Not attained]`) with NIN/BVN and trade assessment status.
+  - Right sticky action card with `Available today` badge, `Continue` button (accepts quote), and `Message` button (routes to `/messages`).
 - **Used In**: `features/dashboard/components/JobPostingsView.tsx`
 
 

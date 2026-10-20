@@ -8,9 +8,10 @@ import toast from "react-hot-toast";
 import CompareQuotesView, { DetailedQuote, DETAILED_QUOTES } from "./CompareQuotesView";
 import QuoteAcceptedView from "./QuoteAcceptedView";
 import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
+import SecureJobPaymentView from "./SecureJobPaymentView";
 
 export type JobStatus = "receiving-quotes" | "no-quotes-yet" | "expired" | "cancelled";
-export type JobSubView = "details" | "compare" | "accepted" | "artisan-profile";
+export type JobSubView = "details" | "compare" | "accepted" | "artisan-profile" | "payment";
 
 export interface ArtisanQuote {
   id: string;
@@ -220,12 +221,33 @@ export default function JobPostingsView() {
         warranty={acceptedQuote?.warranty || "30 days"}
         onBack={() => setCurrentSubView("compare")}
         onViewJob={() => setCurrentSubView("details")}
+        onProceedPayment={() => setCurrentSubView("payment")}
       />
     );
   }
 
   // ══════════════════════════════════════════════════════════
-  // SUBVIEW C: ARTISAN PUBLIC PROFILE (Matching media_1792437458303)
+  // SUBVIEW C: SECURE JOB PAYMENT & SCHEDULE (media_1792531657923 - media_1792531872000)
+  // ══════════════════════════════════════════════════════════
+  if (currentSubView === "payment" && selectedJob) {
+    return (
+      <SecureJobPaymentView
+        jobId={selectedJob.id}
+        jobTitle={selectedJob.title}
+        artisanName={acceptedQuote?.artisanName || "Emeka Okafor"}
+        customerName="Daniel Chukwu"
+        location={selectedJob.location}
+        quoteTotal={acceptedQuote?.totalQuote || 120000}
+        labourAmount={acceptedQuote?.labour || 80000}
+        materialsAmount={acceptedQuote?.materials || 40000}
+        onBackToJobs={() => setCurrentSubView("details")}
+        onViewJobDetail={() => setCurrentSubView("details")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // SUBVIEW D: ARTISAN PUBLIC PROFILE (Matching media_1792437458303)
   // ══════════════════════════════════════════════════════════
   if (currentSubView === "artisan-profile") {
     return (

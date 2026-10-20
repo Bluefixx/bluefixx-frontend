@@ -266,4 +266,14 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - Right sticky action card with `Available today` badge, `Continue` button (accepts quote), and `Message` button (routes to `/messages`).
 - **Used In**: `features/dashboard/components/JobPostingsView.tsx`
 
+### `SecureJobPaymentView`
+- **File**: `features/dashboard/components/SecureJobPaymentView.tsx`
+- **Purpose**: Escrow payment and job scheduling workflow matching `media_1792531657923.png`, `media_1792531765288.png`, `media_1792531808352.png`, `media_1792531843952.png`, and `media_1792531872000.png`. Features:
+  - **Secure Your Job**: 7-day warranty banner, Job summary card, selectable Payment source options (Bluefixx Wallet, Fund Wallet, Paystack), Escrow protection guarantee, and Payment summary card with Labour/Materials/Total and `Continue` trigger. (Payment option card omitted per instructions).
+  - **Enter Transaction PIN Modal**: Clean 4-digit PIN input with auto-focus and auto-advance (numeric keypad omitted per user instructions) and `Continue to payment` action.
+  - **Payment Secured Screen**: Navy lock badge, total amount, transaction summary (Job, Artisan, Transaction ID TXN-639890, Amount, Paid in full, Timestamp), artisan notification banner, and `Continue to Schedule` action.
+  - **Schedule Job Screen**: Schedule confirmation card (Artisan, Customer, Date, Time slot), artisan proposed time notice, stylized interactive map location preview card, and `Confirm Schedule` CTA.
+  - **Job Scheduled Screen**: Navy calendar badge, `"Job Scheduled"` title, live/interactive countdown card (`Starts in 21h 19m`), location pill, and `View Job` button.
+- **Used In**: `features/dashboard/components/JobPostingsView.tsx`, `app/(dashboard)/bookings/page.tsx`
+
 

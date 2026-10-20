@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import JobPostingsView from "@/features/dashboard/components/JobPostingsView";
+import SecureJobPaymentView from "@/features/dashboard/components/SecureJobPaymentView";
 
 export default function BookingsPage() {
   const router = useRouter();
@@ -18,6 +19,8 @@ export default function BookingsPage() {
       ? "completed"
       : "job-posts"
   );
+
+  const [isSecuringActiveBooking, setIsSecuringActiveBooking] = useState(false);
 
   useEffect(() => {
     if (tabParam === "active") setActiveTab("active");
@@ -78,41 +81,83 @@ export default function BookingsPage() {
       {/* 2. ACTIVE BOOKINGS                                         */}
       {/* ══════════════════════════════════════════════════════════ */}
       {activeTab === "active" && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
-                  PLUMBING
-                </span>
-                <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                  Artisan En Route
-                </span>
+        isSecuringActiveBooking ? (
+          <SecureJobPaymentView
+            onBackToJobs={() => setIsSecuringActiveBooking(false)}
+            onViewJobDetail={() => setIsSecuringActiveBooking(false)}
+          />
+        ) : (
+          <div className="space-y-4">
+            {/* Booking 1: Securing & Scheduling Available */}
+            <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                    PLUMBING
+                  </span>
+                  <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Payment Pending
+                  </span>
+                </div>
+                <h3 className="font-sans font-bold text-base text-[#0F1115]">
+                  Bathroom Plumbing Repair
+                </h3>
+                <p className="font-sans text-xs text-neutral-500 mt-1">
+                  Accepted quote from <span className="font-semibold text-neutral-800">Emeka Okafor</span> · 14 Ogui Road, Independence Layout
+                </p>
               </div>
-              <h3 className="font-sans font-bold text-base text-[#0F1115]">
-                Kitchen Sink Pipe Leak & Pressure Valve Repair
-              </h3>
-              <p className="font-sans text-xs text-neutral-500 mt-1">
-                Assigned to <span className="font-semibold text-neutral-800">David Eze</span> (Plumber) · Arriving today around 2:00 PM
-              </p>
+
+              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                <span className="font-sans font-bold text-base text-[#001B40]">
+                  ₦120,000
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsSecuringActiveBooking(true)}
+                  className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
+                >
+                  Secure Escrow & Schedule
+                </button>
+              </div>
             </div>
 
-            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
-              <span className="font-sans font-bold text-base text-[#001B40]">
-                ₦18,500
-              </span>
-              <span className="text-[11px] text-neutral-400">Escrow Held Safely</span>
-              <button
-                type="button"
-                onClick={() => toast("Calling David Eze (+234 803 111 2233)...", { icon: "📞" })}
-                className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
-              >
-                Contact Artisan
-              </button>
+            {/* Booking 2: Artisan En Route */}
+            <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                    PLUMBING
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                    Artisan En Route
+                  </span>
+                </div>
+                <h3 className="font-sans font-bold text-base text-[#0F1115]">
+                  Kitchen Sink Pipe Leak & Pressure Valve Repair
+                </h3>
+                <p className="font-sans text-xs text-neutral-500 mt-1">
+                  Assigned to <span className="font-semibold text-neutral-800">David Eze</span> (Plumber) · Arriving today around 2:00 PM
+                </p>
+              </div>
+
+              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                <span className="font-sans font-bold text-base text-[#001B40]">
+                  ₦18,500
+                </span>
+                <span className="text-[11px] text-neutral-400">Escrow Held Safely</span>
+                <button
+                  type="button"
+                  onClick={() => toast("Calling David Eze (+234 803 111 2233)...", { icon: "📞" })}
+                  className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
+                >
+                  Contact Artisan
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* ══════════════════════════════════════════════════════════ */}

@@ -12,6 +12,7 @@ interface QuoteAcceptedViewProps {
   warranty?: string;
   onBack: () => void;
   onViewJob: () => void;
+  onProceedPayment?: () => void;
 }
 
 export default function QuoteAcceptedView({
@@ -23,12 +24,17 @@ export default function QuoteAcceptedView({
   warranty = "30 days",
   onBack,
   onViewJob,
+  onProceedPayment,
 }: QuoteAcceptedViewProps) {
   const handleContinuePayment = () => {
-    toast.success("Proceeding to secure Escrow payment...", {
-      icon: "🔒",
-      duration: 3500,
-    });
+    if (onProceedPayment) {
+      onProceedPayment();
+    } else {
+      toast.success("Proceeding to secure Escrow payment...", {
+        icon: "🔒",
+        duration: 3500,
+      });
+    }
   };
 
   return (

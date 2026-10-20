@@ -276,4 +276,17 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Job Scheduled Screen**: Navy calendar badge, `"Job Scheduled"` title, live/interactive countdown card (`Starts in 21h 19m`), location pill, and `View Job` button.
 - **Used In**: `features/dashboard/components/JobPostingsView.tsx`, `app/(dashboard)/bookings/page.tsx`
 
+### `JobProgressTrackerView`
+- **File**: `features/dashboard/components/JobProgressTrackerView.tsx`
+- **Purpose**: Live Job Progress Tracker and Milestone Completion flow matching `media_17925368...png` through `media_17925372...png`:
+  - **Job tracker: scheduled**: `< My jobs` breadcrumb, job title & subtitle, status badges (`Scheduled`, `Payment Secured`), `Safety` badge, 7-day warranty banner, `Assigned professional` card (Emeka Okafor ★ 4.9, `Message Emeka`), `Job details` card (specs, location, date, urgency), `Photos` card (damp patch, pipe joint), `Additional information` Q&A, and `Work updates` feed.
+  - **Right Sidebar Cards**: 9-step timeline (`Job posted` → `Receiving quotes` → `Quote accepted` → `Payment secured` → `Job scheduled` → `Artisan arrived` → `Work in progress` → `Completed by artisan` → `Payment released`), `Payment summary` card (Labour ₦80,000, Materials ₦40,000, Total ₦120,000, 3.5% escrow fee), `Location` card with interactive map placeholder, and `Job actions` card with `Advance Job Status` / `Confirm completion`.
+  - **Additional cost requested**: Amber escrow alert banner, breakdown card (Additional labour ₦15,000, Additional materials ₦10,000, Original approved ₦120,000, New total ₦145,000) with `Approve`, `Decline`, and `Ask Question` actions.
+  - **Safety options dialog (`Conversation options`)**: Triggered by `Safety` badge; options for `Call the police` (tel:112), `Message Bluefixx support` (priority chat), and `Share location` (clipboard copy).
+  - **Job tracker: completed by artisan**: Timeline advances to `Completed by artisan` with work updates, completion photos, and primary action `Confirm completion`.
+  - **Confirm completion view (`Is your job complete?`)**: Escrow release warning banner, completion photos from artisan, `Job summary` card (Amount held ₦120,000, TXN-639890), `Confirm completion`, and `Report a problem` dispute modal.
+  - **Release payment dialog (`Release payment?`)**: Modal confirming immediate payment of ₦120,000 to artisan with `Confirm & Release` and `Not yet`.
+- **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=active`)
+
+
 

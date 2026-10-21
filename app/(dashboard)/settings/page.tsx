@@ -8,6 +8,9 @@ import { PersonalDetailsView } from "@/features/dashboard/components/settings/Pe
 import { LanguageSettingsView } from "@/features/dashboard/components/settings/LanguageSettingsView";
 import { TransactionPinView } from "@/features/dashboard/components/settings/TransactionPinView";
 import { NotificationsSettingsView } from "@/features/dashboard/components/settings/NotificationsSettingsView";
+import { InviteAndEarnView } from "@/features/dashboard/components/settings/InviteAndEarnView";
+import { SafetySupportView } from "@/features/dashboard/components/settings/SafetySupportView";
+import { ReportProblemView } from "@/features/dashboard/components/settings/ReportProblemView";
 
 interface UserSettingsData {
   fullName: string;
@@ -17,7 +20,16 @@ interface UserSettingsData {
   avatarUrl?: string;
 }
 
-type SettingsTab = "overview" | "personal-details" | "pin" | "notifications" | "language";
+type SettingsTab =
+  | "overview"
+  | "personal-details"
+  | "pin"
+  | "notifications"
+  | "language"
+  | "support"
+  | "safety"
+  | "report-problem"
+  | "referral";
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -42,6 +54,12 @@ export default function SettingsPage() {
       setActiveTab("notifications");
     } else if (tabParam === "language") {
       setActiveTab("language");
+    } else if (tabParam === "support" || tabParam === "safety") {
+      setActiveTab("safety");
+    } else if (tabParam === "report-problem") {
+      setActiveTab("report-problem");
+    } else if (tabParam === "referral" || tabParam === "invite") {
+      setActiveTab("referral");
     } else {
       setActiveTab("overview");
     }
@@ -81,6 +99,33 @@ export default function SettingsPage() {
   if (activeTab === "notifications") {
     return (
       <NotificationsSettingsView
+        onBack={() => setActiveTab("overview")}
+      />
+    );
+  }
+
+  // View: Safety & Support (Screenshots 3 Left, 3 Right, 4 Left)
+  if (activeTab === "safety" || activeTab === "support") {
+    return (
+      <SafetySupportView
+        onBack={() => setActiveTab("overview")}
+      />
+    );
+  }
+
+  // View: Report a Problem & Dispute Tracker (Screenshots 4 Right, 5 Left)
+  if (activeTab === "report-problem") {
+    return (
+      <ReportProblemView
+        onBack={() => setActiveTab("overview")}
+      />
+    );
+  }
+
+  // View: Invite & Earn / Referral Program (Screenshot 1 Left)
+  if (activeTab === "referral") {
+    return (
+      <InviteAndEarnView
         onBack={() => setActiveTab("overview")}
       />
     );

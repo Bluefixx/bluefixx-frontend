@@ -4,7 +4,9 @@ import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { useNotifications } from "@/lib/stores/notifications-store";
 import AccountMenuDropdown from "./AccountMenuDropdown";
+import { NotificationsDropdown } from "./NotificationsDropdown";
 
 interface DashboardHeaderProps {
   onOpenRoleSwitcher: () => void;
@@ -16,14 +18,10 @@ export default function DashboardHeader({
   onOpenMobileMenu,
 }: DashboardHeaderProps) {
   const { user, locationName, setLocationName, walletBalance } = useAuth();
+  const { unreadCount } = useNotifications();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-
-  const handleNotificationClick = () => {
-    toast("You have 1 new message from verified artisan John Okafor", {
-      icon: "🔔",
-    });
-  };
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handleWalletClick = () => {
     toast(`Wallet balance: ₦${walletBalance.toLocaleString()}`, {
@@ -162,27 +160,37 @@ export default function DashboardHeader({
         </button>
 
         {/* Notification Bell */}
-        <button
-          type="button"
-          onClick={handleNotificationClick}
-          title="Notifications"
-          className="relative w-10 h-10 rounded-full border border-neutral-200/90 hover:border-neutral-300 hover:bg-neutral-50 flex items-center justify-center text-neutral-700 transition-all cursor-pointer shadow-2xs"
-        >
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            title="Notifications"
+            className="relative w-10 h-10 rounded-full border border-neutral-200/90 hover:border-neutral-300 hover:bg-neutral-50 flex items-center justify-center text-neutral-700 transition-all cursor-pointer shadow-2xs"
           >
-            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-          </svg>
-          {/* Orange Notification Pip */}
-          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white" />
-        </button>
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {/* Orange/Amber Notification Pip */}
+            {unreadCount > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-500 ring-2 ring-white" />
+            )}
+          </button>
+
+          {/* Notifications Dropdown Panel */}
+          <NotificationsDropdown
+            isOpen={isNotificationsOpen}
+            onClose={() => setIsNotificationsOpen(false)}
+          />
+        </div>
 
         {/* Wallet Balance Widget */}
         <button

@@ -368,3 +368,58 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 - **Purpose**: Notification channels preferences screen with toggles for SMS Security Alerts, Email Quotes & Receipts, Push Notifications, and Promotions.
 - **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=notifications`)
 
+### `InviteAndEarnView`
+- **File**: `features/dashboard/components/settings/InviteAndEarnView.tsx`
+- **Purpose**: Full referral program screen matching Figma *Customer Web · Invite & earn*:
+  - **Referral Code Card**: Code `BLUE-SIMEON` with one-click copy, share link, and direct social share options.
+  - **Performance Metrics**: 4 stat cards showing Earned (`₦14,000`), Invited (`28`), Joined (`12`), and Activated (`7`).
+  - **Referral Journey Pipeline**: Visual 4-stage pipeline showing friend onboarding from invite to qualification reward.
+  - **Double Referral Week Banner**: High-urgency promotional banner for boosted rewards.
+  - **Filterable Activity Table**: Real-time filtering by `All`, `In progress`, `Reward earned`, and `Not qualified` with status badges.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=referral`)
+
+### `SafetySupportView`
+- **File**: `features/dashboard/components/settings/SafetySupportView.tsx`
+- **Purpose**: Safety & emergency management suite matching Figma *Customer Web · Safety & support* and *Safety report submitted*:
+  - **Immediate Danger Banner**: Direct 112 emergency police dialer for on-site crises.
+  - **Live Job Card & Map**: Displays active artisan on job (`Chidi Obi - Plumber`), real-time job site location map, and direct GPS location sharing with trusted emergency contact (`Ada Eze`).
+  - **Emergency Contact**: Configured emergency contact details with quick edit.
+  - **Report Safety Issue Modal**: Radio selector for safety concerns (`Feel unsafe with the artisan`, `Threatening or abusive behaviour`, `Damage to my property`, `Injury on site`, etc.) and issue description.
+  - **Safety Report Submitted View**: Immediate response view with red badge, active priority ticket (`SF-884210`), and real-time safety desk dispatch notes.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=support`, `tab=safety`)
+
+### `ReportProblemView`
+- **File**: `features/dashboard/components/settings/ReportProblemView.tsx`
+- **Purpose**: Problem reporting and dispute arbitration suite matching Figma *Customer Web · Report a problem* and *Dispute reported*:
+  - **Issue Category Selector**: Interactive chips (`Work incomplete`, `Poor quality`, `No long service`, `Damage to property`, `Safety concern`, `Payment issue`, `Other`).
+  - **Description & Media Attachments**: Detailed problem description textarea with photo and video upload buttons and file counters.
+  - **Escrow Notice**: Highlights automatic payment freeze on artisan payout until dispute is arbitrated.
+  - **Dispute Reported Tracking View**: Interactive arbitration tracker with copyable transaction ID (`BFX-TXN-4475193`), frozen payout banner, 4-stage dispute resolution timeline (`Report filed`, `Artisan notified`, `Evidence review`, `Resolution`), and live chat feed with Bluefixx Resolution Desk.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=report-problem`)
+
+### `NotificationsDropdown`
+- **File**: `features/dashboard/components/NotificationsDropdown.tsx`
+- **Purpose**: Header popover dropdown matching Figma *Customer Web · Notifications panel*:
+  - **Top Bar**: "Notifications" title with "Mark all as read" link.
+  - **Recent Notifications List**: Top 3 activity alerts with custom type icons (quote, job completion, warranty), timestamps, and unread indicator blue pips.
+  - **Footer Link**: "See all notifications" linking directly to the dedicated `/notifications` page.
+- **Used In**: `features/dashboard/components/DashboardHeader.tsx`
+
+### `ReviewsPage`
+- **File**: `app/(dashboard)/reviews/page.tsx`
+- **Purpose**: Dedicated customer reviews workbench matching Figma *12 · Reviews*:
+  - **Completed Bookings List**: Review pending items (`Bathroom Plumbing Repair · Emeka Okafor` with `Leave a review` CTA), alongside reviewed jobs with 5-star ratings (`AC servicing · Musa Danjuma`, `Bathroom tiling · Grace Adeyemi`).
+  - **Write a Review View**: Interactive 5-star rating selector with dynamic descriptive labels (`4 out of 5 · Very good`), "What went well?" multi-select positive chips (`Arrived on time`, `Clean work`, `Fair price`, `Explained the fix`, `Friendly`), optional review textarea, and "Reviews build trust" sidecard.
+  - **Review Submitted Confirmation Screen**: Green checkmark circle, confirmation message, `Book Emeka again`, and `Back to bookings` buttons.
+- **Used In**: `app/(dashboard)/reviews/page.tsx` (accessible via sidebar `Reviews` link)
+
+### `NotificationsPage`
+- **File**: `app/(dashboard)/notifications/page.tsx`
+- **Purpose**: Dedicated notifications center matching Figma *13 · Notifications*:
+  - **Filters & Actions**: `All` and `Unread` filter pills, with a one-click `Mark all as read` trigger.
+  - **Timeline Groupings**: "Today" and "Earlier" sections with icons, titles, descriptions, timestamps, and unread dots.
+  - **Empty State**: "You're all caught up" card with rounded bell illustration when no unread notifications remain.
+- **Used In**: `app/(dashboard)/notifications/page.tsx`
+
+
+

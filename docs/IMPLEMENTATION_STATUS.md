@@ -32,8 +32,30 @@ This document tracks current progress, backlog, known issues, and next actions f
   - **Step 6 (Preferred Time)**: Time slot radio options (`Today 11:00 – 13:00`, etc.), custom time input, schedule notice callout.
   - **Step 7 (Review & Publish)**: 7-day BlueFixx warranty banner, structured summary sections with `Edit` shortcuts, `Save as Draft` and `Post Job →` actions.
   - **Step 8 (Job Live)**: Green checkmark badge, Job ID `BFX-20541`, `+ Receiving Quotes` badge, matched professionals & quotes received stat boxes, and navigation to `/bookings` or `/dashboard`.
-- [x] **User Type Toggle Button & Modal Switcher**:
-  - Switcher button (`↕`) next to notification bell with enforced business rules (Customer $\leftrightarrow$ Artisan $\leftrightarrow$ Apprentice; Apprentice $\rightarrow$ Artisan locked until training completion).
+- [x] **Messages Page Enhancements**:
+  - Removed "Simulate Empty State" test button and overlay.
+  - Functional photo attachment: hidden image file picker integrated into paperclip button, instantly rendering uploaded photos inside chat bubbles.
+  - Functional voice note recorder: live microphone recording via `MediaRecorder` API, animated red pulse indicator, live recording duration timer, animated audio wave bars, cancel and send actions, and playable audio bubbles.
+- [x] **Fund Account & Withdrawal Multi-Step Journeys**:
+  - `FundWalletView`: Dedicated multi-step flow matching Figma designs (Fund account amount input with quick chips ₦5k–₦100k, Paystack checkout modal, animated deposit processing spinner, deposit successful screen with copyable ID `BFX-FND-4475191` and dynamic balance increment).
+  - `WithdrawWalletView`: Mirrored withdrawal journey (Withdraw funds form with destination bank `Access Bank ···· 1416`, 4-digit PIN authorization modal, animated withdrawal processing screen, withdrawal successful confirmation with copyable ID `BFX-WTH-8823104` and dynamic balance deduction).
+- [x] **Settings & Safety Suite**:
+  - `SettingsOverviewView`: Main hub with profile header, account settings list, support links, navy Bluefixx wallet balance card, referral card, and modals for `Log out` and `Delete Bluefixx account`.
+  - `PersonalDetailsView`: User profile editor with live photo upload via file picker, contact details, emergency contact inputs, and guidance sidecard.
+  - `TransactionPinView`: 3-step PIN setup wizard (Create PIN, Confirm PIN, PIN Created) with auto-advancing 4-digit inputs and security sidecard.
+  - `NotificationsSettingsView`: Notification preferences with toggles for SMS security alerts, email quotes, push notifications, and promo vouchers.
+  - `LanguageSettingsView`: Language selector with search filter, active language banner, and radio selectors with Nigerian flags (English, Igbo, Yorùbá, Hausa, Pidgin).
+  - `SafetySupportView`: Crisis safety suite matching Figma designs (112 police emergency callout, live job card with `Chidi Obi - Plumber`, active job GPS map, emergency contact location sharing, report safety issue modal with radio concerns, and safety report submitted screen).
+  - `ReportProblemView`: Dispute arbitration suite matching Figma designs (issue category chips, problem description, photo/video evidence uploaders, frozen escrow notice, and interactive dispute timeline tracker with resolution desk chat).
+- [x] **Reviews Suite (`/reviews`)**:
+  - Dedicated Reviews link added to `DashboardSidebar.tsx`.
+  - `Completed Bookings` review pending screen matching Figma with review pending status badge and `Leave a review` CTA.
+  - Interactive `Write a Review` view with dynamic 5-star ratings, "What went well?" positive tag chips (`Arrived on time`, `Clean work`, `Fair price`, `Explained the fix`, `Friendly`), optional review textarea, and "Reviews build trust" sidecard.
+  - `Review submitted` confirmation view with green checkmark badge, message, `Book Emeka again`, and `Back to bookings` buttons.
+- [x] **Notifications Suite (`/notifications` & Dropdown Panel)**:
+  - Header notifications bell dropdown panel matching Figma with title, "Mark all as read" link, top recent alerts, and "See all notifications" footer.
+  - Dedicated `/notifications` center with `All` and `Unread` filter tabs, Today / Earlier groupings, unread count badge, and "You're all caught up" empty state.
+  - Notification settings view updated to match exact category matrix table with Push, Email, and SMS toggles across 5 notification categories.
 - [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---
@@ -60,6 +82,6 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 6. Next Recommended Action
-- Run `npm run dev` to test the full end-to-end customer and artisan journey across `/dashboard`, `/dashboard/explore`, `/dashboard/post-job`, and the user type switcher.
+- Run `npm run dev` to test the full end-to-end customer journey across Wallet funding/withdrawal, Messages with attachments & audio notes, Settings, Safety & Support, and Invite & Earn.
 
 

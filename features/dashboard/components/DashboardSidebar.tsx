@@ -61,6 +61,7 @@ export default function DashboardSidebar({
   const isBrowseServicesActive = pathname === "/explore" || pathname === "/dashboard/explore";
   const isPostJobActive = pathname === "/post-job" || pathname === "/dashboard/post-job";
   const isMessagesActive = pathname === "/messages" || pathname === "/dashboard/messages";
+  const isReviewsActive = pathname === "/reviews" || pathname === "/dashboard/reviews";
   
   // Profile submenus
   const isMyProfileActive = pathname === "/profile" || pathname === "/dashboard/profile";
@@ -75,10 +76,11 @@ export default function DashboardSidebar({
 
   // Settings subtabs
   const isSettingsRoot = pathname === "/settings" || pathname === "/dashboard/settings";
-  const isAccountActive = isSettingsRoot && (currentTab === "account" || !currentTab);
+  const isAccountActive = isSettingsRoot && (currentTab === "account" || currentTab === "personal-details" || !currentTab);
   const isNotificationsActive = isSettingsRoot && currentTab === "notifications";
   const isLanguageActive = isSettingsRoot && currentTab === "language";
-  const isSafetyActive = isSettingsRoot && currentTab === "support";
+  const isSafetyActive = isSettingsRoot && (currentTab === "support" || currentTab === "safety" || currentTab === "report-problem");
+  const isReferralActive = isSettingsRoot && (currentTab === "referral" || currentTab === "invite");
 
   const roleDisplay =
     activeRole === "customer"
@@ -295,7 +297,23 @@ export default function DashboardSidebar({
             <span>Messages</span>
           </Link>
 
-          {/* 5. Profile (with submenus) */}
+          {/* 5. Reviews */}
+          <Link
+            href="/reviews"
+            onClick={handleLinkClick}
+            className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+              isReviewsActive
+                ? "bg-[#001B40] text-white shadow-xs font-bold"
+                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+            }`}
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill={isReviewsActive ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            <span>Reviews</span>
+          </Link>
+
+          {/* 6. Profile (with submenus) */}
           <div>
             <button
               type="button"
@@ -436,6 +454,17 @@ export default function DashboardSidebar({
                 }`}
               >
                 Safety & support
+              </Link>
+              <Link
+                href="/settings?tab=referral"
+                onClick={handleLinkClick}
+                className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                  isReferralActive
+                    ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                }`}
+              >
+                Invite & earn
               </Link>
             </div>
           )}

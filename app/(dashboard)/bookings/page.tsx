@@ -7,11 +7,16 @@ import toast from "react-hot-toast";
 import JobPostingsView from "@/features/dashboard/components/JobPostingsView";
 import SecureJobPaymentView from "@/features/dashboard/components/SecureJobPaymentView";
 import JobProgressTrackerView from "@/features/dashboard/components/JobProgressTrackerView";
+import PaymentReleasedView from "@/features/dashboard/components/PaymentReleasedView";
+import RateArtisanView from "@/features/dashboard/components/RateArtisanView";
+import WarrantyClaimView from "@/features/dashboard/components/WarrantyClaimView";
+import WarrantyClaimSentView from "@/features/dashboard/components/WarrantyClaimSentView";
 
 export default function BookingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
+  const viewParam = searchParams.get("view");
 
   const [activeTab, setActiveTab] = useState<"job-posts" | "active" | "completed">(
     tabParam === "active"
@@ -23,6 +28,15 @@ export default function BookingsPage() {
 
   const [isSecuringActiveBooking, setIsSecuringActiveBooking] = useState(false);
   const [activeViewMode, setActiveViewMode] = useState<"tracker" | "list">("tracker");
+  const [completedViewMode, setCompletedViewMode] = useState<
+    "list" | "payment-released" | "rate-artisan" | "warranty-claim" | "warranty-claim-sent"
+  >(
+    viewParam === "rate"
+      ? "rate-artisan"
+      : viewParam === "warranty"
+      ? "warranty-claim"
+      : "payment-released"
+  );
 
   useEffect(() => {
     if (tabParam === "active") setActiveTab("active");
@@ -95,6 +109,10 @@ export default function BookingsPage() {
           <JobProgressTrackerView
             jobId="BFX-20481"
             onBack={() => setActiveViewMode("list")}
+            onPaymentReleased={() => {
+              handleTabChange("completed");
+              setCompletedViewMode("payment-released");
+            }}
           />
         ) : (
           <div className="space-y-4">
@@ -183,29 +201,99 @@ export default function BookingsPage() {
       {/* 3. COMPLETED BOOKINGS                                      */}
       {/* ══════════════════════════════════════════════════════════ */}
       {activeTab === "completed" && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded uppercase">
-                ELECTRICAL
-              </span>
-              <h3 className="font-sans font-bold text-base text-[#0F1115] mt-1">
-                Distribution Box Circuit Breaker Replacement
-              </h3>
-              <p className="font-sans text-xs text-neutral-500 mt-1">
-                Completed by <span className="font-semibold text-neutral-800">John Okafor</span> · 7-day warranty active
-              </p>
+        completedViewMode === "payment-released" ? (
+          <PaymentReleasedView
+            onBack={() => setCompletedViewMode("list")}
+            onLeaveReview={() => setCompletedViewMode("rate-artisan")}
+            onFileWarrantyClaim={() => setCompletedViewMode("warranty-claim")}
+          />
+        ) : completedViewMode === "rate-artisan" ? (
+          <RateArtisanView
+            onBack={() => setCompletedViewMode("payment-released")}
+            onSubmitSuccess={() => setCompletedViewMode("list")}
+          />
+        ) : completedViewMode === "warranty-claim" ? (
+          <WarrantyClaimView
+            onBack={() => setCompletedViewMode("payment-released")}
+            onSubmitSuccess={() => setCompletedViewMode("warranty-claim-sent")}
+          />
+        ) : completedViewMode === "warranty-claim-sent" ? (
+          <WarrantyClaimSentView
+            onBack={() => setCompletedViewMode("list")}
+            onViewBooking={() => setCompletedViewMode("list")}
+          />
+        ) : (
+          <div className="space-y-4">
+            {/* Completed Job Item 1: Bathroom Plumbing Repair (matches screenshot) */}
+            <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded uppercase">
+                    PLUMBING
+                  </span>
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                    7-day warranty active
+                  </span>
+                </div>
+                <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                  Bathroom Plumbing Repair
+                </h3>
+                <p className="font-sans text-xs text-neutral-500 mt-1">
+                  Completed by <span className="font-semibold text-neutral-800">Emeka Okafor</span> · Updated Today · 9:39
+                </p>
+              </div>
+
+              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                <span className="font-sans font-bold text-base text-[#001B40]">
+                  ₦120,000
+                </span>
+                <span className="text-[11px] text-emerald-600 font-semibold">
+                  ✓ Payment Released
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCompletedViewMode("warranty-claim")}
+                    className="px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold cursor-pointer"
+                  >
+                    Report Issue
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCompletedViewMode("payment-released")}
+                    className="px-3 py-1.5 rounded-lg bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
+                  >
+                    View Receipt
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="font-sans font-bold text-base text-neutral-900">
-                ₦22,000
-              </span>
-              <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
-                ✓ Escrow Released
-              </p>
+
+            {/* Completed Job Item 2: Electrical */}
+            <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded uppercase">
+                  ELECTRICAL
+                </span>
+                <h3 className="font-sans font-bold text-base text-[#0F1115] mt-1">
+                  Distribution Box Circuit Breaker Replacement
+                </h3>
+                <p className="font-sans text-xs text-neutral-500 mt-1">
+                  Completed by <span className="font-semibold text-neutral-800">John Okafor</span> · Warranty expired
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="font-sans font-bold text-base text-neutral-900">
+                  ₦22,000
+                </span>
+                <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                  ✓ Escrow Released
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
 
       {/* Post a Job Reminder Banner (Shown on Active & Completed tabs) */}

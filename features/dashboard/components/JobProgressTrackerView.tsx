@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 export type TrackerStage =
@@ -18,6 +19,7 @@ export type TrackerStage =
 interface JobProgressTrackerViewProps {
   jobId?: string;
   onBack?: () => void;
+  onPaymentReleased?: () => void;
   initialStage?: TrackerStage;
   initialShowAdditionalCost?: boolean;
 }
@@ -25,9 +27,11 @@ interface JobProgressTrackerViewProps {
 export default function JobProgressTrackerView({
   jobId = "BFX-20481",
   onBack,
+  onPaymentReleased,
   initialStage = "scheduled",
   initialShowAdditionalCost = false,
 }: JobProgressTrackerViewProps) {
+  const router = useRouter();
   // Current milestone state in tracker
   const [currentStage, setCurrentStage] = useState<TrackerStage>(initialStage);
   
@@ -91,7 +95,7 @@ export default function JobProgressTrackerView({
   };
 
   const handleAskQuestion = () => {
-    toast("Opening direct message with Emeka regarding cost breakdown...", { icon: "💬" });
+    router.push("/messages?conversation=emeka");
   };
 
   // Handle Release Payment
@@ -100,6 +104,11 @@ export default function JobProgressTrackerView({
     setIsConfirmCompletionView(false);
     setCurrentStage("payment_released");
     toast.success("₦120,000 released to Emeka Okafor. 7-day warranty is now active!", { duration: 5000 });
+    if (onPaymentReleased) {
+      setTimeout(() => {
+        onPaymentReleased();
+      }, 500);
+    }
   };
 
   // ══════════════════════════════════════════════════════════════
@@ -424,30 +433,7 @@ export default function JobProgressTrackerView({
             </p>
           </div>
 
-          {/* Quick Simulation Bar for User / Testing */}
-          <div className="flex items-center gap-2 self-start sm:self-center bg-neutral-100/80 p-1 rounded-xl text-[11px] font-medium text-neutral-600">
-            <span className="px-2 text-neutral-400">Milestone:</span>
-            <select
-              value={currentStage}
-              onChange={(e) => setCurrentStage(e.target.value as TrackerStage)}
-              className="bg-white border border-neutral-200 rounded-lg px-2 py-1 text-[11px] text-[#001B40] font-semibold cursor-pointer outline-hidden"
-            >
-              <option value="scheduled">Scheduled (Screen 1)</option>
-              <option value="artisan_arrived">Artisan arrived</option>
-              <option value="work_in_progress">Work in progress</option>
-              <option value="completed_by_artisan">Completed by artisan (Screen 4)</option>
-              <option value="payment_released">Payment released</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => setHasAdditionalCost(!hasAdditionalCost)}
-              className={`px-2 py-1 rounded-lg transition-colors cursor-pointer font-semibold ${
-                hasAdditionalCost ? "bg-amber-100 text-amber-800" : "bg-white text-neutral-600 hover:bg-neutral-50"
-              }`}
-            >
-              {hasAdditionalCost ? "Cost Alert: On" : "Cost Alert: Off"}
-            </button>
-          </div>
+
         </div>
       </div>
 
@@ -973,7 +959,7 @@ export default function JobProgressTrackerView({
 
             <button
               type="button"
-              onClick={() => toast("Connecting to Emeka Okafor via chat...", { icon: "💬" })}
+              onClick={() => router.push("/messages?conversation=emeka")}
               className="w-full py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
             >
               Message Emeka
@@ -1036,8 +1022,7 @@ export default function JobProgressTrackerView({
                 type="button"
                 onClick={() => {
                   setIsSafetyModalOpen(false);
-                  setIsSupportChatOpen(true);
-                  toast("Contacting 24/7 Bluefixx Emergency Support...", { icon: "🛡️" });
+                  router.push("/messages?conversation=support");
                 }}
                 className="w-full p-3.5 rounded-2xl border border-neutral-200 bg-white hover:bg-neutral-50 flex items-center gap-3.5 transition-colors cursor-pointer text-left"
               >

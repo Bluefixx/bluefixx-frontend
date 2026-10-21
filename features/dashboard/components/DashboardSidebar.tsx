@@ -30,6 +30,9 @@ export default function DashboardSidebar({
   const [isBookingsOpen, setIsBookingsOpen] = useState(
     pathname.includes("/bookings")
   );
+  const [isProfileOpen, setIsProfileOpen] = useState(
+    pathname.includes("/profile") || pathname.includes("/wallet")
+  );
   const [isSettingsOpen, setIsSettingsOpen] = useState(
     pathname.includes("/settings")
   );
@@ -41,6 +44,9 @@ export default function DashboardSidebar({
     }
     if (pathname.includes("/bookings")) {
       setIsBookingsOpen(true);
+    }
+    if (pathname.includes("/profile") || pathname.includes("/wallet")) {
+      setIsProfileOpen(true);
     }
     if (pathname.includes("/settings")) {
       setIsSettingsOpen(true);
@@ -55,7 +61,11 @@ export default function DashboardSidebar({
   const isBrowseServicesActive = pathname === "/explore" || pathname === "/dashboard/explore";
   const isPostJobActive = pathname === "/post-job" || pathname === "/dashboard/post-job";
   const isMessagesActive = pathname === "/messages" || pathname === "/dashboard/messages";
-  const isProfileActive = pathname === "/profile" || pathname === "/dashboard/profile";
+  
+  // Profile submenus
+  const isMyProfileActive = pathname === "/profile" || pathname === "/dashboard/profile";
+  const isWalletActive = pathname === "/wallet" || pathname === "/dashboard/wallet";
+  const isProfileRoot = isMyProfileActive || isWalletActive;
 
   // Bookings subtabs
   const isBookingsRoot = pathname === "/bookings" || pathname === "/dashboard/bookings";
@@ -88,11 +98,12 @@ export default function DashboardSidebar({
             className="flex items-center gap-2.5"
           >
             <Image
-              src="/icons/BFLogoW.svg"
+              src="/icons/BFLogoBlue.svg"
               alt="BlueFixx"
               width={30}
               height={30}
-              className="w-7 h-7 object-contain brightness-0"
+              className="w-7 h-7 object-contain"
+              priority
             />
             <span className="font-heading font-bold text-xl text-[#001B40] tracking-tight">
               BlueFixx
@@ -283,27 +294,65 @@ export default function DashboardSidebar({
             <span>Messages</span>
           </Link>
 
-          {/* 5. Profile */}
-          <Link
-            href="/profile"
-            onClick={handleLinkClick}
-            className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
-              isProfileActive
-                ? "bg-[#001B40] text-white shadow-xs font-bold"
-                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
+          {/* 5. Profile (with submenus) */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                isProfileRoot
+                  ? "text-[#001B40] font-bold"
+                  : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
+                <span>Profile</span>
+              </div>
+              <svg
+                className={`w-4 h-4 text-neutral-400 transition-transform ${
+                  isProfileOpen ? "rotate-180" : ""
+                }`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <polyline points="6 9 12 15 18 9" />
               </svg>
-              <span>Profile</span>
-            </div>
-            <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </Link>
+            </button>
+
+            {/* Profile Submenu */}
+            {isProfileOpen && (
+              <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                <Link
+                  href="/profile"
+                  onClick={handleLinkClick}
+                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                    isMyProfileActive
+                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                  }`}
+                >
+                  My profile
+                </Link>
+                <Link
+                  href="/wallet"
+                  onClick={handleLinkClick}
+                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                    isWalletActive
+                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                  }`}
+                >
+                  Wallet
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
       </div>
 

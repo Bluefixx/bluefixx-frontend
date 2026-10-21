@@ -288,5 +288,22 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Release payment dialog (`Release payment?`)**: Modal confirming immediate payment of ₦120,000 to artisan with `Confirm & Release` and `Not yet`.
 - **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=active`)
 
+### `PaymentReleasedView`
+- **File**: `features/dashboard/components/PaymentReleasedView.tsx`
+- **Purpose**: Completed booking payment release screen matching `media_1792575083520.png`. Features green active warranty banner with claim link, payment released check badge, total amount (₦120,000), detailed fee breakdown (customer payment, 7% service fee, artisan earnings, transaction ID, release timestamp), and `Leave a Review` CTA.
+- **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=completed`)
 
+### `RateArtisanView`
+- **File**: `features/dashboard/components/RateArtisanView.tsx`
+- **Purpose**: Post-service artisan rating and review screen matching `media_1792575083520.png`. Features artisan avatar card with interactive 5-star rating selector, public comment textarea, recommendation toggle (`Would you recommend Emeka? Yes/No`), and `Submit Review` CTA.
+- **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=completed`)
 
+### `WarrantyClaimView`
+- **File**: `features/dashboard/components/WarrantyClaimView.tsx`
+- **Purpose**: Warranty claim issue reporting form matching `media_1792575107078.png`. Features issue category chips (`The leak is back`, `Part stopped working`, `Damage from the repair`, `Work left unfinished`, `Other`), problem description textarea, `Add photo(s)` and `Add Video` media attachment buttons, and `Send to Emeka and Bluefixx` submission. Includes side panel detailing how the 24-hour return visit warranty policy works.
+- **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=completed`)
+
+### `WarrantyClaimSentView`
+- **File**: `features/dashboard/components/WarrantyClaimSentView.tsx`
+- **Purpose**: Warranty claim confirmation screen matching `media_1792575107078.png`. Features green checkmark badge, 24-hour artisan response SLA notice, and action buttons for `Message Emeka` and `View booking`.
+- **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=completed`)

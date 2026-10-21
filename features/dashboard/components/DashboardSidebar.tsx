@@ -76,6 +76,7 @@ export default function DashboardSidebar({
   // Settings subtabs
   const isSettingsRoot = pathname === "/settings" || pathname === "/dashboard/settings";
   const isAccountActive = isSettingsRoot && (currentTab === "account" || !currentTab);
+  const isNotificationsActive = isSettingsRoot && currentTab === "notifications";
   const isLanguageActive = isSettingsRoot && currentTab === "language";
   const isSafetyActive = isSettingsRoot && currentTab === "support";
 
@@ -402,6 +403,17 @@ export default function DashboardSidebar({
                 }`}
               >
                 Account & security
+              </Link>
+              <Link
+                href="/settings?tab=notifications"
+                onClick={handleLinkClick}
+                className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                  isNotificationsActive
+                    ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                }`}
+              >
+                Notifications
               </Link>
               <Link
                 href="/settings?tab=language"

@@ -13,6 +13,7 @@ interface ChatMessage {
   image?: string;
   isVoice?: boolean;
   voiceDuration?: string;
+  audioUrl?: string;
   time: string;
 }
 
@@ -22,9 +23,19 @@ export default function MessagesPage() {
 
   const [activeConversation, setActiveConversation] = useState<"emeka" | "support">(initialConversation);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
-  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [inputText, setInputText] = useState("");
-  const [showEmptyState, setShowEmptyState] = useState(false);
+
+  // Functional Attachment state
+  const imageInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Functional Audio / Voice Note states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [playingMessageId, setPlayingMessageId] = useState<string | null>(null);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
+  const recordTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const currentAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const conv = searchParams.get("conversation");
@@ -34,6 +45,17 @@ export default function MessagesPage() {
       setActiveConversation("emeka");
     }
   }, [searchParams]);
+
+  // Clean up recording timer on unmount
+  useEffect(() => {
+    return () => {
+      if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
+    };
+  }, []);
 
   // Messages for Emeka
   const [emekaMessages, setEmekaMessages] = useState<ChatMessage[]>([
@@ -114,88 +136,183 @@ export default function MessagesPage() {
     }
   };
 
-  const handleAttachPhoto = () => {
-    const photoMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "customer",
-      image: "/images/path2.png",
-      text: "Additional inspection snapshot attached.",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  // ══════════════════════════════════════════════════════════════
+  // FUNCTIONAL PHOTO ATTACHMENT
+  // ══════════════════════════════════════════════════════════════
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const photoMsg: ChatMessage = {
+        id: Date.now().toString(),
+        sender: "customer",
+        image: dataUrl,
+        text: file.name,
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+
+      if (activeConversation === "emeka") {
+        setEmekaMessages((prev) => [...prev, photoMsg]);
+        setTimeout(() => {
+          setEmekaMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              sender: "artisan",
+              text: "Thanks for the photo! I can see the joint clearly now.",
+              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+          ]);
+        }, 1800);
+      } else {
+        setSupportMessages((prev) => [...prev, photoMsg]);
+      }
+      toast.success("Photo attached & sent");
     };
-    if (activeConversation === "emeka") {
-      setEmekaMessages((prev) => [...prev, photoMsg]);
-    } else {
-      setSupportMessages((prev) => [...prev, photoMsg]);
-    }
-    toast.success("Image attached");
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
-  const handleRecordVoice = () => {
-    const voiceMsg: ChatMessage = {
-      id: Date.now().toString(),
-      sender: "customer",
-      isVoice: true,
-      voiceDuration: "0:18",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-    if (activeConversation === "emeka") {
-      setEmekaMessages((prev) => [...prev, voiceMsg]);
-    } else {
-      setSupportMessages((prev) => [...prev, voiceMsg]);
+  // ══════════════════════════════════════════════════════════════
+  // FUNCTIONAL VOICE RECORDING
+  // ══════════════════════════════════════════════════════════════
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const durationStr = `0:${recordingSeconds < 10 ? "0" : ""}${recordingSeconds}`;
+
+        const voiceMsg: ChatMessage = {
+          id: Date.now().toString(),
+          sender: "customer",
+          isVoice: true,
+          voiceDuration: durationStr === "0:00" ? "0:04" : durationStr,
+          audioUrl: audioUrl,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        };
+
+        if (activeConversation === "emeka") {
+          setEmekaMessages((prev) => [...prev, voiceMsg]);
+          setTimeout(() => {
+            setEmekaMessages((prev) => [
+              ...prev,
+              {
+                id: (Date.now() + 1).toString(),
+                sender: "artisan",
+                text: "Heard your voice note. I'll arrive with the 1-inch elbow pipe.",
+                time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              },
+            ]);
+          }, 2000);
+        } else {
+          setSupportMessages((prev) => [...prev, voiceMsg]);
+        }
+        toast.success("Voice note sent");
+
+        // Stop all audio tracks
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordTimerRef.current = setInterval(() => {
+        setRecordingSeconds((sec) => sec + 1);
+      }, 1000);
+    } catch {
+      // Fallback if browser permission is blocked / mock voice note
+      toast("Microphone access simulated for preview", { icon: "🎙️" });
+      const simulatedVoiceMsg: ChatMessage = {
+        id: Date.now().toString(),
+        sender: "customer",
+        isVoice: true,
+        voiceDuration: "0:12",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      if (activeConversation === "emeka") {
+        setEmekaMessages((prev) => [...prev, simulatedVoiceMsg]);
+      } else {
+        setSupportMessages((prev) => [...prev, simulatedVoiceMsg]);
+      }
     }
-    toast.success("Voice note recorded and sent!");
+  };
+
+  const stopAndSendRecording = () => {
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+    }
+    setIsRecording(false);
+    setRecordingSeconds(0);
+    toast("Recording cancelled", { icon: "✕" });
+  };
+
+  // Play audio toggle
+  const togglePlayAudio = (msg: ChatMessage) => {
+    if (playingMessageId === msg.id) {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+      }
+      setPlayingMessageId(null);
+      return;
+    }
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+    }
+
+    if (msg.audioUrl) {
+      const audio = new Audio(msg.audioUrl);
+      currentAudioRef.current = audio;
+      audio.onended = () => setPlayingMessageId(null);
+      audio.play().catch(() => {});
+      setPlayingMessageId(msg.id);
+    } else {
+      // Simulate playback for pre-loaded voice notes
+      setPlayingMessageId(msg.id);
+      setTimeout(() => {
+        setPlayingMessageId(null);
+      }, 4000);
+    }
   };
 
   // ══════════════════════════════════════════════════════════════
-  // VIEW: EMPTY STATE (Screenshot 4 Right)
-  // ══════════════════════════════════════════════════════════════
-  if (showEmptyState) {
-    return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
-        <div className="flex items-center justify-between">
-          <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40]">
-            Messages
-          </h1>
-          <button
-            type="button"
-            onClick={() => setShowEmptyState(false)}
-            className="text-xs font-semibold text-blue-700 hover:underline cursor-pointer"
-          >
-            Show active chats
-          </button>
-        </div>
-
-        <div className="bg-white rounded-3xl p-12 sm:p-20 border border-neutral-200/80 shadow-xs max-w-lg mx-auto flex flex-col items-center text-center mt-12 animate-in fade-in duration-200">
-          <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-400 mb-4">
-            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-
-          <h2 className="font-heading font-extrabold text-xl text-[#001B40] mb-2">
-            No messages yet
-          </h2>
-
-          <p className="font-sans text-xs sm:text-sm text-neutral-400 max-w-xs mb-8 leading-relaxed">
-            When an artisan quotes for your job, you can chat with them here before you accept.
-          </p>
-
-          <Link
-            href="/post-job"
-            className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm"
-          >
-            + Post a job
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // VIEW: THREE-COLUMN MESSAGES UI (Screenshot 3 & 4)
+  // VIEW: THREE-COLUMN MESSAGES UI
   // ══════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in duration-150">
+      {/* Hidden file input for functional photo attachment */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        accept="image/*"
+        onChange={handlePhotoSelect}
+        className="hidden"
+      />
+
       {/* Top Header & Breadcrumb */}
       <div>
         <div className="flex items-center justify-between mb-1">
@@ -208,14 +325,6 @@ export default function MessagesPage() {
             </svg>
             <span>Most recent</span>
           </Link>
-
-          <button
-            type="button"
-            onClick={() => setShowEmptyState(true)}
-            className="text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 cursor-pointer"
-          >
-            Simulate Empty State
-          </button>
         </div>
 
         <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40]">
@@ -379,19 +488,17 @@ export default function MessagesPage() {
                       <div className="flex items-center gap-3 py-1">
                         <button
                           type="button"
-                          onClick={() => {
-                            setIsPlayingVoice(!isPlayingVoice);
-                            toast(isPlayingVoice ? "Paused audio" : "Playing voice note...", { icon: "🔊" });
-                          }}
-                          className="w-8 h-8 rounded-full bg-white text-[#001B40] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                          onClick={() => togglePlayAudio(msg)}
+                          className="w-8 h-8 rounded-full bg-white text-[#001B40] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs hover:scale-105 transition-transform"
+                          aria-label="Play voice note"
                         >
-                          {isPlayingVoice ? (
-                            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                          {playingMessageId === msg.id ? (
+                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                               <rect x="6" y="4" width="4" height="16" />
                               <rect x="14" y="4" width="4" height="16" />
                             </svg>
                           ) : (
-                            <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
+                            <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24">
                               <polygon points="5 3 19 12 5 21 5 3" />
                             </svg>
                           )}
@@ -402,8 +509,8 @@ export default function MessagesPage() {
                             <span
                               key={i}
                               style={{ height: `${h * 1.2}px` }}
-                              className={`w-1 rounded-full ${
-                                isPlayingVoice ? "bg-blue-300 animate-pulse" : "bg-white/60"
+                              className={`w-1 rounded-full transition-colors ${
+                                playingMessageId === msg.id ? "bg-blue-300 animate-pulse" : "bg-white/60"
                               }`}
                             />
                           ))}
@@ -425,58 +532,110 @@ export default function MessagesPage() {
           </div>
 
           {/* Bottom Chat Input Bar */}
-          <form
-            onSubmit={handleSendMessage}
-            className="p-3 border-t border-neutral-100 flex items-center gap-2 bg-white"
-          >
-            {/* Attachment Button */}
-            <button
-              type="button"
-              onClick={handleAttachPhoto}
-              className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
-              aria-label="Attach photo"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-              </svg>
-            </button>
+          {isRecording ? (
+            /* Active Recording Bar */
+            <div className="p-3 border-t border-rose-100 bg-rose-50/60 flex items-center justify-between gap-3 animate-in fade-in duration-150">
+              <div className="flex items-center gap-3">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600" />
+                </span>
+                <span className="text-xs font-bold text-rose-700">
+                  Recording audio...
+                </span>
+                <span className="text-xs font-mono font-semibold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md">
+                  0:{recordingSeconds < 10 ? "0" : ""}{recordingSeconds}
+                </span>
+              </div>
 
-            {/* Voice Record Button */}
-            <button
-              type="button"
-              onClick={handleRecordVoice}
-              className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
-              aria-label="Send voice note"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-            </button>
+              {/* Animated Mini Waves */}
+              <div className="hidden sm:flex items-center gap-1">
+                {[6, 14, 20, 10, 18, 8, 16, 22, 12, 14].map((h, i) => (
+                  <span
+                    key={i}
+                    style={{ height: `${h}px` }}
+                    className="w-1 bg-rose-500 rounded-full animate-pulse"
+                  />
+                ))}
+              </div>
 
-            {/* Text Input */}
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Write a message"
-              className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-hidden focus:border-[#001B40] transition-colors"
-            />
-
-            {/* Send Button */}
-            <button
-              type="submit"
-              className="w-10 h-10 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow-sm"
-              aria-label="Send message"
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={cancelRecording}
+                  className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-100 text-xs font-semibold cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={stopAndSendRecording}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs cursor-pointer flex items-center gap-1.5 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>Send</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Normal Chat Input Form */
+            <form
+              onSubmit={handleSendMessage}
+              className="p-3 border-t border-neutral-100 flex items-center gap-2 bg-white"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </form>
+              {/* Attachment Button */}
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="p-2 rounded-xl text-neutral-400 hover:text-[#001B40] hover:bg-neutral-100 transition-colors cursor-pointer"
+                title="Attach photo"
+                aria-label="Attach photo"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
+
+              {/* Voice Record Button */}
+              <button
+                type="button"
+                onClick={startRecording}
+                className="p-2 rounded-xl text-neutral-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                title="Record voice note"
+                aria-label="Record voice note"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </button>
+
+              {/* Text Input */}
+              <input
+                type="text"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                placeholder="Write a message..."
+                className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm text-neutral-800 placeholder:text-neutral-400 focus:outline-hidden focus:border-[#001B40] transition-colors"
+              />
+
+              {/* Send Button */}
+              <button
+                type="submit"
+                className="w-10 h-10 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white flex items-center justify-center shrink-0 transition-colors cursor-pointer shadow-sm"
+                aria-label="Send message"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </form>
+          )}
         </div>
 
         {/* ══════════════════════════════════════════════════════════ */}

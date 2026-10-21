@@ -307,3 +307,64 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 - **File**: `features/dashboard/components/WarrantyClaimSentView.tsx`
 - **Purpose**: Warranty claim confirmation screen matching `media_1792575107078.png`. Features green checkmark badge, 24-hour artisan response SLA notice, and action buttons for `Message Emeka` and `View booking`.
 - **Used In**: `app/(dashboard)/bookings/page.tsx` (`tab=completed`)
+
+### `FundWalletView`
+- **File**: `features/dashboard/components/FundWalletView.tsx`
+- **Purpose**: Dedicated multi-step wallet funding journey matching Figma designs:
+  - **Fund Account Form**: Amount input with dynamic balance preview, quick chips (₦5,000, ₦10,000, ₦25,000, ₦50,000, ₦100,000), breakdown table (Current balance, Funding fee, Processed by, Total to pay), Paystack badge sidecard.
+  - **Paystack Checkout Modal**: Paystack brand logotype, amount, user details, `Pay with Card`, `Pay with Transfer`, and secure checkout notice.
+  - **Deposit Processing**: Animated circular spinner, `Deposit processing`, amount, `Processing` status badge, and Deposit summary sidecard.
+  - **Deposit Successful**: Circular green checkmark badge, amount, transaction ID with copy action, timestamp, payment method, updated wallet balance card, and `Done` action.
+- **Used In**: `app/(dashboard)/wallet/page.tsx`
+
+### `WithdrawWalletView`
+- **File**: `features/dashboard/components/WithdrawWalletView.tsx`
+- **Purpose**: Dedicated multi-step wallet withdrawal journey matching fund wallet design language:
+  - **Withdraw Funds Form**: Amount input with dynamic remaining balance preview, quick chips, destination bank card (`Access Bank ···· 1416`), breakdown table (Balance, Free fee, NIP transfer, Total payout), and security sidecard.
+  - **4-Digit PIN Authorization Modal**: Secure PIN input to verify user authorization before fund transfer.
+  - **Withdrawal Processing**: Animated circular spinner, `Withdrawal processing`, amount, `Processing` status badge, and Withdrawal summary sidecard.
+  - **Withdrawal Successful**: Circular green checkmark badge, amount, destination bank, transaction reference with copy action, updated balance card, and `Done` action.
+- **Used In**: `app/(dashboard)/wallet/page.tsx`
+
+### `SettingsOverviewView`
+- **File**: `features/dashboard/components/settings/SettingsOverviewView.tsx`
+- **Purpose**: Main Settings overview screen matching Figma Customer Web · Settings overview:
+  - **Profile Header Card**: Avatar photo, user name, location, contact information, and `Edit profile` CTA.
+  - **Account Card**: Chevron rows for `Personal details`, `Security & transaction PIN`, `Notifications`, and `Language`.
+  - **Support Card**: Chevron rows for `Safety & support` and `Report a problem`.
+  - **Right Column Cards**: Navy Bluefixx Wallet card (₦85,000 balance with `Open wallet`), `Referral` card (₦5,000 voucher invite & earn), and `Account actions` card (`Log out` and `Delete Bluefixx account`).
+  - **Modals**: Integrated dialogs for Safety & Support (Emergency 112 dial, Support chat), Report a Problem, Referral code sharing, and Delete Account confirmation.
+- **Used In**: `app/(dashboard)/settings/page.tsx`
+
+### `PersonalDetailsView`
+- **File**: `features/dashboard/components/settings/PersonalDetailsView.tsx`
+- **Purpose**: User profile editing screen matching Figma Customer Web · Personal details:
+  - **Profile Photo**: Avatar with functional file picker to upload and update image.
+  - **Form Fields**: First name, Last name, Phone number, Email address, Address.
+  - **Emergency Contact**: Contact name, Phone number, and Safety Center helper note.
+  - **Summary Sidecard**: Profile information guidance, emergency contact review, and update policies.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=personal-details`)
+
+### `LanguageSettingsView`
+- **File**: `features/dashboard/components/settings/LanguageSettingsView.tsx`
+- **Purpose**: App-wide language preference selector matching Figma Customer Web · Language:
+  - **Active Language Banner**: Dynamic highlight box indicating currently selected language.
+  - **Interactive Search**: Real-time language search filter.
+  - **Radio Options**: National flag indicators for English, Igbo, Yorùbá, Hausa, and Nigerian Pidgin.
+  - **Summary Sidecard**: Language policy information and current active state.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=language`)
+
+### `TransactionPinView`
+- **File**: `features/dashboard/components/settings/TransactionPinView.tsx`
+- **Purpose**: 3-step security PIN setup wizard matching Figma Customer Web · Create / Confirm / PIN created:
+  - **Step 1 (Create PIN)**: Keypad icon, 4-digit input boxes with auto-advance and backspace support, `Continue` CTA.
+  - **Step 2 (Confirm PIN)**: 4-digit confirmation input boxes, validation against initial PIN, `Confirm PIN` CTA.
+  - **Step 3 (PIN Created)**: Circular green checkmark badge, completion summary, and `Done` action.
+  - **Security Sidecard**: Fraud prevention guidance, wallet protection details, and confidentiality policies.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=pin`)
+
+### `NotificationsSettingsView`
+- **File**: `features/dashboard/components/settings/NotificationsSettingsView.tsx`
+- **Purpose**: Notification channels preferences screen with toggles for SMS Security Alerts, Email Quotes & Receipts, Push Notifications, and Promotions.
+- **Used In**: `app/(dashboard)/settings/page.tsx` (`tab=notifications`)
+

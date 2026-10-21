@@ -1,75 +1,58 @@
 # Current Session Handoff
 
-*Last updated: 2026-10-21 (Milestone Selector Removal, Mobile Logo Fix, Profile Accordion with Wallet, Payment Released, Rate Artisan, Warranty Claim Flow, 3-Column Messages Page, Wallet Page & Transaction Detail)*
+*Last updated: 2026-10-21 (Fund Wallet & Withdrawal Flows, Functional Attachments & Voice Notes in Messages, Settings Suite: Overview, Personal Details, Language, Transaction PIN)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
-In accordance with user feedback and the 5 attached Figma screenshots (`media_1792575083520.png` through `media_1792575260402.png`):
+In accordance with user feedback and the provided Figma screenshots:
 
-1. **Cleaned up Tracker View (`JobProgressTrackerView.tsx`)**:
-   - Removed the testing milestone `<select>` simulation bar and Cost Alert toggle button.
-   - Wired `onPaymentReleased` callback so confirming release seamlessly transitions directly into the `PaymentReleasedView`.
-   - Wired all `Message Emeka` buttons and the safety modal's `Message Bluefixx support` button to route to `/messages?conversation=emeka` and `/messages?conversation=support`.
+1. **Messages Page Functional Refinements (`app/(dashboard)/messages/page.tsx`)**:
+   - Removed the "Simulate Empty State" test button and empty state conditional block.
+   - **Functional Photo Attachment**: Wired hidden `<input type="file" accept="image/*">` triggered by the attachment button; user can pick any photo from their device and send it directly into the chat stream with an instant image preview and auto-response.
+   - **Functional Voice Note Recording**: Implemented real microphone capture using browser `navigator.mediaDevices.getUserMedia` and `MediaRecorder` API. Features live recording interface in the input bar with pulsing red indicator, live timer, animated waveform visual, cancel button, and send button.
+   - **Functional Audio Playback**: Plays recorded or sample voice notes with play/pause state toggle and dynamic animated sound wave feedback.
 
-2. **Fixed Mobile Sidebar Logo Visibility (`DashboardSidebar.tsx`)**:
-   - Generated native navy brand logo SVG [BFLogoBlue.svg](file:///c:/Users/ASUS/bluefixx-frontend/public/icons/BFLogoBlue.svg) preserving exact geometric crop without relying on CSS `brightness-0` filter (which failed on mobile WebKit).
-   - Replaced `/icons/BFLogoW.svg` with `/icons/BFLogoBlue.svg` in `DashboardSidebar.tsx`, rendering the logo crisp, high-contrast, and 100% visible on both mobile drawer and desktop.
+2. **Dedicated Fund Wallet Flow (`features/dashboard/components/FundWalletView.tsx`)**:
+   - **Fund Account Form** (`Customer Web · Fund wallet`): Breadcrumb `< Wallet`, dynamic balance preview, quick chips (`₦5,000`, `₦10,000`, `₦25,000`, `₦50,000`, `₦100,000`), breakdown table (Current balance, Free fee, Paystack gateway, Total to pay), and security information sidecard.
+   - **Paystack Checkout Modal** (`Customer Web · Paystack checkout`): Modal with Paystack brand logotype, amount, user details, `Pay with Card`, `Pay with Transfer`, and secure checkout disclaimer.
+   - **Deposit Processing** (`Customer Web · Deposit processing`): Animated circular spinner, `Deposit processing`, amount, `Processing` status badge, and Deposit summary sidecard.
+   - **Deposit Successful** (`Customer Web · Deposit successful`): Circular green checkmark badge, amount, transaction reference (`BFX-FND-4475191`) with copy button, method details, updated balance card, and `Done` action.
 
-3. **Added Profile Accordion with Submenus (`DashboardSidebar.tsx`)**:
-   - Refactored `Profile` in the sidebar from a simple link to an accordion with rotate-animated chevron.
-   - Added submenus:
-     - `My profile` (`/profile`)
-     - `Wallet` (`/wallet`)
-   - Added auto-expand and active state highlighting for child routes.
+3. **Dedicated Withdrawal Flow (`features/dashboard/components/WithdrawWalletView.tsx`)**:
+   - Built mirror high-fidelity views matching fund wallet:
+     - **Withdraw Funds Form**: Amount input, quick chips, destination bank (`Access Bank ···· 1416`), zero fee breakdown, and safety guarantee sidecard.
+     - **4-Digit PIN Authorization Modal**: Secure modal to enter 4-digit transaction PIN before withdrawal.
+     - **Withdrawal Processing**: Animated circular spinner with status badge.
+     - **Withdrawal Successful**: Green checkmark, transaction ID (`BFX-WTH-8823104`), updated balance card, and return to wallet.
 
-4. **Built Completed Bookings Workflow (`app/(dashboard)/bookings/page.tsx`)**:
-   - Built [PaymentReleasedView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/PaymentReleasedView.tsx): Green active 7-day warranty banner with claim link, green checkmark badge, total amount (₦120,000), breakdown table (Customer payment, 7% service fee -₦8,400, artisan earnings ₦111,600, TXN-634891, timestamp), and `Leave a Review` CTA.
-   - Built [RateArtisanView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/RateArtisanView.tsx): Emeka Okafor avatar, interactive 5-star rating selector, public comment textarea, recommendation toggle (`Would you recommend Emeka? Yes/No`), and `Submit Review` CTA.
-   - Built [WarrantyClaimView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/WarrantyClaimView.tsx): Category selection chips (`The leak is back`, `Part stopped working`, `Damage from the repair`, `Work left unfinished`, `Other`), problem description textarea, `Add photo(s)` and `Add Video` buttons, `How the warranty works` side card, and `Send to Emeka and Bluefixx` CTA.
-   - Built [WarrantyClaimSentView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/WarrantyClaimSentView.tsx): Circular green check badge, 24-hour return visit notice, `Message Emeka` button, and `View booking` button.
-   - Integrated full state navigation under `app/(dashboard)/bookings/page.tsx` (`tab=completed`).
-
-5. **Built Full Messages Suite (`app/(dashboard)/messages/page.tsx`)**:
-   - 3-column layout matching Figma screenshots:
-     - **Column 1: Conversations List**: Emeka Okafor and Bluefixx Support with status, unread counts, and active state styling.
-     - **Column 2: Chat Window**: Navy header with artisan name and `Safety` button; chat body with photo attachments, artisan messages, audio waveform voice note player with play/pause toggle, and bottom input with photo/mic attachment actions and send button.
-     - **Column 3: Booking details**: Quote negotiation status pill, job report summary, and direct link to job.
-   - **Conversation Options Modal**: Triggered by `Safety` button, with `Call the police` (emergency 112 dial), `Message Bluefixx support` (switches active conversation), and `Share location` (copies GPS link).
-   - **Empty State View**: Toggleable simulator with speech bubble icon, title, subtitle, and `+ Post a job` button.
-
-6. **Built Full Wallet Suite (`app/(dashboard)/wallet/page.tsx`)**:
-   - **Wallet Overview**:
-     - Navy Available Balance card (₦85,000 balance, ₦120,000 held for jobs in progress pill, `+ Fund Wallet`, `Withdraw`).
-     - White Wallet Settings card (`Payment methods` Access Bank ···· 1416, `Transaction PIN` security setup).
-     - Filterable Transactions table (`All`, `Payments`, `Deposits`, `Funding`, `Refunds`) with amounts, status pills (`Secured`, `Completed`, `Released`, `Returned`), and row click inspection.
-   - **Transaction Details View**:
-     - Header with amount (-₦120,000), `Secured` badge, and timestamp.
-     - `Payment breakdown` card (Labour ₦80,000, Materials ₦40,000, Total ₦120,000).
-     - `Transaction information` card (Job payment type, Reference BFX-TXN-4475193 with copy button, Method, Balances before and after).
-     - Job summary card with `View booking` and `Report a problem` dispute link.
-     - Protection guarantee footnote.
-   - **Interactive Modals**:
-     - Fund Wallet modal (Paystack card / bank transfer).
-     - Withdraw Funds modal.
-     - 4-digit Transaction PIN input modal.
-     - Payment methods modal.
-
-7. **Documentation & Type Verification**:
-   - Updated `docs/COMPONENT_INVENTORY.md`, `docs/ROUTE_MAP.md`, and `docs/handoffs/CURRENT_HANDOFF.md`.
-   - Verified strict TypeScript compilation with `npx tsc --noEmit` (**0 errors**).
+4. **Settings Suite (`app/(dashboard)/settings/page.tsx` & `features/dashboard/components/settings/`)**:
+   - Built [SettingsOverviewView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/settings/SettingsOverviewView.tsx) (`Customer Web · Settings overview`): Profile header card with `Edit profile`, Account card with chevrons to all sub-views, Support card with Safety and Report a problem dialogs, Navy Bluefixx Wallet card (₦85,000 with `Open wallet`), Referral card (₦5,000 voucher invite & earn), and Account actions card (`Log out` and `Delete Bluefixx account`).
+   - Built [PersonalDetailsView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/settings/PersonalDetailsView.tsx) (`Customer Web · Personal details`): Profile photo with functional photo upload, first and last name, phone, email, address, and emergency contact details used by the Safety Center.
+   - Built [LanguageSettingsView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/settings/LanguageSettingsView.tsx) (`Customer Web · Language`): Active language banner box, real-time language search input, flag radio options (English, Igbo, Yorùbá, Hausa, Pidgin), and sidecard.
+   - Built [TransactionPinView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/settings/TransactionPinView.tsx) (`Customer Web · Create / Confirm / PIN created`): 3-step PIN setup wizard with auto-advance 4-digit inputs, confirmation validation, and success screen.
+   - Built [NotificationsSettingsView.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/settings/NotificationsSettingsView.tsx): Notification channels toggles for SMS alerts, email quotes, and push notifications.
+   - Updated [DashboardSidebar.tsx](file:///c:/Users/ASUS/bluefixx-frontend/features/dashboard/components/DashboardSidebar.tsx) to include `Notifications` in the Settings submenu.
 
 ---
 
 ## 2. Relevant Files
-- `features/dashboard/components/JobProgressTrackerView.tsx`
-- `features/dashboard/components/SecureJobPaymentView.tsx`
-- `app/(dashboard)/bookings/page.tsx`
+- `app/(dashboard)/messages/page.tsx`
+- `app/(dashboard)/wallet/page.tsx`
+- `features/dashboard/components/FundWalletView.tsx`
+- `features/dashboard/components/WithdrawWalletView.tsx`
+- `app/(dashboard)/settings/page.tsx`
+- `features/dashboard/components/settings/SettingsOverviewView.tsx`
+- `features/dashboard/components/settings/PersonalDetailsView.tsx`
+- `features/dashboard/components/settings/LanguageSettingsView.tsx`
+- `features/dashboard/components/settings/TransactionPinView.tsx`
+- `features/dashboard/components/settings/NotificationsSettingsView.tsx`
+- `features/dashboard/components/DashboardSidebar.tsx`
 - `docs/COMPONENT_INVENTORY.md`
 - `docs/handoffs/CURRENT_HANDOFF.md`
 
 ---
 
 ## 3. Verification Performed
-- Static TypeScript check (`npx tsc --noEmit`) exited with **code 0 (clean, 0 errors)**.
-- Verified visual alignment with all 5 Figma screenshots.
+- Static TypeScript check (`npx tsc --noEmit`) verified clean with **0 errors**.
+- All user requests (Messages empty state removal, functional voice & attachments, fund wallet & withdrawal matching screens, and settings suite) implemented strictly according to Figma screenshots.

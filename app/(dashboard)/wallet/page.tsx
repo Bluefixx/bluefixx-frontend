@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { FundWalletView } from "@/features/dashboard/components/FundWalletView";
+import { WithdrawWalletView } from "@/features/dashboard/components/WithdrawWalletView";
 
 interface WalletTransaction {
   id: string;
@@ -23,19 +25,17 @@ interface WalletTransaction {
 
 export default function WalletPage() {
   const { walletBalance } = useAuth();
+  const [balance, setBalance] = useState<number>(walletBalance || 85000);
+  const [activeView, setActiveView] = useState<"overview" | "fund" | "withdraw">("overview");
   const [selectedTransaction, setSelectedTransaction] = useState<WalletTransaction | null>(null);
   const [activeTab, setActiveTab] = useState<"All" | "Payments" | "Deposits" | "Funding" | "Refunds">("All");
 
   // Modals
-  const [isFundModalOpen, setIsFundModalOpen] = useState(false);
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isPaymentMethodsModalOpen, setIsPaymentMethodsModalOpen] = useState(false);
-  const [fundAmount, setFundAmount] = useState("50000");
-  const [withdrawAmount, setWithdrawAmount] = useState("20000");
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
 
-  const allTransactions: WalletTransaction[] = [
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([
     {
       id: "txn-1",
       title: "Bathroom Plumbing Repair",
@@ -103,9 +103,9 @@ export default function WalletPage() {
       balanceBefore: 131000,
       balanceAfter: 71000,
     },
-  ];
+  ]);
 
-  const filteredTransactions = allTransactions.filter((txn) => {
+  const filteredTransactions = transactions.filter((txn) => {
     if (activeTab === "All") return true;
     if (activeTab === "Payments") return txn.category === "payment";
     if (activeTab === "Deposits") return txn.category === "deposit";
@@ -121,16 +121,38 @@ export default function WalletPage() {
     toast.success(`Copied reference ${ref} to clipboard!`);
   };
 
-  const handleFundWallet = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsFundModalOpen(false);
-    toast.success(`Redirecting to Paystack to fund ₦${Number(fundAmount).toLocaleString()}...`);
+  const handleDepositCompleted = (amount: number, newBal: number, reference: string) => {
+    setBalance(newBal);
+    const newTxn: WalletTransaction = {
+      id: `txn-${Date.now()}`,
+      title: "Wallet funding - Paystack",
+      category: "funding",
+      date: "Just now",
+      amount: amount,
+      isCredit: true,
+      status: "Completed",
+      reference: reference,
+      balanceBefore: balance,
+      balanceAfter: newBal,
+    };
+    setTransactions((prev) => [newTxn, ...prev]);
   };
 
-  const handleWithdraw = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsWithdrawModalOpen(false);
-    toast.success(`Withdrawal of ₦${Number(withdrawAmount).toLocaleString()} initiated to Access Bank!`);
+  const handleWithdrawalCompleted = (amount: number, newBal: number, reference: string) => {
+    setBalance(newBal);
+    const newTxn: WalletTransaction = {
+      id: `txn-${Date.now()}`,
+      title: "Bank withdrawal - Access Bank",
+      category: "payment",
+      date: "Just now",
+      amount: amount,
+      isCredit: false,
+      status: "Completed",
+      reference: reference,
+      balanceBefore: balance,
+      balanceAfter: newBal,
+    };
+    setTransactions((prev) => [newTxn, ...prev]);
   };
 
   const handleSavePin = (e: React.FormEvent) => {
@@ -138,6 +160,32 @@ export default function WalletPage() {
     setIsPinModalOpen(false);
     toast.success("Transaction PIN updated successfully.");
   };
+
+  // ══════════════════════════════════════════════════════════════
+  // VIEW: FUND WALLET DEDICATED FLOW (Screenshots 1 & 2)
+  // ══════════════════════════════════════════════════════════════
+  if (activeView === "fund") {
+    return (
+      <FundWalletView
+        currentBalance={balance}
+        onBackToWallet={() => setActiveView("overview")}
+        onDepositCompleted={handleDepositCompleted}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // VIEW: WITHDRAW DEDICATED FLOW
+  // ══════════════════════════════════════════════════════════════
+  if (activeView === "withdraw") {
+    return (
+      <WithdrawWalletView
+        currentBalance={balance}
+        onBackToWallet={() => setActiveView("overview")}
+        onWithdrawalCompleted={handleWithdrawalCompleted}
+      />
+    );
+  }
 
   // ══════════════════════════════════════════════════════════════
   // VIEW: TRANSACTION DETAILS (Screenshot 5 Right)
@@ -365,7 +413,7 @@ export default function WalletPage() {
               AVAILABLE BALANCE
             </span>
             <div className="font-heading font-black text-3xl sm:text-5xl text-white my-3 tracking-tight">
-              ₦{walletBalance.toLocaleString()}
+              ₦{balance.toLocaleString()}
             </div>
             <div className="inline-flex items-center gap-1.5 bg-white/10 text-blue-100 text-xs px-3.5 py-1 rounded-full backdrop-blur-xs font-medium">
               <span>₦120,000 held for jobs in progress</span>
@@ -375,14 +423,14 @@ export default function WalletPage() {
           <div className="flex items-center gap-3 pt-6 sm:pt-8">
             <button
               type="button"
-              onClick={() => setIsFundModalOpen(true)}
+              onClick={() => setActiveView("fund")}
               className="py-2.5 px-5 bg-white hover:bg-neutral-100 text-[#001B40] font-bold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer shadow-sm"
             >
               + Fund Wallet
             </button>
             <button
               type="button"
-              onClick={() => setIsWithdrawModalOpen(true)}
+              onClick={() => setActiveView("withdraw")}
               className="py-2.5 px-5 border border-white/30 hover:bg-white/10 text-white font-semibold text-xs sm:text-sm rounded-xl transition-colors cursor-pointer"
             >
               Withdraw
@@ -555,108 +603,7 @@ export default function WalletPage() {
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* MODAL: FUND WALLET                                          */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {isFundModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-2xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 className="font-heading font-bold text-base text-[#001B40]">
-                Fund Wallet
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsFundModalOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
 
-            <form onSubmit={handleFundWallet} className="space-y-4">
-              <div>
-                <label htmlFor="fund-amount" className="block text-xs font-semibold text-neutral-600 mb-1.5">
-                  Amount to Fund (₦)
-                </label>
-                <input
-                  id="fund-amount"
-                  type="number"
-                  value={fundAmount}
-                  onChange={(e) => setFundAmount(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-900 focus:outline-hidden focus:border-[#001B40]"
-                />
-              </div>
-
-              <div className="p-3 rounded-xl bg-neutral-50 text-xs text-neutral-500">
-                Payment processed securely via Paystack debit card or instant bank transfer.
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                Proceed to Payment
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* MODAL: WITHDRAW FUNDS                                        */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {isWithdrawModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-2xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl relative space-y-4 animate-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
-              <h3 className="font-heading font-bold text-base text-[#001B40]">
-                Withdraw Funds
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsWithdrawModalOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleWithdraw} className="space-y-4">
-              <div>
-                <label htmlFor="withdraw-amount" className="block text-xs font-semibold text-neutral-600 mb-1.5">
-                  Amount to Withdraw (₦)
-                </label>
-                <input
-                  id="withdraw-amount"
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-900 focus:outline-hidden focus:border-[#001B40]"
-                />
-              </div>
-
-              <div className="p-3 rounded-xl bg-neutral-50 text-xs text-neutral-600">
-                <span className="font-bold block text-[#001B40]">Destination Bank:</span>
-                Access Bank · 0123456789 · Daniel Chukwu
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                Confirm Withdrawal
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ══════════════════════════════════════════════════════════════ */}
       {/* MODAL: TRANSACTION PIN (Input field requested by user)       */}

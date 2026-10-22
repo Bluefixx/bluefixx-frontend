@@ -31,7 +31,7 @@ type SettingsTab =
   | "report-problem"
   | "referral";
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const searchParams = useSearchParams();
   const { user, locationName } = useAuth();
 
@@ -137,5 +137,19 @@ export default function SettingsPage() {
       onNavigate={(tab) => setActiveTab(tab)}
       userData={userData}
     />
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="p-8 text-center text-xs text-neutral-400 font-sans">
+          Loading settings...
+        </div>
+      }
+    >
+      <SettingsPageContent />
+    </React.Suspense>
   );
 }

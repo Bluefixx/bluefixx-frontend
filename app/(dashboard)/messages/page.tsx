@@ -17,7 +17,7 @@ interface ChatMessage {
   time: string;
 }
 
-export default function MessagesPage() {
+function MessagesPageContent() {
   const searchParams = useSearchParams();
   const initialConversation = searchParams.get("conversation") === "support" ? "support" : "emeka";
 
@@ -777,5 +777,19 @@ export default function MessagesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="h-[calc(100vh-8rem)] flex items-center justify-center p-8 text-neutral-400 font-sans text-xs">
+          Loading messages...
+        </div>
+      }
+    >
+      <MessagesPageContent />
+    </React.Suspense>
   );
 }

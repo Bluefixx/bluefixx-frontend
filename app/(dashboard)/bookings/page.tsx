@@ -12,7 +12,7 @@ import RateArtisanView from "@/features/dashboard/components/RateArtisanView";
 import WarrantyClaimView from "@/features/dashboard/components/WarrantyClaimView";
 import WarrantyClaimSentView from "@/features/dashboard/components/WarrantyClaimSentView";
 
-export default function BookingsPage() {
+function BookingsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -312,5 +312,19 @@ export default function BookingsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BookingsPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="p-8 text-center text-xs text-neutral-400 font-sans">
+          Loading bookings...
+        </div>
+      }
+    >
+      <BookingsPageContent />
+    </React.Suspense>
   );
 }

@@ -13,7 +13,7 @@ interface DashboardSidebarProps {
   onClose?: () => void;
 }
 
-export default function DashboardSidebar({
+function DashboardSidebarContent({
   onOpenRoleSwitcher,
   isOpen = false,
   onClose,
@@ -538,5 +538,17 @@ export default function DashboardSidebar({
         </div>
       )}
     </>
+  );
+}
+
+export default function DashboardSidebar(props: DashboardSidebarProps) {
+  return (
+    <React.Suspense
+      fallback={
+        <aside className="hidden lg:block shrink-0 w-64 bg-white border-r border-neutral-100 min-h-screen" />
+      }
+    >
+      <DashboardSidebarContent {...props} />
+    </React.Suspense>
   );
 }

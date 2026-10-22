@@ -18,11 +18,13 @@ export default function ArtisanDashboardLayout({
   return (
     <div className="min-h-screen bg-[#FBFBFC] flex flex-row font-sans text-neutral-900">
       {/* Sidebar Navigation */}
-      <DashboardSidebar
-        isOpen={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        onOpenRoleSwitcher={() => setIsRoleSwitcherOpen(true)}
-      />
+      <React.Suspense fallback={<aside className="hidden lg:block shrink-0 w-64 bg-white border-r border-neutral-100 min-h-screen" />}>
+        <DashboardSidebar
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          onOpenRoleSwitcher={() => setIsRoleSwitcherOpen(true)}
+        />
+      </React.Suspense>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">

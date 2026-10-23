@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import { User, LoginRequest, LoginResponse } from "@/types/auth";
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -29,12 +30,15 @@ export interface AuthUser {
   fullName: string;
   email: string;
   phone: string;
+  emailVerifiedAt?: string | null;
+  phoneVerifiedAt?: string | null;
+  role?: "customer" | "artisan" | "apprentice" | "CUSTOMER" | "ARTISAN" | "LEARNER" | null;
   avatarUrl?: string;
   state?: string;
   city?: string;
   streetAddress?: string;
-  role?: "customer" | "artisan" | "apprentice";
-  isVerified: boolean;
+  isVerified?: boolean;
+  createdAt?: string;
 }
 
 export type RegistrationStep = 1 | 2 | 3 | 4 | 5 | 6;
@@ -42,6 +46,8 @@ export type RegistrationStep = 1 | 2 | 3 | 4 | 5 | 6;
 export interface AuthState {
   /** Currently authenticated user, null when logged out */
   user: AuthUser | null;
+  /** Active in-memory access token */
+  accessToken: string | null;
   /** Active role currently viewing the application */
   activeRole: "customer" | "artisan" | "apprentice";
   /** Whether the user has completed apprentice training (unlocks artisan role) */
@@ -52,6 +58,8 @@ export interface AuthState {
   locationName: string;
   /** Whether an auth request is in progress */
   isLoading: boolean;
+  /** Active phone or password reset challengeId returned by backend */
+  challengeId: string | null;
   /** Registration flow: partial data collected so far */
   registrationData: Partial<RegistrationData>;
   /** Registration flow: current step (1–6) */
@@ -87,6 +95,8 @@ export interface AuthActions {
   setVerificationCode: (code: string) => void;
   /** Mark OTP as sent */
   setOtpSent: (sent: boolean) => void;
+  /** Set challenge ID returned by auth endpoints */
+  setChallengeId: (id: string | null) => void;
   /** Set language preference */
   setSelectedLanguageId: (id: string) => void;
   /** Mark intro as completed */
@@ -95,6 +105,12 @@ export interface AuthActions {
   setIsLoading: (loading: boolean) => void;
   /** Set user (after login/registration success) */
   setUser: (user: AuthUser | null) => void;
+  /** Set in-memory access token */
+  setAccessToken: (token: string | null) => void;
+  /** Login with backend API */
+  login: (credentials: LoginRequest) => Promise<LoginResponse>;
+  /** Logout with backend API */
+  logout: () => Promise<void>;
   /** Reset all registration state */
   resetRegistration: () => void;
   /** Reset entire auth state */
@@ -119,11 +135,13 @@ export const DEFAULT_AUTH_STATE: AuthState = {
     role: "customer",
     isVerified: true,
   },
+  accessToken: null,
   activeRole: "customer",
   apprenticeTrainingCompleted: false,
   walletBalance: 85000,
   locationName: "Independence Layout, Enugu",
   isLoading: false,
+  challengeId: null,
   registrationData: {},
   registrationStep: 1,
   verificationPhone: "",

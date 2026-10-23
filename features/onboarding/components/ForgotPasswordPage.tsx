@@ -4,10 +4,13 @@ import React, { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
+import { forgotPasswordApi, verifyResetOtpApi, resetPasswordApi } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [challengeId, setChallengeId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [codeSent, setCodeSent] = useState(false);
   const [resetCode, setResetCode] = useState("");
@@ -18,24 +21,32 @@ export default function ForgotPasswordPage() {
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      if (!phone.trim()) {
-        toast.error("Please enter your phone number.");
+      if (!email.trim() || !email.includes("@")) {
+        toast.error("Please enter a valid email address.");
         return;
       }
 
       setIsLoading(true);
       try {
-        // Mock API request to send SMS reset code
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const response = await forgotPasswordApi({ email: email.trim() });
+        setChallengeId(response.challengeId);
         setCodeSent(true);
-        toast.success(`Reset code sent to ${phone}`);
-      } catch {
-        toast.error("Failed to send reset code. Please try again.");
+        toast.success(response.message || "A verification code has been queued.");
+      } catch (err: unknown) {
+        if (err instanceof ApiError) {
+          if (err.code === "OTP_COOLDOWN" || err.code === "RATE_LIMITED") {
+            toast.error("Recovery request limit reached. Please try again later.");
+          } else {
+            toast.error(err.message || "Failed to send reset code.");
+          }
+        } else {
+          toast.error("Failed to send reset code. Please try again.");
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [phone]
+    [email]
   );
 
   const handleResetPassword = useCallback(
@@ -46,27 +57,49 @@ export default function ForgotPasswordPage() {
         toast.error("Please enter the 6-digit reset code.");
         return;
       }
-      if (!newPassword || newPassword.length < 6) {
-        toast.error("New password must be at least 6 characters.");
+      if (!newPassword || newPassword.length < 8) {
+        toast.error("New password must be at least 8 characters.");
         return;
       }
       if (newPassword !== confirmPassword) {
         toast.error("Passwords do not match.");
         return;
       }
+      if (!challengeId) {
+        toast.error("Recovery challenge expired. Please restart the request.");
+        setCodeSent(false);
+        return;
+      }
 
       setIsLoading(true);
       try {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        toast.success("Password reset successfully! Please sign in.");
+        const verifyRes = await verifyResetOtpApi({
+          challengeId,
+          code: resetCode.trim(),
+        });
+
+        await resetPasswordApi({
+          resetToken: verifyRes.resetToken,
+          newPassword,
+        });
+
+        toast.success("Password updated successfully! Please sign in.");
         router.push("/login");
-      } catch {
-        toast.error("Failed to reset password. Please check your code.");
+      } catch (err: unknown) {
+        if (err instanceof ApiError) {
+          if (err.code === "CHALLENGE_INVALID" || err.code === "OTP_INVALID") {
+            toast.error("Invalid or expired reset code. Please check and try again.");
+          } else {
+            toast.error(err.message || "Failed to reset password.");
+          }
+        } else {
+          toast.error("Failed to reset password. Please check your connection.");
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [resetCode, newPassword, confirmPassword, router]
+    [resetCode, newPassword, confirmPassword, challengeId, router]
   );
 
   return (
@@ -146,16 +179,16 @@ export default function ForgotPasswordPage() {
             {/* Subtext */}
             <p className="font-sans text-xs sm:text-sm text-neutral-600 mt-1.5 mb-5 leading-relaxed">
               {codeSent
-                ? `Enter the 6-digit code sent to ${phone} and choose a new password.`
-                : "Enter the phone number linked to your account and we'll send a secure reset code."}
+                ? `Enter the 6-digit code sent for ${email} and choose a new password.`
+                : "Enter the email address linked to your account and we'll send a secure reset code."}
             </p>
 
             {!codeSent ? (
               <form onSubmit={handleSendResetCode} className="space-y-4">
-                {/* Phone number field */}
+                {/* Email address field */}
                 <div className="flex flex-col text-left">
                   <label className="font-sans font-medium text-xs text-neutral-800 mb-1.5">
-                    Phone number
+                    Email address
                   </label>
                   <div className="relative w-full">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
@@ -169,14 +202,15 @@ export default function ForgotPasswordPage() {
                         strokeLinejoin="round"
                         aria-hidden="true"
                       >
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
                       </svg>
                     </span>
                     <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+234 803 245 0000"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@email.com"
                       className="w-full bg-white border border-neutral-300 rounded-xl py-2.5 pl-10 pr-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#001B40] focus:ring-1 focus:ring-[#001B40]"
                     />
                   </div>
@@ -196,7 +230,7 @@ export default function ForgotPasswordPage() {
                   >
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  <span>We&apos;ll send a 6-digit code by SMS. It expires after 10 minutes.</span>
+                  <span>If an account exists, a 6-digit code will be sent. It expires after 10 minutes.</span>
                 </div>
 
                 {/* Submit button */}

@@ -3,6 +3,10 @@
 import React, { useState } from "react";
 import AuthHeroPanel from "./AuthHeroPanel";
 
+import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import { ApiError } from "@/lib/api/client";
+
 interface EmailSignInProps {
   onBack: () => void;
   onGoToSignUp: () => void;
@@ -14,6 +18,7 @@ export default function EmailSignIn({
   onGoToSignUp,
   onSuccess,
 }: EmailSignInProps) {
+  const { login, isLoading, setIsLoading } = useAuth();
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -28,7 +33,7 @@ export default function EmailSignIn({
     return null;
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setHasSubmitted(true);
     const err = validateEmail(email);
@@ -37,10 +42,30 @@ export default function EmailSignIn({
       return;
     }
     setEmailError(null);
-    if (onSuccess) {
-      onSuccess();
-    } else {
-      alert("Signed in successfully!");
+
+    if (!password) {
+      toast.error("Please enter your password.");
+      return;
+    }
+
+    try {
+      await login({ email, password });
+      toast.success("Welcome back to BlueFixx!");
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (apiErr: unknown) {
+      if (apiErr instanceof ApiError) {
+        if (apiErr.code === "INVALID_CREDENTIALS") {
+          toast.error("Invalid email or password.");
+        } else if (apiErr.code === "LOGIN_RATE_LIMITED" || apiErr.code === "RATE_LIMITED") {
+          toast.error("Too many sign-in attempts. Please wait a moment.");
+        } else {
+          toast.error(apiErr.message || "Sign in failed.");
+        }
+      } else {
+        toast.error("Sign in failed. Please check your connection.");
+      }
     }
   };
 

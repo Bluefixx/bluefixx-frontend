@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
 import { useAuth, RegistrationStep } from "@/lib/stores/auth-store";
+import { registerApi, verifyPhoneApi, resendOtpApi, selectRoleApi } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -17,6 +19,9 @@ export default function SignupPage() {
     setVerificationPhone,
     verificationCode,
     setVerificationCode,
+    challengeId,
+    setChallengeId,
+    login,
     setUser,
     setActiveRole,
     isLoading,
@@ -175,17 +180,42 @@ export default function SignupPage() {
 
       setIsLoading(true);
       try {
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        setVerificationPhone(phoneForVerify);
+        const payloadPhone = phoneForVerify.trim();
+        const res = await registerApi({
+          fullName: registrationData.fullName || fullName,
+          phone: payloadPhone,
+          email: registrationData.email || email,
+          password: registrationData.password || password,
+          acceptedTerms: true,
+        });
+
+        if (res.challengeId) {
+          setChallengeId(res.challengeId);
+        }
+        setVerificationPhone(payloadPhone);
         setRegistrationStep(3);
-        toast.success(`Verification code sent to ${phoneForVerify}`);
-      } catch {
-        toast.error("Failed to send verification code. Please try again.");
+        toast.success(res.message || `Verification code sent to ${payloadPhone}`);
+      } catch (err: unknown) {
+        if (err instanceof ApiError) {
+          toast.error(err.message || "Failed to send verification code.");
+        } else {
+          toast.error("Network error. Please try again.");
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [phoneForVerify, setIsLoading, setVerificationPhone, setRegistrationStep]
+    [
+      phoneForVerify,
+      registrationData,
+      fullName,
+      email,
+      password,
+      setIsLoading,
+      setChallengeId,
+      setVerificationPhone,
+      setRegistrationStep,
+    ]
   );
 
   // ── Step 3 Handlers: OTP Entry ────────────────────────────────
@@ -232,42 +262,90 @@ export default function SignupPage() {
 
       setIsLoading(true);
       try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // Mock invalid verification check if user typed all 9s
-        if (code === "999999") {
-          setOtpError(true);
-          toast.error("Verification code expired or invalid.");
+        if (!challengeId) {
+          toast.error("Verification session expired. Please re-enter your phone number.");
+          setRegistrationStep(2);
           return;
         }
 
+        const verifyRes = await verifyPhoneApi({
+          challengeId,
+          code,
+        });
+
         setVerificationCode(code);
-        toast.success("Phone verified successfully!");
+        toast.success(verifyRes.message || "Phone verified successfully!");
+
+        // Auto sign-in to establish access token session
+        try {
+          await login({
+            email: registrationData.email || email,
+            password: registrationData.password || password,
+          });
+        } catch {
+          // If login fails right here, continue onboarding
+        }
+
         setRegistrationStep(4);
-      } catch {
+      } catch (err: unknown) {
         setOtpError(true);
-        toast.error("Invalid verification code.");
+        if (err instanceof ApiError) {
+          if (err.code === "CHALLENGE_EXPIRED") {
+            toast.error("Verification code has expired. Please request a new one.");
+          } else if (err.code === "OTP_INVALID" || err.code === "CHALLENGE_INVALID") {
+            toast.error("Invalid verification code. Please check and try again.");
+          } else {
+            toast.error(err.message || "Invalid verification code.");
+          }
+        } else {
+          toast.error("Failed to verify code. Please check your connection.");
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [otpDigits, setIsLoading, setVerificationCode, setRegistrationStep]
+    [
+      otpDigits,
+      challengeId,
+      registrationData,
+      email,
+      password,
+      login,
+      setIsLoading,
+      setVerificationCode,
+      setRegistrationStep,
+    ]
   );
 
   const handleResendOtp = useCallback(async () => {
+    if (!challengeId) {
+      toast.error("Please re-enter your phone number.");
+      setRegistrationStep(2);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      toast.success(`New code sent to ${verificationPhone || phoneForVerify}`);
+      const res = await resendOtpApi({ challengeId });
+      setChallengeId(res.challengeId);
+      toast.success(res.message || `New code sent to ${verificationPhone || phoneForVerify}`);
       setOtpDigits(["", "", "", "", "", ""]);
       setOtpError(false);
       digitInputRefs.current[0]?.focus();
-    } catch {
-      toast.error("Could not resend code. Please try again.");
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        if (err.code === "OTP_COOLDOWN") {
+          toast.error("Please wait a moment before requesting another code.");
+        } else {
+          toast.error(err.message || "Could not resend code. Please try again.");
+        }
+      } else {
+        toast.error("Could not resend code. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [verificationPhone, phoneForVerify, setIsLoading]);
+  }, [challengeId, verificationPhone, phoneForVerify, setIsLoading, setChallengeId, setRegistrationStep]);
 
   // ── Step 4 Handlers: Profile Photo ────────────────────────────
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,7 +413,19 @@ export default function SignupPage() {
       setIsLoading(true);
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const backendRole =
+          selectedRole === "artisan"
+            ? "ARTISAN"
+            : selectedRole === "apprentice"
+            ? "LEARNER"
+            : "CUSTOMER";
+
+        try {
+          await selectRoleApi({ role: backendRole });
+        } catch (roleErr) {
+          // If already selected or network mismatch, record notice and continue
+          console.warn("Role selection note:", roleErr);
+        }
 
         setRegistrationData({ role: selectedRole });
         setActiveRole(selectedRole);
@@ -354,14 +444,24 @@ export default function SignupPage() {
           isVerified: true,
         });
 
-        toast.success(`Welcome to BlueFixx! You are registered as ${
-          selectedRole === "customer" ? "a Customer" : selectedRole === "artisan" ? "an Artisan" : "an Apprentice"
-        }.`);
+        toast.success(
+          `Welcome to BlueFixx! You are registered as ${
+            selectedRole === "customer"
+              ? "a Customer"
+              : selectedRole === "artisan"
+              ? "an Artisan"
+              : "an Apprentice"
+          }.`
+        );
 
         // Navigate to dashboard
         router.push("/dashboard");
-      } catch {
-        toast.error("Failed to complete registration.");
+      } catch (err: unknown) {
+        if (err instanceof ApiError) {
+          toast.error(err.message || "Failed to complete registration.");
+        } else {
+          toast.error("Failed to complete registration.");
+        }
       } finally {
         setIsLoading(false);
       }

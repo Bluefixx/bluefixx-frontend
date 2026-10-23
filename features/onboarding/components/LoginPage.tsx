@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
 import { useAuth } from "@/lib/stores/auth-store";
+import { ApiError } from "@/lib/api/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser, setIsLoading, isLoading } = useAuth();
+  const { login, setIsLoading, isLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,28 +45,32 @@ export default function LoginPage() {
       setIsLoading(true);
 
       try {
-        // TODO: Replace with actual API call via apiClient
-        // Simulating API delay
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-
-        // Mock success — set user data
-        setUser({
-          id: "mock-user-001",
-          fullName: "BlueFixx User",
-          email,
-          phone: "",
-          isVerified: true,
-        });
-
-        toast.success("Welcome back to BlueFixx!");
-        router.push("/dashboard");
-      } catch {
-        toast.error("Login failed. Please check your credentials and try again.");
+        const response = await login({ email, password });
+        toast.success(`Welcome back, ${response.user.fullName || "User"}!`);
+        
+        // If role is not selected yet, redirect to role selection, otherwise dashboard
+        if (!response.user.role) {
+          router.push("/signup");
+        } else {
+          router.push("/dashboard");
+        }
+      } catch (err: unknown) {
+        if (err instanceof ApiError) {
+          if (err.code === "INVALID_CREDENTIALS") {
+            toast.error("Invalid email or password. Please check and try again.");
+          } else if (err.code === "LOGIN_RATE_LIMITED" || err.code === "RATE_LIMITED") {
+            toast.error("Too many sign-in attempts. Please wait a moment and try again.");
+          } else {
+            toast.error(err.message || "Sign in failed.");
+          }
+        } else {
+          toast.error("An unexpected error occurred. Please check your connection.");
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [email, password, validateEmail, setUser, setIsLoading]
+    [email, password, validateEmail, login, setIsLoading, router]
   );
 
   const isErrorState = Boolean(hasSubmitted && emailError);

@@ -15,7 +15,7 @@ export default function AccountMenuDropdown({
   onClose,
 }: AccountMenuDropdownProps) {
   const router = useRouter();
-  const { user, activeRole, resetAuth } = useAuth();
+  const { user, activeRole, logout } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,8 +34,8 @@ export default function AccountMenuDropdown({
 
   if (!isOpen) return null;
 
-  const handleLogout = () => {
-    resetAuth();
+  const handleLogout = async () => {
+    await logout();
     toast.success("Logged out successfully");
     onClose();
     router.push("/login");

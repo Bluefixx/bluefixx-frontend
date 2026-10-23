@@ -1,86 +1,94 @@
 # API Contracts & Integration Conventions
 
-This document specifies conventions for backend integration, environment configuration, error envelopes, and mock data boundaries.
+This document specifies conventions for backend integration, environment configuration, error envelopes, and API client architecture matching the BlueFixx Authentication & Customer Integration specification.
 
 ---
 
-## 1. Centralized API Access
-All network communications must pass through the centralized client in `lib/api/client.ts`:
+## 1. Centralized API Architecture (`lib/api/`)
 
+All network communications route through the centralized, strongly-typed client in `lib/api/client.ts` with dedicated modular service files:
+
+```
+lib/api/
+├── client.ts         # Axios instance, withCredentials, 401 refresh queue & ApiError normalization
+├── auth.ts           # Authentication & session operations (19 endpoints)
+├── customer.ts       # Customer dashboard, catalog, services & artisan discovery
+├── jobs.ts           # Job post drafting, broadcasting and cancellation
+├── quotes.ts         # Quote requests, counter-offers, and acceptance
+├── bookings.ts       # Booking lifecycle, progress, rescheduling, and confirmation
+├── wallet.ts         # Wallet balances, Paystack payments, and withdrawals
+├── messages.ts       # Conversations, quote messages, and blocking
+├── reviews.ts        # Verified booking reviews
+├── notifications.ts  # Notifications list and preference updates
+└── index.ts          # Centralized barrel export
+```
+
+### Client Usage:
 ```typescript
-import { apiClient } from "@/lib/api/client";
+import { loginApi, getCustomerDashboardApi, getArtisansApi } from "@/lib/api";
 
 // Example call:
-const result = await apiClient<UserProfile>("/users/me");
+const loginRes = await loginApi({ email, password });
 ```
-
-Direct use of raw `fetch` or third-party HTTP clients inside components is prohibited.
 
 ---
 
-## 2. Environment Variable Conventions
-- All frontend runtime configuration is driven by `.env.example` / `.env.local`:
-  - `NEXT_PUBLIC_API_URL`: Root base URL for the backend API (default: `http://localhost:8000/api` or `/api`).
-  - `NEXT_PUBLIC_ENABLE_MOCKS`: Boolean flag to switch between mock handlers and network requests.
-- **Security Rule**: NEVER place API private keys, database passwords, or server secrets in `NEXT_PUBLIC_*` variables.
+## 2. API Conventions & Environment Variables
+
+| Item | Contract |
+| :--- | :--- |
+| **Base URL** | `process.env.NEXT_PUBLIC_API_URL` (Defaults to `http://localhost:8000/api/v1` in local development) |
+| **Authentication** | `Authorization: Bearer <ACCESS_TOKEN>` for protected endpoints |
+| **Session Cookies** | `withCredentials: true` (`bluefixx_refresh` in dev or `__Host-bluefixx_refresh` in production) |
+| **Security Headers** | `X-Requested-With: XMLHttpRequest` and dynamic `Origin: <frontendOrigin>` for CSRF protection |
+| **Money Format** | Request amounts are integer kobo; returned database monetary values are decimal strings in kobo |
+| **Pagination** | `limit` and `cursor` (or `offset` for artisan discovery) |
 
 ---
 
-## 3. Standard Request and Response Envelopes
+## 3. Standard Error Envelope
 
-### Successful Single Resource (`ApiResponse<T>`)
-```typescript
+Backend responses follow the standard error envelope:
+```json
 {
-  "success": true,
-  "data": { ... },
-  "message": "Resource loaded successfully"
-}
-```
-
-### Paginated Collection (`PaginatedResponse<T>`)
-```typescript
-{
-  "success": true,
-  "data": [ ... ],
-  "pagination": {
-    "page": 1,
-    "pageSize": 20,
-    "totalItems": 150,
-    "totalPages": 8,
-    "hasNextPage": true,
-    "hasPreviousPage": false
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "One or more request fields are invalid.",
+    "details": {}
   }
 }
 ```
 
-### Error Envelope (`ApiErrorResponse`)
-```typescript
-{
-  "success": false,
-  "message": "Validation failed",
-  "code": "VALIDATION_ERROR",
-  "errors": {
-    "email": ["Invalid email format"]
-  }
-}
-```
+The frontend normalizes this into an `ApiError` instance with:
+- `error.status`: HTTP status code (400, 401, 403, 404, 409, 429, 500, 503)
+- `error.code`: Error code string (e.g. `INVALID_CREDENTIALS`, `CHALLENGE_EXPIRED`, `OTP_COOLDOWN`, `RATE_LIMITED`)
+- `error.message`: User-friendly server message
+- `error.details`: Validation field map if present
 
 ---
 
-## 4. Authentication Integration Boundaries
-- **Storage**: Auth tokens should be stored securely (e.g. HTTP-only cookies managed by middleware, or secure session tokens).
-- **Headers**: When authenticated, `apiClient` attaches the `Authorization: Bearer <token>` header.
-- **Provider Status**: No specific external auth provider (Auth0, Clerk, Firebase) is hardwired yet. Auth boundaries remain abstracted behind token/session headers.
+## 4. Automatic Token Refresh Queue
+
+When a protected API call encounters a `401 Unauthorized`:
+1. The request interceptor intercepts the failure.
+2. Concurrent requests are queued via a `failedQueue` promise array.
+3. A single `POST /auth/refresh` is dispatched (browser sends HttpOnly refresh cookie automatically).
+4. On success, `accessToken` in `sessionStorage` and in-memory store is updated, and all queued requests replay automatically with the new token.
+5. On failure, all requests reject, the session is cleared, and the user is redirected to `/login`.
 
 ---
 
-## 5. Mock Data Rules
-1. **Location**: Mocks must live outside JSX, in feature mock files (e.g., `features/<feature>/mocks/<feature>.mock.ts`).
-2. **Realism**: Mock structures must adhere strictly to the TypeScript contracts defined in `types/`.
-3. **Transparency**: Mock handlers must log a clear warning in the console when serving mock data to prevent mistaking mocks for real backend persistence.
-4. **No Side Effects**: Mock actions (like submitting a form) must indicate simulated success clearly in documentation.
+## 5. Completed Auth Flow Integration
 
----
-
-## 6. Pending Backend Endpoints
-All actual endpoints (e.g. `/auth/login`, `/jobs`, `/workers`) are **Pending Backend Specification**. They will be integrated as backend contracts are formalized.
+1. **Sign-up Flow**:
+   - `POST /auth/register` sends `{ fullName, phone, email, password, acceptedTerms: true }` and returns `{ challengeId }`.
+   - `POST /auth/verify-phone` verifies 6-digit SMS code with `{ challengeId, code }`.
+   - `POST /auth/resend-otp` requests a new code with `{ challengeId }`.
+   - `POST /auth/login` logs in and establishes access token + refresh cookie.
+   - `PATCH /auth/role` selects initial role (`CUSTOMER`, `ARTISAN`, or `LEARNER`).
+2. **Sign-in Flow**:
+   - `POST /auth/login` with `{ email, password }` sets session and redirects to `/dashboard`.
+3. **Password Recovery**:
+   - `POST /auth/forgot-password` with `{ email }` returns `{ challengeId }`.
+   - `POST /auth/verify-reset-otp` with `{ challengeId, code }` returns `{ resetToken }`.
+   - `POST /auth/reset-password` with `{ resetToken, newPassword }` completes password update.

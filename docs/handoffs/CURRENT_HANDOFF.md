@@ -50,6 +50,25 @@ In response to the user's updated API specification (`BlueFixx API - Authenticat
    - `features/onboarding/components/ForgotPasswordPage.tsx`: Converted form to email-based recovery, wired to `forgotPasswordApi`, `verifyResetOtpApi`, and `resetPasswordApi`.
    - `features/dashboard/components/AccountMenuDropdown.tsx`: Wired to call `logout()` and clear session.
 
+5. **Mobile Layout Optimizations & Runtime Alignment**:
+   - Resolved mobile split-screen vertical stacking across all auth and onboarding screens:
+     - On desktop, auth screens feature a 50/50 split (`AuthHeroPanel` artwork + form card).
+     - On mobile screens (< 1024px), `AuthHeroPanel` is cleanly hidden (`hidden lg:block lg:w-1/2`) to prevent stacking a 420px image above the inputs, eliminating forced scrolling.
+     - Added an elegant mobile brand header with the BlueFixx logo (`/icons/BFLogoBlue.svg`) and support link across:
+       - `LoginPage.tsx`
+       - `SignupPage.tsx` (all 6 steps)
+       - `ForgotPasswordPage.tsx`
+       - `WelcomeSocialSignIn.tsx`
+       - `LanguageSelection.tsx`
+       - `PhoneVerification.tsx`
+       - `CreateAccount.tsx` & `EmailSignIn.tsx`
+     - Refined card padding and borders: switched from rigid desktop boxes to responsive `p-5 sm:p-8 rounded-2xl sm:rounded-3xl border border-neutral-200/90 sm:card-shadow-mobile`.
+     - In `IntroSlide.tsx`, reduced mobile visual height (`h-[220px] sm:h-[320px] lg:h-auto lg:aspect-[4/4.5]`) and adjusted spacing so the intro carousel fits naturally on mobile viewports.
+     - In `OnboardingHeader.tsx`, adjusted skip button text to collapse to "Skip" on small devices to prevent header wrapping.
+   - Resolved client runtime errors:
+     - Removed disallowed custom `Origin` header from `lib/api/client.ts`.
+     - Added `.env.local` pointing `NEXT_PUBLIC_API_URL` to `https://bluefixx-api.onrender.com`.
+
 ---
 
 ## 2. Relevant Files
@@ -63,22 +82,21 @@ In response to the user's updated API specification (`BlueFixx API - Authenticat
 - `lib/api/messages.ts`
 - `lib/api/reviews.ts`
 - `lib/api/notifications.ts`
-- `lib/api/index.ts`
-- `types/auth.ts`
-- `types/customer.ts`
-- `types/api.ts`
-- `lib/stores/auth-store.ts`
-- `components/shared/AuthProvider.tsx`
 - `features/onboarding/components/LoginPage.tsx`
-- `features/onboarding/components/EmailSignIn.tsx`
 - `features/onboarding/components/SignupPage.tsx`
 - `features/onboarding/components/ForgotPasswordPage.tsx`
-- `features/dashboard/components/AccountMenuDropdown.tsx`
-- `docs/API_CONTRACTS.md`
-- `docs/handoffs/CURRENT_HANDOFF.md`
+- `features/onboarding/components/WelcomeSocialSignIn.tsx`
+- `features/onboarding/components/LanguageSelection.tsx`
+- `features/onboarding/components/PhoneVerification.tsx`
+- `features/onboarding/components/IntroSlide.tsx`
+- `features/onboarding/components/OnboardingHeader.tsx`
+- `features/onboarding/components/CreateAccount.tsx`
+- `features/onboarding/components/EmailSignIn.tsx`
+- `.env.local`
 
 ---
 
 ## 3. Verification Performed
 - Static TypeScript compiler (`npx tsc --noEmit`) verified clean with **0 errors**.
 - Full end-to-end type safety established between backend contract schemas and frontend client interfaces.
+

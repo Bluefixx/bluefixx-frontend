@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+import Image from "next/image";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
 
@@ -19,8 +21,8 @@ export default function WelcomeSocialSignIn({
 }: WelcomeSocialSignInProps) {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-      {/* Left Column: Full-Height Hero Artwork */}
-      <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+      {/* Left Column: Full-Height Hero Artwork (Desktop only) */}
+      <div className="hidden lg:block lg:w-1/2 min-h-screen">
         <AuthHeroPanel
           image="/images/customers.png"
           imageAlt="Verified artisan and customer"
@@ -31,11 +33,24 @@ export default function WelcomeSocialSignIn({
       </div>
 
       {/* Right Column: Support header + Centered Welcome Card */}
-      <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
-        {/* Support Header */}
-        <div className="w-full flex items-center justify-end text-xs sm:text-sm text-neutral-600 pb-4">
+      <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
+        {/* Support Header: Logo on mobile + Contact support */}
+        <div className="w-full flex items-center justify-between lg:justify-end text-xs sm:text-sm text-neutral-600 pb-2 sm:pb-4 pt-1 sm:pt-0">
+          <Link href="/" className="lg:hidden flex items-center gap-2">
+            <Image
+              src="/icons/BFLogoBlue.svg"
+              alt="BlueFixx"
+              width={28}
+              height={28}
+              className="w-7 h-7 object-contain"
+              priority
+            />
+            <span className="font-heading font-bold text-lg text-[#001B40] tracking-tight">
+              BlueFixx
+            </span>
+          </Link>
           <div className="flex items-center gap-2">
-            <span>Need help?</span>
+            <span className="hidden xs:inline">Need help?</span>
             <button
               onClick={() => toast("Reach us at support@bluefixxllp.com", { icon: "📧" })}
               className="inline-flex items-center gap-1.5 font-medium text-[#001B40] hover:underline cursor-pointer"
@@ -58,8 +73,8 @@ export default function WelcomeSocialSignIn({
         </div>
 
         {/* Center Card */}
-        <div className="w-full flex items-center justify-center my-auto py-6">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[440px] flex flex-col">
+        <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
             {/* Category Tag */}
             <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
               WELCOME

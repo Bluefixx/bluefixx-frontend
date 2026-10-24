@@ -20,9 +20,9 @@ export default function IntroSlide({
   onDotClick,
 }: IntroSlideProps) {
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-10 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-3 sm:py-10 grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-8 lg:gap-14 items-center">
       {/* Left Column: Visual Artwork Card */}
-      <div className="relative w-full max-w-[500px] lg:max-w-[540px] aspect-[4/4.5] sm:aspect-[4/4.3] rounded-[28px] sm:rounded-[36px] overflow-hidden shadow-md mx-auto select-none bg-neutral-100">
+      <div className="relative w-full max-w-[500px] lg:max-w-[540px] h-[220px] sm:h-[320px] lg:h-auto lg:aspect-[4/4.5] rounded-2xl sm:rounded-[36px] overflow-hidden shadow-md mx-auto select-none bg-neutral-100">
         {/* Main Illustration */}
         <Image
           src={slide.image}
@@ -34,11 +34,11 @@ export default function IntroSlide({
         />
 
         {/* Top-Left Verified Badge */}
-        <div className="absolute top-4 sm:top-5 left-4 sm:left-5 z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-white/60 shadow-sm">
+        <div className="absolute top-3 sm:top-5 left-3 sm:left-5 z-10">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/95 backdrop-blur-md border border-white/60 shadow-sm">
             {/* Shield Check Icon */}
             <svg
-              className="w-3.5 h-3.5 text-[#001B40]"
+              className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-[#001B40]"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -50,19 +50,19 @@ export default function IntroSlide({
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               <path d="m9 12 2 2 4-4" />
             </svg>
-            <span className="font-sans font-bold text-[10px] sm:text-[11px] tracking-wider text-[#001B40] uppercase">
+            <span className="font-sans font-bold text-[9px] sm:text-[11px] tracking-wider text-[#001B40] uppercase">
               {slide.badgeLabel}
             </span>
           </div>
         </div>
 
         {/* Bottom-Left Frosted Overlay Card */}
-        <div className="absolute bottom-5 sm:bottom-6 left-5 sm:left-6 z-10 max-w-[270px] sm:max-w-[300px]">
-          <div className="bg-[#001B40]/80 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/10 text-white shadow-xl">
-            <h4 className="font-sans font-bold text-xl sm:text-2xl tracking-tight text-white">
+        <div className="absolute bottom-3 sm:bottom-6 left-3 sm:left-6 z-10 max-w-[220px] sm:max-w-[300px]">
+          <div className="bg-[#001B40]/80 backdrop-blur-md rounded-xl sm:rounded-2xl p-3 sm:p-5 border border-white/10 text-white shadow-xl">
+            <h4 className="font-sans font-bold text-base sm:text-2xl tracking-tight text-white">
               {slide.statNumber}
             </h4>
-            <p className="font-sans text-xs sm:text-[13px] text-neutral-200 mt-1 leading-snug">
+            <p className="font-sans text-[11px] sm:text-[13px] text-neutral-200 mt-0.5 sm:mt-1 leading-snug">
               {slide.statLabel}
             </p>
           </div>
@@ -72,22 +72,22 @@ export default function IntroSlide({
       {/* Right Column: Information & Controls */}
       <div className="flex flex-col justify-center max-w-lg mx-auto lg:mx-0 w-full">
         {/* Category Tag */}
-        <span className="font-sans font-bold text-xs sm:text-[13px] tracking-[0.14em] text-neutral-600 uppercase mb-3">
+        <span className="font-sans font-bold text-[11px] sm:text-[13px] tracking-[0.14em] text-neutral-600 uppercase mb-1.5 sm:mb-3">
           {slide.tag}
         </span>
 
         {/* Big Headline */}
-        <h2 className="font-sans font-bold text-3xl sm:text-4xl lg:text-[40px] text-[#0F1115] leading-[1.18] tracking-tight mb-4 sm:mb-5">
+        <h2 className="font-sans font-bold text-2xl sm:text-4xl lg:text-[40px] text-[#0F1115] leading-[1.2] tracking-tight mb-3 sm:mb-5">
           {slide.title}
         </h2>
 
         {/* Description Body */}
-        <p className="font-sans text-sm sm:text-base text-neutral-600 leading-relaxed mb-6 sm:mb-8">
+        <p className="font-sans text-xs sm:text-base text-neutral-600 leading-relaxed mb-4 sm:mb-8">
           {slide.description}
         </p>
 
         {/* Feature Callout Box */}
-        <div className="bg-[#F0F5FA] rounded-xl p-3.5 sm:p-4 flex items-center gap-3 border border-blue-100/40 mb-8 sm:mb-12">
+        <div className="bg-[#F0F5FA] rounded-xl p-3 sm:p-4 flex items-center gap-3 border border-blue-100/40 mb-5 sm:mb-12">
           <div className="w-5 h-5 rounded-full border border-neutral-400 flex items-center justify-center shrink-0 text-neutral-700">
             <svg
               className="w-3 h-3 text-neutral-800"

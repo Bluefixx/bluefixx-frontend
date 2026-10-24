@@ -39,7 +39,8 @@ export default function OnboardingHeader({
             onClick={onSkip}
             className="text-neutral-600 hover:text-neutral-1000 font-sans font-medium text-xs sm:text-sm transition-colors cursor-pointer"
           >
-            Skip introduction
+            <span>Skip</span>
+            <span className="hidden sm:inline"> introduction</span>
           </button>
         )}
 

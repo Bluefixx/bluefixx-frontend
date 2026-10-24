@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
@@ -102,10 +104,24 @@ export default function SignupPage() {
 
   // ── Support Header ────────────────────────────────────────────
   const SupportHeader = () => (
-    <div className="w-full flex items-center justify-end text-xs sm:text-sm text-neutral-600 pb-2">
+    <div className="w-full flex items-center justify-between lg:justify-end text-xs sm:text-sm text-neutral-600 pb-2 sm:pb-3 pt-1 sm:pt-0">
+      <Link href="/" className="lg:hidden flex items-center gap-2">
+        <Image
+          src="/icons/BFLogoBlue.svg"
+          alt="BlueFixx"
+          width={26}
+          height={26}
+          className="w-6 h-6 object-contain"
+          priority
+        />
+        <span className="font-heading font-bold text-base text-[#001B40] tracking-tight">
+          BlueFixx
+        </span>
+      </Link>
       <div className="flex items-center gap-2">
-        <span>Need help?</span>
+        <span className="hidden xs:inline">Need help?</span>
         <button
+          type="button"
           onClick={() => toast("Reach us at support@bluefixxllp.com", { icon: "📧" })}
           className="inline-flex items-center gap-1.5 font-medium text-[#001B40] hover:underline cursor-pointer"
         >
@@ -121,7 +137,7 @@ export default function SignupPage() {
           >
             <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" />
           </svg>
-          <span>Contact support</span>
+          <span className="hidden xs:inline">Contact support</span>
         </button>
       </div>
     </div>
@@ -479,7 +495,7 @@ export default function SignupPage() {
   if (registrationStep === 1) {
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-        <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+        <div className="hidden lg:block lg:w-1/2 min-h-screen">
           <AuthHeroPanel
             image="/images/talents.png"
             imageAlt="Master craftsman teaching apprentice"
@@ -489,11 +505,11 @@ export default function SignupPage() {
           />
         </div>
 
-        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
           <SupportHeader />
 
-          <div className="w-full flex items-center justify-center my-auto py-4">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[480px] flex flex-col">
+          <div className="w-full flex items-center justify-center my-auto py-2 sm:py-4">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[480px] flex flex-col">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
                   GET STARTED
@@ -688,7 +704,7 @@ export default function SignupPage() {
   if (registrationStep === 2) {
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-        <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+        <div className="hidden lg:block lg:w-1/2 min-h-screen">
           <AuthHeroPanel
             image="/images/talents.png"
             imageAlt="Service artisan with tools"
@@ -698,11 +714,11 @@ export default function SignupPage() {
           />
         </div>
 
-        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
           <SupportHeader />
 
-          <div className="w-full flex items-center justify-center my-auto py-6">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[440px] flex flex-col">
+          <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
                   PHONE VERIFICATION
@@ -786,7 +802,7 @@ export default function SignupPage() {
   if (registrationStep === 3) {
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-        <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+        <div className="hidden lg:block lg:w-1/2 min-h-screen">
           <AuthHeroPanel
             image="/images/workers.png"
             imageAlt="Verified service artisans"
@@ -796,11 +812,11 @@ export default function SignupPage() {
           />
         </div>
 
-        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
           <SupportHeader />
 
-          <div className="w-full flex items-center justify-center my-auto py-6">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[440px] flex flex-col">
+          <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
               <BackButton onClick={() => setRegistrationStep(2)} />
 
               <div className="flex items-center justify-between mb-1">
@@ -913,7 +929,7 @@ export default function SignupPage() {
   if (registrationStep === 4) {
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-        <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+        <div className="hidden lg:block lg:w-1/2 min-h-screen">
           <AuthHeroPanel
             image="/images/workers.png"
             imageAlt="Service artisans working together"
@@ -923,11 +939,11 @@ export default function SignupPage() {
           />
         </div>
 
-        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
           <SupportHeader />
 
-          <div className="w-full flex items-center justify-center my-auto py-6">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[440px] flex flex-col">
+          <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
               <BackButton onClick={() => setRegistrationStep(3)} />
 
               <div className="flex items-center justify-between mb-1">
@@ -1074,7 +1090,7 @@ export default function SignupPage() {
   if (registrationStep === 5) {
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-        <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+        <div className="hidden lg:block lg:w-1/2 min-h-screen">
           <AuthHeroPanel
             image="/images/workers.png"
             imageAlt="Service technician"
@@ -1084,11 +1100,11 @@ export default function SignupPage() {
           />
         </div>
 
-        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+        <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
           <SupportHeader />
 
-          <div className="w-full flex items-center justify-center my-auto py-6">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[440px] flex flex-col">
+          <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
               <BackButton onClick={() => setRegistrationStep(4)} />
 
               <div className="flex items-center justify-between mb-1">
@@ -1245,7 +1261,7 @@ export default function SignupPage() {
   // ══════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
-      <div className="w-full lg:w-1/2 min-h-[420px] lg:min-h-screen">
+      <div className="hidden lg:block lg:w-1/2 min-h-screen">
         <AuthHeroPanel
           image="/images/workers.png"
           imageAlt="Workers in marketplace"
@@ -1255,11 +1271,11 @@ export default function SignupPage() {
         />
       </div>
 
-      <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-8 lg:p-12 bg-white">
+      <div className="w-full lg:w-1/2 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-12 bg-white">
         <SupportHeader />
 
-        <div className="w-full flex items-center justify-center my-auto py-6">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 card-shadow-mobile border border-neutral-200/90 w-full max-w-[460px] flex flex-col">
+        <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[460px] flex flex-col">
             <BackButton onClick={() => setRegistrationStep(5)} />
 
             <div className="flex items-center justify-between mb-1">

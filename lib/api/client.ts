@@ -79,16 +79,12 @@ export const axiosInstance: AxiosInstance = axios.create({
   },
 });
 
-// Request Interceptor: Attach Bearer token and Origin
+// Request Interceptor: Attach Bearer token
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = getAccessToken();
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    if (typeof window !== "undefined" && !config.headers["Origin"]) {
-      config.headers["Origin"] = window.location.origin;
     }
 
     return config;
@@ -140,7 +136,6 @@ axiosInstance.interceptors.response.use(
             withCredentials: true,
             headers: {
               "X-Requested-With": "XMLHttpRequest",
-              ...(typeof window !== "undefined" ? { Origin: window.location.origin } : {}),
             },
           }
         );

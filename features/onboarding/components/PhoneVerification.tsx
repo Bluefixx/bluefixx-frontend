@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
+import PhoneInput from "@/components/ui/PhoneInput";
+import { toE164 } from "@/lib/utils/phone";
 
 interface PhoneVerificationProps {
   initialPhoneNumber?: string;
@@ -13,17 +15,18 @@ interface PhoneVerificationProps {
 }
 
 export default function PhoneVerification({
-  initialPhoneNumber = "+234 803 245",
+  initialPhoneNumber = "",
   onBack,
   onSendCode,
 }: PhoneVerificationProps) {
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber);
+  const [countryCode, setCountryCode] = useState("+234");
   const [isSent, setIsSent] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSent(true);
-    onSendCode(phoneNumber);
+    onSendCode(toE164(phoneNumber, countryCode));
   };
 
   return (
@@ -132,34 +135,14 @@ export default function PhoneVerification({
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="flex flex-col text-left">
-                <label className="font-sans font-medium text-xs text-neutral-800 mb-1.5">
-                  Phone number
-                </label>
-                <div className="relative w-full">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
-                    <svg
-                      className="w-4 h-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                  </span>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+234 800 000 0000"
-                    className="w-full bg-white border border-neutral-300 rounded-xl py-2.5 pl-10 pr-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#001B40] focus:ring-1 focus:ring-[#001B40]"
-                  />
-                </div>
-              </div>
+                <PhoneInput
+                  value={phoneNumber}
+                  onChange={setPhoneNumber}
+                  countryCode={countryCode}
+                  onCountryCodeChange={setCountryCode}
+                  placeholder="803 245 0182"
+                  label="Phone number"
+                />
 
               {/* Submit CTA */}
               <button

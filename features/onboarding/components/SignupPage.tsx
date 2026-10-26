@@ -6,9 +6,11 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
+import PhoneInput from "@/components/ui/PhoneInput";
 import { useAuth, RegistrationStep } from "@/lib/stores/auth-store";
 import { registerApi, verifyPhoneApi, resendOtpApi, selectRoleApi } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import { toE164 } from "@/lib/utils/phone";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -33,6 +35,7 @@ export default function SignupPage() {
   // ── Step 1 Form State ─────────────────────────────────────────
   const [fullName, setFullName] = useState(registrationData.fullName || "");
   const [phone, setPhone] = useState(registrationData.phone || "");
+  const [countryCode, setCountryCode] = useState("+234");
   const [email, setEmail] = useState(registrationData.email || "");
   const [password, setPassword] = useState(registrationData.password || "");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,7 +44,7 @@ export default function SignupPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(true);
 
   // ── Step 2 Form State ─────────────────────────────────────────
-  const [phoneForVerify, setPhoneForVerify] = useState(verificationPhone || phone || "+234 ");
+  const [phoneForVerify, setPhoneForVerify] = useState(verificationPhone || phone || "");
 
   // ── Step 3 Form State (OTP Digits) ────────────────────────────
   const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
@@ -196,7 +199,7 @@ export default function SignupPage() {
 
       setIsLoading(true);
       try {
-        const payloadPhone = phoneForVerify.trim();
+        const payloadPhone = toE164(phoneForVerify.trim(), countryCode);
         const res = await registerApi({
           fullName: registrationData.fullName || fullName,
           phone: payloadPhone,
@@ -550,25 +553,14 @@ export default function SignupPage() {
                     </div>
                   </div>
 
-                  <div className="flex flex-col text-left">
-                    <label className="font-sans font-medium text-xs text-neutral-800 mb-1">
-                      Phone number
-                    </label>
-                    <div className="relative w-full">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                        </svg>
-                      </span>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="0800 000 0000"
-                        className="w-full bg-white border border-neutral-300 rounded-xl py-2 pl-9 pr-3 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#001B40] focus:ring-1 focus:ring-[#001B40]"
-                      />
-                    </div>
-                  </div>
+                  <PhoneInput
+                    value={phone}
+                    onChange={setPhone}
+                    countryCode={countryCode}
+                    onCountryCodeChange={setCountryCode}
+                    placeholder="803 245 0182"
+                    label="Phone number"
+                  />
                 </div>
 
                 <div className="flex flex-col text-left">
@@ -737,33 +729,14 @@ export default function SignupPage() {
               <BackButton onClick={() => setRegistrationStep(1)} />
 
               <form onSubmit={handleStep2SendCode} className="space-y-5">
-                <div className="flex flex-col text-left">
-                  <label className="font-sans font-medium text-xs text-neutral-800 mb-1.5">
-                    Phone number
-                  </label>
-                  <div className="relative w-full">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
-                      <svg
-                        className="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                    </span>
-                    <input
-                      type="tel"
-                      value={phoneForVerify}
-                      onChange={(e) => setPhoneForVerify(e.target.value)}
-                      placeholder="+234 803 245 0182"
-                      className="w-full bg-white border border-neutral-300 rounded-xl py-2.5 pl-10 pr-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#001B40] focus:ring-1 focus:ring-[#001B40]"
-                    />
-                  </div>
-                </div>
+                <PhoneInput
+                  value={phoneForVerify}
+                  onChange={setPhoneForVerify}
+                  countryCode={countryCode}
+                  onCountryCodeChange={setCountryCode}
+                  placeholder="803 245 0182"
+                  label="Phone number"
+                />
 
                 <button
                   type="submit"

@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
+import PhoneInput from "@/components/ui/PhoneInput";
+import { toE164 } from "@/lib/utils/phone";
 
 interface CreateAccountProps {
   onBack: () => void;
@@ -19,6 +21,7 @@ export default function CreateAccount({
 }: CreateAccountProps) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+234");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,7 +45,7 @@ export default function CreateAccount({
       return;
     }
     setErrorMsg(null);
-    onSubmitSuccess({ fullName, phone, email });
+    onSubmitSuccess({ fullName, phone: toE164(phone, countryCode), email });
   };
 
   return (
@@ -181,25 +184,14 @@ export default function CreateAccount({
                   </div>
                 </div>
 
-                <div className="flex flex-col text-left">
-                  <label className="font-sans font-medium text-xs text-neutral-800 mb-1">
-                    Phone number
-                  </label>
-                  <div className="relative w-full">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                      </svg>
-                    </span>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0800 000 0000"
-                      className="w-full bg-white border border-neutral-300 rounded-xl py-2 pl-9 pr-3 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#001B40] focus:ring-1 focus:ring-[#001B40]"
-                    />
-                  </div>
-                </div>
+                <PhoneInput
+                  value={phone}
+                  onChange={setPhone}
+                  countryCode={countryCode}
+                  onCountryCodeChange={setCountryCode}
+                  placeholder="803 245 0182"
+                  label="Phone number"
+                />
               </div>
 
               {/* Row 2: Email */}

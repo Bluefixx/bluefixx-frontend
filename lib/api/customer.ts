@@ -10,7 +10,6 @@ import {
 
 /**
  * Customer dashboard aggregate
- * GET /api/v1/dashboard
  */
 export async function getCustomerDashboardApi(): Promise<CustomerDashboardResponse> {
   return apiClient.get<CustomerDashboardResponse>("/dashboard");
@@ -18,7 +17,6 @@ export async function getCustomerDashboardApi(): Promise<CustomerDashboardRespon
 
 /**
  * Screen catalog grouped by category with real starting prices
- * GET /api/v1/catalog
  */
 export async function getCatalogApi(): Promise<CatalogGroup[]> {
   return apiClient.get<CatalogGroup[]>("/catalog");
@@ -26,7 +24,6 @@ export async function getCatalogApi(): Promise<CatalogGroup[]> {
 
 /**
  * Trade and service catalog
- * GET /api/v1/services
  */
 export async function getServicesApi(): Promise<TradeCategory[]> {
   return apiClient.get<TradeCategory[]>("/services");
@@ -34,7 +31,6 @@ export async function getServicesApi(): Promise<TradeCategory[]> {
 
 /**
  * Discover approved nearby artisans
- * GET /api/v1/artisans
  */
 export async function getArtisansApi(params: ArtisanQueryParams): Promise<ArtisanListItem[]> {
   return apiClient.get<ArtisanListItem[]>("/artisans", {
@@ -54,7 +50,6 @@ export async function getArtisansApi(params: ArtisanQueryParams): Promise<Artisa
 
 /**
  * Public artisan profile, portfolio and reviews
- * GET /api/v1/artisans/{id}
  */
 export async function getArtisanByIdApi(id: string): Promise<ArtisanDetailResponse> {
   return apiClient.get<ArtisanDetailResponse>(`/artisans/${id}`);

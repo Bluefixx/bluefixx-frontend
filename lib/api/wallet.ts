@@ -3,7 +3,6 @@ import { WalletSummary, WalletTransaction } from "@/types/customer";
 
 /**
  * Get wallet balances and withdrawal limits
- * GET /api/v1/wallet
  */
 export async function getWalletApi(): Promise<WalletSummary> {
   return apiClient.get<WalletSummary>("/wallet");
@@ -11,7 +10,6 @@ export async function getWalletApi(): Promise<WalletSummary> {
 
 /**
  * Paginated payment, deposit, refund, or withdrawal history
- * GET /api/v1/wallet/transactions
  */
 export async function getWalletTransactionsApi(params?: {
   cursor?: string;
@@ -23,7 +21,6 @@ export async function getWalletTransactionsApi(params?: {
 
 /**
  * Initialize payment or funding
- * POST /api/v1/payments
  */
 export async function createPaymentApi(payload: {
   amount: number; // in kobo
@@ -36,7 +33,6 @@ export async function createPaymentApi(payload: {
 
 /**
  * Verify Paystack payment
- * POST /api/v1/payments/{id}/verify
  */
 export async function verifyPaymentApi(id: string): Promise<{ status: string }> {
   return apiClient.post(`/payments/${id}/verify`, {});
@@ -44,7 +40,6 @@ export async function verifyPaymentApi(id: string): Promise<{ status: string }> 
 
 /**
  * Request wallet withdrawal
- * POST /api/v1/wallet/withdrawals
  */
 export async function requestWithdrawalApi(payload: {
   amount: number; // in kobo

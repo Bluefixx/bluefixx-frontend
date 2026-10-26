@@ -3,7 +3,6 @@ import { CreateJobRequest, JobPost } from "@/types/customer";
 
 /**
  * List owned job posts
- * GET /api/v1/jobs
  */
 export async function getJobsApi(params?: {
   cursor?: string;
@@ -15,7 +14,6 @@ export async function getJobsApi(params?: {
 
 /**
  * Get job details and competing artisan quote comparison
- * GET /api/v1/jobs/{id}
  */
 export async function getJobByIdApi(id: string): Promise<JobPost> {
   return apiClient.get<JobPost>(`/jobs/${id}`);
@@ -23,7 +21,6 @@ export async function getJobByIdApi(id: string): Promise<JobPost> {
 
 /**
  * Create draft or broadcast a job to matching artisans
- * POST /api/v1/jobs
  */
 export async function createJobApi(
   payload: CreateJobRequest,
@@ -38,7 +35,6 @@ export async function createJobApi(
 
 /**
  * Edit an owned job draft
- * PATCH /api/v1/jobs/{id}
  */
 export async function editJobDraftApi(
   id: string,
@@ -49,7 +45,6 @@ export async function editJobDraftApi(
 
 /**
  * Publish draft and privately invite matching artisans
- * POST /api/v1/jobs/{id}/publish
  */
 export async function publishJobApi(id: string): Promise<{ message: string }> {
   return apiClient.post<{ message: string }>(`/jobs/${id}/publish`, {});
@@ -57,7 +52,6 @@ export async function publishJobApi(id: string): Promise<{ message: string }> {
 
 /**
  * Cancel unbooked job and close all competing requests
- * POST /api/v1/jobs/{id}/cancel
  */
 export async function cancelJobApi(id: string, reason: string): Promise<{ message: string }> {
   return apiClient.post<{ message: string }>(`/jobs/${id}/cancel`, { reason });

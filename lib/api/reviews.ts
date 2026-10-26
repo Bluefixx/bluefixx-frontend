@@ -3,7 +3,6 @@ import { Review, CreateReviewRequest } from "@/types/customer";
 
 /**
  * List completed customer bookings with pending or submitted reviews
- * GET /api/v1/reviews
  */
 export async function getReviewsApi(params?: {
   cursor?: string;
@@ -14,7 +13,6 @@ export async function getReviewsApi(params?: {
 
 /**
  * Create or edit verified booking review within thirty days
- * POST /api/v1/bookings/{id}/review
  */
 export async function submitReviewApi(
   bookingId: string,

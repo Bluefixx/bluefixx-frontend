@@ -3,7 +3,6 @@ import { Booking, BookingDetail } from "@/types/customer";
 
 /**
  * List active, completed, or cancelled bookings
- * GET /api/v1/bookings
  */
 export async function getBookingsApi(params?: {
   cursor?: string;
@@ -16,7 +15,6 @@ export async function getBookingsApi(params?: {
 
 /**
  * Get booking details, agreed terms and timeline
- * GET /api/v1/bookings/{id}
  */
 export async function getBookingByIdApi(id: string): Promise<BookingDetail> {
   return apiClient.get<BookingDetail>(`/bookings/${id}`);
@@ -24,7 +22,6 @@ export async function getBookingByIdApi(id: string): Promise<BookingDetail> {
 
 /**
  * Customer confirms completion and authorizes release
- * POST /api/v1/bookings/{id}/confirm
  */
 export async function confirmBookingApi(
   id: string,
@@ -39,7 +36,6 @@ export async function confirmBookingApi(
 
 /**
  * Cancel booking according to actor and travel stage
- * POST /api/v1/bookings/{id}/cancel
  */
 export async function cancelBookingApi(
   id: string,
@@ -50,7 +46,6 @@ export async function cancelBookingApi(
 
 /**
  * Propose a mutually agreed reschedule before travel
- * POST /api/v1/bookings/{id}/schedule
  */
 export async function proposeRescheduleApi(
   id: string,
@@ -61,7 +56,6 @@ export async function proposeRescheduleApi(
 
 /**
  * Accept or decline a schedule proposal
- * POST /api/v1/schedules/{id}/decision
  */
 export async function decideScheduleProposalApi(
   scheduleId: string,
@@ -72,7 +66,6 @@ export async function decideScheduleProposalApi(
 
 /**
  * Customer accepts or declines additional work
- * POST /api/v1/additions/{id}/decision
  */
 export async function decideAdditionApi(additionId: string, accept: boolean): Promise<unknown> {
   return apiClient.post(`/additions/${additionId}/decision`, { accept });
@@ -80,7 +73,6 @@ export async function decideAdditionApi(additionId: string, accept: boolean): Pr
 
 /**
  * Customer confirms the funded booking visit window
- * POST /api/v1/bookings/{id}/schedule/confirm
  */
 export async function confirmBookingScheduleVisitApi(bookingId: string): Promise<unknown> {
   return apiClient.post(`/bookings/${bookingId}/schedule/confirm`, {});

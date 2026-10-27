@@ -11,6 +11,8 @@ import PaymentReleasedView from "@/features/dashboard/components/PaymentReleased
 import RateArtisanView from "@/features/dashboard/components/RateArtisanView";
 import WarrantyClaimView from "@/features/dashboard/components/WarrantyClaimView";
 import WarrantyClaimSentView from "@/features/dashboard/components/WarrantyClaimSentView";
+import { getBookingsApi } from "@/lib/api";
+import { Booking } from "@/types/customer";
 
 function BookingsPageContent() {
   const router = useRouter();
@@ -25,6 +27,29 @@ function BookingsPageContent() {
       ? "completed"
       : "job-posts"
   );
+
+  const [activeBookingsList, setActiveBookingsList] = useState<Booking[]>([]);
+  const [completedBookingsList, setCompletedBookingsList] = useState<Booking[]>([]);
+
+  useEffect(() => {
+    async function fetchBookings() {
+      try {
+        const [activeRes, completedRes] = await Promise.allSettled([
+          getBookingsApi({ tab: "active" }),
+          getBookingsApi({ tab: "completed" }),
+        ]);
+        if (activeRes.status === "fulfilled" && activeRes.value) {
+          setActiveBookingsList(activeRes.value);
+        }
+        if (completedRes.status === "fulfilled" && completedRes.value) {
+          setCompletedBookingsList(completedRes.value);
+        }
+      } catch {
+        // Fallback silently
+      }
+    }
+    fetchBookings();
+  }, []);
 
   const [isSecuringActiveBooking, setIsSecuringActiveBooking] = useState(false);
   const [activeViewMode, setActiveViewMode] = useState<"tracker" | "list">("tracker");

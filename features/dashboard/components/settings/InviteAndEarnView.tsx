@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { getReferralSummaryApi, claimReferralRewardApi } from "@/lib/api";
 
 interface InviteAndEarnViewProps {
   onBack: () => void;
@@ -20,8 +21,23 @@ interface ReferralRecord {
 
 export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
   const [activeFilter, setActiveFilter] = useState<"All" | "In progress" | "Reward earned" | "Not qualified">("All");
-  const referralCode = "BLUE-SIMEON";
-  const referralUrl = "https://bluefixx.ng/invite/BLUE-SIMEON";
+  const [referralCode, setReferralCode] = useState("BLUE-SIMEON");
+  const [referralUrl, setReferralUrl] = useState("https://bluefixx.ng/invite/BLUE-SIMEON");
+
+  useEffect(() => {
+    async function loadReferralData() {
+      try {
+        const data = await getReferralSummaryApi();
+        if (data) {
+          if (data.referralCode) setReferralCode(data.referralCode);
+          if (data.referralLink) setReferralUrl(data.referralLink);
+        }
+      } catch {
+        // Fallback silently
+      }
+    }
+    loadReferralData();
+  }, []);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(referralCode);

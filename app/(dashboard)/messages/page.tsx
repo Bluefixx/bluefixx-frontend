@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { sendQuoteMessageApi, getQuoteMessagesApi, getConversationsApi, uploadMediaFile } from "@/lib/api";
 
 interface ChatMessage {
   id: string;
@@ -45,6 +46,27 @@ function MessagesPageContent() {
       setActiveConversation("emeka");
     }
   }, [searchParams]);
+
+  // Load message history from API if available
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const msgs = await getQuoteMessagesApi("quote-emeka-1");
+        if (msgs && msgs.length > 0) {
+          const mapped: ChatMessage[] = msgs.map((m) => ({
+            id: m.id,
+            sender: "artisan",
+            text: m.text,
+            time: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          }));
+          setEmekaMessages((prev) => [...prev, ...mapped]);
+        }
+      } catch {
+        // Fallback silently
+      }
+    }
+    fetchHistory();
+  }, []);
 
   // Clean up recording timer on unmount
   useEffect(() => {
@@ -106,7 +128,15 @@ function MessagesPageContent() {
 
     if (activeConversation === "emeka") {
       setEmekaMessages((prev) => [...prev, newMsg]);
+      const textToSend = inputText.trim();
       setInputText("");
+
+      // Dispatch to API
+      sendQuoteMessageApi("quote-emeka-1", {
+        text: textToSend,
+        clientId: `client-${Date.now()}`,
+      }).catch(() => {});
+
       // Simulate quick artisan reply
       setTimeout(() => {
         setEmekaMessages((prev) => [
@@ -143,36 +173,46 @@ function MessagesPageContent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      const photoMsg: ChatMessage = {
-        id: Date.now().toString(),
-        sender: "customer",
-        image: dataUrl,
-        text: file.name,
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
-
-      if (activeConversation === "emeka") {
-        setEmekaMessages((prev) => [...prev, photoMsg]);
-        setTimeout(() => {
-          setEmekaMessages((prev) => [
-            ...prev,
-            {
-              id: (Date.now() + 1).toString(),
-              sender: "artisan",
-              text: "Thanks for the photo! I can see the joint clearly now.",
-              time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            },
-          ]);
-        }, 1800);
-      } else {
-        setSupportMessages((prev) => [...prev, photoMsg]);
-      }
-      toast.success("Photo attached & sent");
+    const dataUrl = URL.createObjectURL(file);
+    const photoMsg: ChatMessage = {
+      id: Date.now().toString(),
+      sender: "customer",
+      image: dataUrl,
+      text: file.name,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
-    reader.readAsDataURL(file);
+
+    if (activeConversation === "emeka") {
+      setEmekaMessages((prev) => [...prev, photoMsg]);
+
+      // Upload image to media storage and dispatch message with mediaId
+      uploadMediaFile(file, "JOB")
+        .then((res) => {
+          if (res?.id) {
+            sendQuoteMessageApi("quote-emeka-1", {
+              text: file.name,
+              mediaIds: [res.id],
+              clientId: `client-${Date.now()}`,
+            }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+
+      setTimeout(() => {
+        setEmekaMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            sender: "artisan",
+            text: "Thanks for the photo! I can see the joint clearly now.",
+            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      }, 1800);
+    } else {
+      setSupportMessages((prev) => [...prev, photoMsg]);
+    }
+    toast.success("Photo attached & sent");
     e.target.value = "";
   };
 
@@ -208,6 +248,23 @@ function MessagesPageContent() {
 
         if (activeConversation === "emeka") {
           setEmekaMessages((prev) => [...prev, voiceMsg]);
+
+          // Upload audio file and dispatch message with voice mediaId
+          const audioFile = new File([audioBlob], `voicenote-${Date.now()}.webm`, {
+            type: "audio/webm",
+          });
+          uploadMediaFile(audioFile, "VOICE")
+            .then((res) => {
+              if (res?.id) {
+                sendQuoteMessageApi("quote-emeka-1", {
+                  text: `Voice note (${durationStr})`,
+                  mediaIds: [res.id],
+                  clientId: `client-${Date.now()}`,
+                }).catch(() => {});
+              }
+            })
+            .catch(() => {});
+
           setTimeout(() => {
             setEmekaMessages((prev) => [
               ...prev,

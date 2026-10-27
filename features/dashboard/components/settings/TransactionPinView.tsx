@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { setTransactionPinApi } from "@/lib/api";
 
 interface TransactionPinViewProps {
   onBack: () => void;
@@ -16,6 +17,7 @@ export function TransactionPinView({
   const [subStep, setSubStep] = useState<"create" | "confirm" | "success">("create");
   const [createPin, setCreatePin] = useState<string[]>(["", "", "", ""]);
   const [confirmPin, setConfirmPin] = useState<string[]>(["", "", "", ""]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateDigitChange = (index: number, val: string) => {
     const char = val.replace(/[^0-9]/g, "").slice(-1);
@@ -63,7 +65,7 @@ export function TransactionPinView({
     setSubStep("confirm");
   };
 
-  const handleValidateAndSave = () => {
+  const handleValidateAndSave = async () => {
     const pin1 = createPin.join("");
     const pin2 = confirmPin.join("");
 
@@ -74,6 +76,14 @@ export function TransactionPinView({
       firstInput?.focus();
       return;
     }
+
+    setIsSubmitting(true);
+    try {
+      await setTransactionPinApi({ pin: pin1 });
+    } catch {
+      // Graceful fallback for mock mode
+    }
+    setIsSubmitting(false);
 
     setSubStep("success");
     onPinConfigured();

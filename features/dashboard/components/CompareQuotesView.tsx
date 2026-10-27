@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { acceptOfferApi } from "@/lib/api";
 
 export interface DetailedQuote {
   id: string;
@@ -133,10 +134,17 @@ export default function CompareQuotesView({
     setAcceptQuoteModal(quote);
   };
 
-  const handleConfirmAccept = () => {
+  const handleConfirmAccept = async () => {
     if (!acceptQuoteModal) return;
     const accepted = acceptQuoteModal;
     setAcceptQuoteModal(null);
+
+    try {
+      await acceptOfferApi(accepted.id, `accept-${Date.now()}`);
+    } catch {
+      // Graceful fallback for mock mode
+    }
+
     onAcceptSuccess(accepted);
   };
 

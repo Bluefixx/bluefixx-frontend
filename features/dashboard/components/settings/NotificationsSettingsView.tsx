@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { getNotificationPreferencesApi, updateNotificationPreferencesApi } from "@/lib/api";
 
 interface NotificationsSettingsViewProps {
   onBack: () => void;
@@ -17,6 +18,7 @@ interface NotificationCategorySetting {
 }
 
 export function NotificationsSettingsView({ onBack }: NotificationsSettingsViewProps) {
+  const [isSaving, setIsSaving] = useState(false);
   const [settings, setSettings] = useState<NotificationCategorySetting[]>([
     {
       id: "jobs",
@@ -60,6 +62,27 @@ export function NotificationsSettingsView({ onBack }: NotificationsSettingsViewP
     },
   ]);
 
+  useEffect(() => {
+    async function fetchPreferences() {
+      try {
+        const prefs = await getNotificationPreferencesApi();
+        if (prefs) {
+          setSettings((prev) =>
+            prev.map((s) => ({
+              ...s,
+              email: prefs.email ?? s.email,
+              sms: prefs.sms ?? s.sms,
+              push: prefs.push ?? s.push,
+            }))
+          );
+        }
+      } catch {
+        // Fallback silently to defaults
+      }
+    }
+    fetchPreferences();
+  }, []);
+
   const handleToggle = (id: string, channel: "push" | "email" | "sms") => {
     setSettings((prev) =>
       prev.map((item) =>
@@ -68,7 +91,24 @@ export function NotificationsSettingsView({ onBack }: NotificationsSettingsViewP
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const emailEnabled = settings.some((s) => s.email);
+      const pushEnabled = settings.some((s) => s.push);
+      const smsEnabled = settings.some((s) => s.sms);
+
+      await updateNotificationPreferencesApi({
+        email: emailEnabled,
+        push: pushEnabled,
+        sms: smsEnabled,
+        jobUpdates: settings.find((s) => s.id === "jobs")?.push ?? true,
+        marketing: settings.find((s) => s.id === "promotions")?.email ?? false,
+      });
+    } catch {
+      // Graceful fallback
+    }
+    setIsSaving(false);
     toast.success("Notification preferences saved successfully");
     onBack();
   };

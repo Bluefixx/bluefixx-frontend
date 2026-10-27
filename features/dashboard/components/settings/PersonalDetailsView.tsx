@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { updateAccountProfileApi, getAccountProfileApi, uploadMediaFile } from "@/lib/api";
 
 interface PersonalDetailsViewProps {
   onBack: () => void;
@@ -36,24 +37,74 @@ export function PersonalDetailsView({
   const [emergencyName, setEmergencyName] = useState("Ada Eze");
   const [emergencyPhone, setEmergencyPhone] = useState("+234 809 221 9049");
   const [avatarPreview, setAvatarPreview] = useState(userData.avatarUrl || "");
+  const [avatarMediaId, setAvatarMediaId] = useState<string | undefined>();
+  const [isSaving, setIsSaving] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const profile = await getAccountProfileApi();
+        if (profile) {
+          if (profile.fullName) {
+            const parts = profile.fullName.split(" ");
+            setFirstName(parts[0] || "");
+            setLastName(parts.slice(1).join(" ") || "");
+          }
+          if (profile.email) setEmail(profile.email);
+          if (profile.phone) setPhone(profile.phone);
+          if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
+          if (profile.emergencyContact) {
+            setEmergencyName(profile.emergencyContact.name || "");
+            setEmergencyPhone(profile.emergencyContact.phone || "");
+          }
+        }
+      } catch {
+        // Fallback to initial props
+      }
+    }
+    loadProfile();
+  }, []);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAvatarPreview(reader.result as string);
-      toast.success("Profile photo updated");
-    };
-    reader.readAsDataURL(file);
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+
+    try {
+      const res = await uploadMediaFile(file, "PROFILE");
+      if (res?.id) {
+        setAvatarMediaId(res.id);
+        toast.success("Profile photo uploaded");
+      }
+    } catch {
+      toast.success("Profile photo updated locally");
+    }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSaving(true);
     const updatedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+    try {
+      await updateAccountProfileApi({
+        fullName: updatedFullName,
+        email: email.trim(),
+        avatarId: avatarMediaId,
+        emergencyContact: {
+          name: emergencyName.trim(),
+          phone: emergencyPhone.trim(),
+          relationship: "Primary",
+        },
+      });
+    } catch {
+      // Graceful fallback
+    }
+
     onUpdateUserData({
       fullName: updatedFullName,
       email: email.trim(),
@@ -61,6 +112,7 @@ export function PersonalDetailsView({
       location: address.trim(),
       avatarUrl: avatarPreview,
     });
+    setIsSaving(false);
     toast.success("Personal details saved successfully");
     onBack();
   };

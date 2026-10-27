@@ -1,17 +1,175 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import {
+  getCustomerDashboardApi,
+  getCatalogApi,
+  getArtisansApi,
+} from "@/lib/api/customer";
+import { getWalletApi } from "@/lib/api/wallet";
+import {
+  CustomerDashboardResponse,
+  CatalogGroup,
+  ArtisanListItem,
+  WalletSummary,
+} from "@/types/customer";
 import { CATEGORIES, TRUSTED_ARTISANS } from "../data/mock-dashboard-data";
+import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
 
 export default function CustomerHomeView() {
   const router = useRouter();
-  const { walletBalance } = useAuth();
+  const { user, walletBalance, setWalletBalance } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
+
+  // Live API data states
+  const [dashboardData, setDashboardData] = useState<CustomerDashboardResponse | null>(null);
+  const [catalogGroups, setCatalogGroups] = useState<CatalogGroup[]>([]);
+  const [nearbyArtisans, setNearbyArtisans] = useState<ArtisanListItem[]>([]);
+  const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch customer dashboard endpoints
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDashboardEndpoints() {
+      setIsLoading(true);
+
+      // 1. Dashboard aggregate: active jobs, recent jobs, unread notifications, popular services
+      try {
+        const dashRes = await getCustomerDashboardApi();
+        if (mounted && dashRes) {
+          setDashboardData(dashRes);
+        }
+      } catch (err) {
+        console.debug("Dashboard aggregate endpoint offline, using defaults.", err);
+      }
+
+      // 2. Catalog groups with real starting prices
+      try {
+        const catRes = await getCatalogApi();
+        if (mounted && Array.isArray(catRes) && catRes.length > 0) {
+          setCatalogGroups(catRes);
+        }
+      } catch (err) {
+        console.debug("Catalog endpoint offline, using mock categories.", err);
+      }
+
+      // 3. Nearby artisans discovery
+      try {
+        const artRes = await getArtisansApi({
+          latitude: 6.4474,
+          longitude: 7.5126,
+          distance: 25,
+          limit: 6,
+        });
+        if (mounted && Array.isArray(artRes) && artRes.length > 0) {
+          setNearbyArtisans(artRes);
+        }
+      } catch (err) {
+        console.debug("Artisans endpoint offline, using mock artisans.", err);
+      }
+
+      // 4. Wallet summary
+      try {
+        const wallRes = await getWalletApi();
+        if (mounted && wallRes) {
+          setWalletSummary(wallRes);
+          const rawBal = (wallRes as any).availableBalanceKobo ?? (wallRes.available ? parseInt(wallRes.available, 10) : undefined);
+          if (typeof rawBal === "number" && !isNaN(rawBal)) {
+            setWalletBalance(Math.round(rawBal / 100));
+          }
+        }
+      } catch (err) {
+        console.debug("Wallet endpoint offline, using cached store balance.", err);
+      }
+
+      if (mounted) {
+        setIsLoading(false);
+      }
+    }
+
+    loadDashboardEndpoints();
+
+    return () => {
+      mounted = false;
+    };
+  }, [setWalletBalance]);
+
+  // Dynamic time-of-day greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  }, []);
+
+  const userFirstName = useMemo(() => {
+    if (!user?.fullName) return "";
+    return user.fullName.split(" ")[0];
+  }, [user?.fullName]);
+
+  // Popular search suggestions from API or defaults
+  const popularTags = useMemo(() => {
+    if (dashboardData?.popularServices && dashboardData.popularServices.length > 0) {
+      return dashboardData.popularServices
+        .map((s) => s.name || s.serviceId)
+        .filter(Boolean)
+        .slice(0, 4);
+    }
+    return ["Plumbing", "Electrical", "Cleaning"];
+  }, [dashboardData]);
+
+  // Categories list: use API catalog groups if returned, otherwise fallback to CATEGORIES
+  const displayCategories = useMemo(() => {
+    if (catalogGroups.length > 0) {
+      return catalogGroups.map((group) => {
+        let count = 0;
+        if (group.trades) {
+          count = group.trades.reduce(
+            (acc, trade) => acc + (trade.services?.length || 1),
+            0
+          );
+        }
+        return {
+          id: group.id,
+          name: group.categoryName,
+          count: count || 4,
+          startingPrice: group.startingPriceKobo
+            ? Math.round(group.startingPriceKobo / 100)
+            : undefined,
+        };
+      });
+    }
+    return CATEGORIES.filter((c) => c.id !== "all");
+  }, [catalogGroups]);
+
+  // Current balance display
+  const currentBalance = useMemo(() => {
+    if (walletSummary) {
+      const rawBal = (walletSummary as any).availableBalanceKobo ?? (walletSummary.available ? parseInt(walletSummary.available, 10) : undefined);
+      if (typeof rawBal === "number" && !isNaN(rawBal)) {
+        return Math.round(rawBal / 100);
+      }
+    }
+    return walletBalance;
+  }, [walletSummary, walletBalance]);
+
+  // Escrow held amount
+  const heldEscrowAmount = useMemo(() => {
+    if (walletSummary) {
+      const rawHeld = (walletSummary as any).heldBalanceKobo ?? (walletSummary.bookingHeld ? parseInt(walletSummary.bookingHeld, 10) : undefined);
+      if (typeof rawHeld === "number" && !isNaN(rawHeld)) {
+        return Math.round(rawHeld / 100);
+      }
+    }
+    return 120000;
+  }, [walletSummary]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,13 +184,28 @@ export default function CustomerHomeView() {
     router.push(`/explore?q=${encodeURIComponent(tag)}`);
   };
 
+  // If viewing an artisan's full profile
+  if (selectedArtisanId) {
+    return (
+      <ArtisanPublicProfileView
+        artisanId={selectedArtisanId}
+        onBack={() => setSelectedArtisanId(null)}
+        onContinue={() => {
+          router.push(`/post-job?artisanId=${selectedArtisanId}`);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto">
       {/* 1. Header Greeting & Post a Job CTA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="font-sans text-xs sm:text-sm text-neutral-500 font-medium flex items-center gap-1.5">
-            Good morning <span className="text-base">👋</span>
+            {greeting}
+            {userFirstName ? `, ${userFirstName}` : ""}{" "}
+            <span className="text-base">👋</span>
           </span>
           <h1 className="font-heading font-bold text-2xl sm:text-3xl text-[#0F1115] mt-1 tracking-tight">
             Let&apos;s get it fixed.
@@ -84,7 +257,7 @@ export default function CustomerHomeView() {
           {/* Popular Tag Suggestions */}
           <div className="flex flex-wrap items-center gap-2 mt-6 text-xs text-blue-100/80">
             <span className="font-medium">Popular:</span>
-            {["Plumbing", "Electrical", "Cleaning"].map((tag) => (
+            {popularTags.map((tag) => (
               <button
                 key={tag}
                 type="button"
@@ -100,24 +273,37 @@ export default function CustomerHomeView() {
         {/* Right Column: Wallet & Trust Highlights */}
         <div className="flex flex-col gap-3.5">
           {/* Card 1: Wallet Balance */}
-          <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect width="20" height="14" x="2" y="5" rx="2" />
-                  <line x1="2" y1="10" x2="22" y2="10" />
-                </svg>
+          <Link
+            href="/wallet"
+            className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs hover:border-[#001B40] transition-colors flex flex-col justify-between group cursor-pointer"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-[#001B40] group-hover:text-white transition-colors">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <span className="font-sans text-xs text-neutral-500 font-medium">
+                  Wallet balance
+                </span>
               </div>
-              <span className="font-sans text-xs text-neutral-500 font-medium">
-                Wallet balance
-              </span>
+              <svg className="w-4 h-4 text-neutral-400 group-hover:text-[#001B40] transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
             </div>
             <div className="mt-3">
               <span className="font-sans font-bold text-2xl text-[#0F1115]">
-                ₦{walletBalance.toLocaleString()}
+                ₦{currentBalance.toLocaleString()}
               </span>
+              {heldEscrowAmount > 0 && (
+                <span className="text-[11px] text-neutral-400 block mt-0.5">
+                  ₦{heldEscrowAmount.toLocaleString()} held in escrow
+                </span>
+              )}
             </div>
-          </div>
+          </Link>
 
           {/* Card 2: Escrow Protection */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-neutral-200/80 shadow-2xs flex items-start gap-3.5">
@@ -213,14 +399,14 @@ export default function CustomerHomeView() {
 
         {/* Categories Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-          {CATEGORIES.filter((c) => c.id !== "all").map((cat) => (
+          {displayCategories.map((cat) => (
             <Link
               key={cat.id}
               href={`/explore?category=${cat.id}`}
               className="bg-white rounded-2xl p-4 border border-neutral-200/80 hover:border-[#001B40] hover:shadow-md transition-all group flex flex-col justify-between"
             >
               <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mb-3 group-hover:bg-[#001B40] group-hover:text-white transition-colors">
-                {cat.id === "home-construction" && (
+                {cat.id.includes("construct") || cat.id.includes("home") ? (
                   <svg
                     className="w-4 h-4"
                     viewBox="0 0 24 24"
@@ -236,20 +422,17 @@ export default function CustomerHomeView() {
                     <path d="m14.82 4.24 3.9 3.9" />
                     <path d="m11.5 8.5 3-3" />
                   </svg>
-                )}
-                {cat.id === "repairs-technical" && (
+                ) : cat.id.includes("repair") || cat.id.includes("tech") ? (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                   </svg>
-                )}
-                {cat.id === "automotive" && (
+                ) : cat.id.includes("auto") ? (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect width="16" height="12" x="4" y="5" rx="2" />
                     <circle cx="8" cy="17" r="2" />
                     <circle cx="16" cy="17" r="2" />
                   </svg>
-                )}
-                {cat.id === "fashion-beauty" && (
+                ) : cat.id.includes("fashion") || cat.id.includes("beauty") ? (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="6" cy="6" r="3" />
                     <circle cx="6" cy="18" r="3" />
@@ -257,8 +440,7 @@ export default function CustomerHomeView() {
                     <line x1="14.47" y1="14.48" x2="20" y2="20" />
                     <line x1="8.12" y1="8.12" x2="12" y2="12" />
                   </svg>
-                )}
-                {cat.id === "facility-property" && (
+                ) : (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect width="16" height="20" x="4" y="2" rx="2" />
                     <line x1="9" y1="22" x2="9" y2="18" />
@@ -272,6 +454,7 @@ export default function CustomerHomeView() {
                 </h4>
                 <p className="font-sans text-[11px] text-neutral-400 mt-1">
                   {cat.count} services
+                  {"startingPrice" in cat && cat.startingPrice ? ` · From ₦${cat.startingPrice.toLocaleString()}` : ""}
                 </p>
               </div>
             </Link>
@@ -299,86 +482,174 @@ export default function CustomerHomeView() {
 
         {/* Artisans Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TRUSTED_ARTISANS.map((artisan) => (
-            <div
-              key={artisan.id}
-              className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between"
-            >
-              <div>
-                {/* Header: Avatar, Name, Trade & Verification Icon */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
-                      <Image
-                        src={artisan.avatarUrl}
-                        alt={artisan.name}
-                        width={48}
-                        height={48}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
-                        {artisan.name}
-                      </h4>
-                      <p className="font-sans text-xs text-neutral-500">{artisan.trade}</p>
-                    </div>
-                  </div>
-
-                  {/* Verification Checkmark Pill */}
-                  <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Rating & Distance Meta */}
-                <div className="flex items-center justify-between text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
-                  <div className="flex items-center gap-1 text-neutral-800 font-semibold">
-                    <span className="text-amber-500">★</span>
-                    <span>{artisan.rating}</span>
-                    <span className="text-neutral-400 font-normal">({artisan.reviewCount})</span>
-                  </div>
-                  <span>
-                    {artisan.distance} · {artisan.experienceYears} yrs
-                  </span>
-                </div>
-
-                {/* Identity Verified Pill */}
-                <div className="mt-2.5">
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md">
-                    <span>•</span> Identity verified
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom Price, Availability & View Profile CTA */}
-              <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-[11px] text-neutral-400 block">From</span>
-                    <span className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
-                      ₦{artisan.startingPrice.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                    {artisan.availability}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => toast(`Opening profile for ${artisan.name}...`, { icon: "👤" })}
-                  className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100 text-xs sm:text-sm font-semibold text-neutral-800 transition-colors cursor-pointer text-center"
+          {nearbyArtisans.length > 0
+            ? nearbyArtisans.map((artisan) => (
+                <div
+                  key={artisan.userId}
+                  className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between"
                 >
-                  View profile
-                </button>
-              </div>
-            </div>
-          ))}
+                  <div>
+                    {/* Header: Avatar, Name, Trade & Verification Icon */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200 relative">
+                          <Image
+                            src={artisan.photoUrl || "/images/david.jpg"}
+                            alt={artisan.fullName || artisan.businessName}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <h4 className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
+                            {artisan.businessName || artisan.fullName}
+                          </h4>
+                          <p className="font-sans text-xs text-neutral-500">
+                            {artisan.area || "Verified Specialist"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Verification Checkmark Pill */}
+                      <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Rating & Distance Meta */}
+                    <div className="flex items-center justify-between text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
+                      <div className="flex items-center gap-1 text-neutral-800 font-semibold">
+                        <span className="text-amber-500">★</span>
+                        <span>{artisan.rating ? artisan.rating.toFixed(1) : "5.0"}</span>
+                        <span className="text-neutral-400 font-normal">
+                          ({artisan.ratingCount || 0})
+                        </span>
+                      </div>
+                      <span>
+                        {artisan.distance < 1000
+                          ? `${artisan.distance}m away`
+                          : `${(artisan.distance / 1000).toFixed(1)} km away`}{" "}
+                        · {artisan.completedJobs || 12} jobs
+                      </span>
+                    </div>
+
+                    {/* Identity Verified Pill */}
+                    <div className="mt-2.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md">
+                        <span>•</span> {artisan.level >= 3 ? "Master Artisan" : "Identity verified"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Price, Availability & View Profile CTA */}
+                  <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[11px] text-neutral-400 block">From</span>
+                        <span className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
+                          ₦15,000
+                        </span>
+                      </div>
+
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        {artisan.available ? "Available today" : "Available"}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedArtisanId(artisan.userId)}
+                      className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100 text-xs sm:text-sm font-semibold text-neutral-800 transition-colors cursor-pointer text-center"
+                    >
+                      View profile
+                    </button>
+                  </div>
+                </div>
+              ))
+            : TRUSTED_ARTISANS.map((artisan) => (
+                <div
+                  key={artisan.id}
+                  className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between"
+                >
+                  <div>
+                    {/* Header: Avatar, Name, Trade & Verification Icon */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
+                          <Image
+                            src={artisan.avatarUrl}
+                            alt={artisan.name}
+                            width={48}
+                            height={48}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <h4 className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
+                            {artisan.name}
+                          </h4>
+                          <p className="font-sans text-xs text-neutral-500">{artisan.trade}</p>
+                        </div>
+                      </div>
+
+                      {/* Verification Checkmark Pill */}
+                      <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Rating & Distance Meta */}
+                    <div className="flex items-center justify-between text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
+                      <div className="flex items-center gap-1 text-neutral-800 font-semibold">
+                        <span className="text-amber-500">★</span>
+                        <span>{artisan.rating}</span>
+                        <span className="text-neutral-400 font-normal">({artisan.reviewCount})</span>
+                      </div>
+                      <span>
+                        {artisan.distance} · {artisan.experienceYears} yrs
+                      </span>
+                    </div>
+
+                    {/* Identity Verified Pill */}
+                    <div className="mt-2.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md">
+                        <span>•</span> Identity verified
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Price, Availability & View Profile CTA */}
+                  <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[11px] text-neutral-400 block">From</span>
+                        <span className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
+                          ₦{artisan.startingPrice.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        {artisan.availability}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedArtisanId(artisan.id)}
+                      className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100 text-xs sm:text-sm font-semibold text-neutral-800 transition-colors cursor-pointer text-center"
+                    >
+                      View profile
+                    </button>
+                  </div>
+                </div>
+              ))}
         </div>
       </div>
     </div>

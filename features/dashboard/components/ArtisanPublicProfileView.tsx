@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { getArtisanByIdApi } from "@/lib/api/customer";
+import { ArtisanDetailResponse } from "@/types/customer";
 
 interface ArtisanPublicProfileViewProps {
   artisanId?: string;
@@ -32,7 +34,7 @@ interface ReviewItem {
   imageUrl?: string;
 }
 
-const PORTFOLIO_ITEMS: PortfolioItem[] = [
+const DEFAULT_PORTFOLIO_ITEMS: PortfolioItem[] = [
   {
     id: "p-1",
     url: "/images/workers.png",
@@ -59,7 +61,7 @@ const PORTFOLIO_ITEMS: PortfolioItem[] = [
   },
 ];
 
-const REVIEWS_LIST: ReviewItem[] = [
+const DEFAULT_REVIEWS_LIST: ReviewItem[] = [
   {
     id: "r-1",
     author: "Tunde A.",
@@ -84,6 +86,30 @@ const REVIEWS_LIST: ReviewItem[] = [
   },
 ];
 
+const DEFAULT_ARTISAN = {
+  name: "Emeka Okafor",
+  trade: "Plumbing",
+  experienceYears: 11,
+  location: "Independence Layout, Enugu",
+  rating: 4.9,
+  jobsDone: 318,
+  replyTime: "8m",
+  trustScore: 92,
+  avatarUrl: "/images/david.jpg",
+  bio: "Licensed plumber with 11 years across residential and estate maintenance. I handle burst pipes, pressure pumps, water heaters and full bathroom re-piping. I supply original PPR fittings and give a written warranty on every job.",
+  highlights: [
+    "318 jobs completed through Bluefixx",
+    "Available today",
+    "Written warranty offered on all work",
+  ],
+  servicesList: [
+    { name: "Leak & burst pipe repair", price: "₦12,000 – ₦35,000" },
+    { name: "Water heater installation", price: "₦25,000 – ₦60,000" },
+    { name: "Full bathroom re-piping", price: "₦80,000 – ₦250,000" },
+    { name: "Pressure pump servicing", price: "₦15,000 – ₦45,000" },
+  ],
+};
+
 export default function ArtisanPublicProfileView({
   artisanId = "emeka-okafor",
   onBack,
@@ -91,33 +117,81 @@ export default function ArtisanPublicProfileView({
 }: ArtisanPublicProfileViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>("about");
+  const [artisanData, setArtisanData] = useState<ArtisanDetailResponse | null>(null);
 
   // Lightbox state for portfolio
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const artisan = {
-    name: "Emeka Okafor",
-    trade: "Plumbing",
-    experienceYears: 11,
-    location: "Independence Layout, Enugu",
-    rating: 4.9,
-    jobsDone: 318,
-    replyTime: "8m",
-    trustScore: 92,
-    avatarUrl: "/images/david.jpg",
-    bio: "Licensed plumber with 11 years across residential and estate maintenance. I handle burst pipes, pressure pumps, water heaters and full bathroom re-piping. I supply original PPR fittings and give a written warranty on every job.",
-    highlights: [
-      "318 jobs completed through Bluefixx",
-      "Available today",
-      "Written warranty offered on all work",
-    ],
-    servicesList: [
-      { name: "Leak & burst pipe repair", price: "₦12,000 – ₦35,000" },
-      { name: "Water heater installation", price: "₦25,000 – ₦60,000" },
-      { name: "Full bathroom re-piping", price: "₦80,000 – ₦250,000" },
-      { name: "Pressure pump servicing", price: "₦15,000 – ₦45,000" },
-    ],
-  };
+  useEffect(() => {
+    if (!artisanId) return;
+    let mounted = true;
+
+    getArtisanByIdApi(artisanId)
+      .then((data) => {
+        if (mounted && data) {
+          setArtisanData(data);
+        }
+      })
+      .catch((err) => {
+        console.debug("Artisan detail API offline, using fallback.", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [artisanId]);
+
+  const artisan = useMemo(() => {
+    if (!artisanData) return DEFAULT_ARTISAN;
+    return {
+      name: artisanData.businessName || artisanData.fullName || DEFAULT_ARTISAN.name,
+      trade: artisanData.services?.[0]?.name || DEFAULT_ARTISAN.trade,
+      experienceYears: DEFAULT_ARTISAN.experienceYears,
+      location: artisanData.area || DEFAULT_ARTISAN.location,
+      rating: artisanData.rating || DEFAULT_ARTISAN.rating,
+      jobsDone: artisanData.completedJobs ?? DEFAULT_ARTISAN.jobsDone,
+      replyTime: DEFAULT_ARTISAN.replyTime,
+      trustScore: DEFAULT_ARTISAN.trustScore,
+      avatarUrl: artisanData.photoUrl || DEFAULT_ARTISAN.avatarUrl,
+      bio: artisanData.bio || DEFAULT_ARTISAN.bio,
+      highlights: DEFAULT_ARTISAN.highlights,
+      servicesList: artisanData.services?.length
+        ? artisanData.services.map((s) => ({
+            name: s.name,
+            price: s.indicativePrice || "Price on request",
+          }))
+        : DEFAULT_ARTISAN.servicesList,
+    };
+  }, [artisanData]);
+
+  const portfolioItems: PortfolioItem[] = useMemo(() => {
+    if (artisanData?.portfolio && artisanData.portfolio.length > 0) {
+      return artisanData.portfolio.map((p, idx) => ({
+        id: p.id || `port-${idx}`,
+        url: p.mediaUrl || DEFAULT_PORTFOLIO_ITEMS[idx % DEFAULT_PORTFOLIO_ITEMS.length].url,
+        title: p.title || "Completed project",
+        location: artisanData.area || "Enugu",
+        description: "Verified completed work through Bluefixx.",
+      }));
+    }
+    return DEFAULT_PORTFOLIO_ITEMS;
+  }, [artisanData]);
+
+  const reviewsList: ReviewItem[] = useMemo(() => {
+    if (artisanData?.reviews && artisanData.reviews.length > 0) {
+      return artisanData.reviews.map((r, idx) => ({
+        id: r.id || `rev-${idx}`,
+        author: r.customerName || "Customer",
+        initials: (r.customerName || "C").charAt(0).toUpperCase(),
+        date: r.createdAt ? new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Recent",
+        rating: r.stars || 5.0,
+        comment: r.comment || "Great work and very professional service.",
+        tags: ["Verified booking"],
+        imageUrl: undefined,
+      }));
+    }
+    return DEFAULT_REVIEWS_LIST;
+  }, [artisanData]);
 
   // Keyboard navigation for lightbox
   const handleKeyDown = useCallback(
@@ -126,16 +200,16 @@ export default function ArtisanPublicProfileView({
       if (e.key === "Escape") setLightboxIndex(null);
       if (e.key === "ArrowLeft") {
         setLightboxIndex((prev) =>
-          prev !== null && prev > 0 ? prev - 1 : PORTFOLIO_ITEMS.length - 1
+          prev !== null && prev > 0 ? prev - 1 : portfolioItems.length - 1
         );
       }
       if (e.key === "ArrowRight") {
         setLightboxIndex((prev) =>
-          prev !== null && prev < PORTFOLIO_ITEMS.length - 1 ? prev + 1 : 0
+          prev !== null && prev < portfolioItems.length - 1 ? prev + 1 : 0
         );
       }
     },
-    [lightboxIndex]
+    [lightboxIndex, portfolioItems.length]
   );
 
   useEffect(() => {
@@ -144,7 +218,7 @@ export default function ArtisanPublicProfileView({
   }, [handleKeyDown]);
 
   const activeLightboxItem =
-    lightboxIndex !== null ? PORTFOLIO_ITEMS[lightboxIndex] : null;
+    lightboxIndex !== null ? portfolioItems[lightboxIndex] : null;
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto">
@@ -335,7 +409,7 @@ export default function ArtisanPublicProfileView({
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {PORTFOLIO_ITEMS.map((item, idx) => (
+                {portfolioItems.map((item, idx) => (
                   <div
                     key={item.id}
                     onClick={() => setLightboxIndex(idx)}
@@ -382,7 +456,7 @@ export default function ArtisanPublicProfileView({
               </h3>
 
               <div className="space-y-4">
-                {REVIEWS_LIST.map((review) => (
+                {reviewsList.map((review) => (
                   <div
                     key={review.id}
                     className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-3.5"
@@ -580,7 +654,7 @@ export default function ArtisanPublicProfileView({
             type="button"
             onClick={() =>
               setLightboxIndex(
-                lightboxIndex > 0 ? lightboxIndex - 1 : PORTFOLIO_ITEMS.length - 1
+                lightboxIndex > 0 ? lightboxIndex - 1 : portfolioItems.length - 1
               )
             }
             className="absolute left-4 sm:left-8 z-20 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer backdrop-blur-xs hidden sm:flex items-center justify-center"
@@ -596,7 +670,7 @@ export default function ArtisanPublicProfileView({
             type="button"
             onClick={() =>
               setLightboxIndex(
-                lightboxIndex < PORTFOLIO_ITEMS.length - 1 ? lightboxIndex + 1 : 0
+                lightboxIndex < portfolioItems.length - 1 ? lightboxIndex + 1 : 0
               )
             }
             className="absolute right-4 sm:right-8 z-20 p-3 rounded-full bg-white/10 hover:bg-white/25 text-white transition-colors cursor-pointer backdrop-blur-xs hidden sm:flex items-center justify-center"
@@ -639,7 +713,7 @@ export default function ArtisanPublicProfileView({
 
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs font-semibold text-white/60 bg-white/10 px-3 py-1 rounded-full">
-                  {lightboxIndex + 1} of {PORTFOLIO_ITEMS.length}
+                  {lightboxIndex + 1} of {portfolioItems.length}
                 </span>
 
                 {/* Mobile arrows */}
@@ -648,7 +722,7 @@ export default function ArtisanPublicProfileView({
                     type="button"
                     onClick={() =>
                       setLightboxIndex(
-                        lightboxIndex > 0 ? lightboxIndex - 1 : PORTFOLIO_ITEMS.length - 1
+                        lightboxIndex > 0 ? lightboxIndex - 1 : portfolioItems.length - 1
                       )
                     }
                     className="p-1.5 rounded-lg bg-white/10 text-white"
@@ -659,7 +733,7 @@ export default function ArtisanPublicProfileView({
                     type="button"
                     onClick={() =>
                       setLightboxIndex(
-                        lightboxIndex < PORTFOLIO_ITEMS.length - 1 ? lightboxIndex + 1 : 0
+                        lightboxIndex < portfolioItems.length - 1 ? lightboxIndex + 1 : 0
                       )
                     }
                     className="p-1.5 rounded-lg bg-white/10 text-white"

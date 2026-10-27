@@ -315,3 +315,192 @@ export interface NotificationPreferences {
   jobUpdates: boolean;
   marketing: boolean;
 }
+
+// ── Addresses & Locations ────────────────────────────────────
+export interface SavedAddress {
+  id: string;
+  userId: string;
+  title: string; // e.g. "Home", "Office"
+  street: string;
+  city: string;
+  state: string;
+  area: string;
+  latitude: number;
+  longitude: number;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface CreateAddressRequest {
+  title: string;
+  street: string;
+  city: string;
+  state: string;
+  area?: string;
+  latitude: number;
+  longitude: number;
+  isDefault?: boolean;
+}
+
+export interface GeocodedLocation {
+  id: string;
+  name: string;
+  address: string;
+  area: string;
+  city: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+}
+
+// ── Account Profile & Sessions ────────────────────────────────
+export interface AccountProfile {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  avatarUrl?: string;
+  bio?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  language?: string;
+  ninVerified?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateAccountRequest {
+  fullName?: string;
+  email?: string;
+  bio?: string;
+  avatarId?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  language?: string;
+}
+
+export interface UserSession {
+  id: string;
+  deviceName: string;
+  browser: string;
+  ipAddress: string;
+  location?: string;
+  lastActive: string;
+  isCurrent: boolean;
+}
+
+export interface UserRoleInfo {
+  role: "CUSTOMER" | "ARTISAN" | "LEARNER";
+  enrolledAt: string;
+  isActive: boolean;
+}
+
+// ── Media & Uploads ──────────────────────────────────────────
+export type MediaType = "JOB" | "VOICE" | "PROFILE" | "REVIEW" | "SUPPORT";
+
+export interface MediaUploadInitiateRequest {
+  type: MediaType;
+  filename: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
+export interface MediaUploadInitiateResponse {
+  id: string;
+  uploadUrl: string;
+  key: string;
+  expiresInSeconds: number;
+}
+
+export interface MediaUrlResponse {
+  id: string;
+  url: string;
+  expiresAt: string;
+}
+
+// ── Banks & Financial Accounts ───────────────────────────────
+export interface SupportedBank {
+  name: string;
+  code: string;
+  slug: string;
+}
+
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  bankCode: string;
+  accountNumber: string;
+  accountName: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface CreateBankAccountRequest {
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+}
+
+// ── Referrals ("Invite and Earn") ────────────────────────────
+export interface ReferralSummary {
+  referralCode: string;
+  referralLink: string;
+  totalInvited: number;
+  totalEarnedKobo: number;
+  pendingRewardKobo: number;
+  history: {
+    id: string;
+    refereeName: string;
+    status: "PENDING" | "COMPLETED" | "CLAIMED";
+    rewardKobo: number;
+    createdAt: string;
+  }[];
+}
+
+// ── Support Cases & Help ─────────────────────────────────────
+export type SupportCategory = "DISPUTE" | "WARRANTY" | "SAFETY" | "GENERAL" | "BILLING";
+
+export interface SupportCase {
+  id: string;
+  category: SupportCategory;
+  subject: string;
+  description: string;
+  bookingId?: string;
+  status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "CLOSED";
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  mediaIds?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSupportCaseRequest {
+  category: SupportCategory;
+  subject: string;
+  description: string;
+  bookingId?: string;
+  mediaIds?: string[];
+}
+
+export interface SupportCaseMessage {
+  id: string;
+  caseId: string;
+  senderId: string;
+  senderRole: "USER" | "SUPPORT";
+  text: string;
+  mediaIds?: string[];
+  createdAt: string;
+}
+
+export interface HelpArticle {
+  id: string;
+  category: string;
+  title: string;
+  content: string;
+}

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 import { useNotifications } from "@/lib/stores/notifications-store";
 import AccountMenuDropdown from "./AccountMenuDropdown";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import { getNotificationsApi } from "@/lib/api/notifications";
 
 interface DashboardHeaderProps {
   onOpenRoleSwitcher: () => void;
@@ -18,10 +19,43 @@ export default function DashboardHeader({
   onOpenMobileMenu,
 }: DashboardHeaderProps) {
   const { user, locationName, setLocationName, walletBalance } = useAuth();
-  const { unreadCount } = useNotifications();
+  const { unreadCount, setNotifications } = useNotifications();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getNotificationsApi()
+      .then((items) => {
+        if (mounted && Array.isArray(items) && items.length > 0) {
+          setNotifications(
+            items.map((it) => ({
+              id: it.id,
+              title: it.title,
+              description: it.body || it.title,
+              time: it.createdAt
+                ? new Date(it.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Today",
+              dateGroup: "Today",
+              isRead: it.read,
+              type: (it.type?.toLowerCase() as any) || "quote",
+              actionUrl: "/notifications",
+            }))
+          );
+        }
+      })
+      .catch((err) => {
+        console.debug("Notifications API offline, using cached notifications.", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [setNotifications]);
 
   const handleWalletClick = () => {
     toast(`Wallet balance: ₦${walletBalance.toLocaleString()}`, {

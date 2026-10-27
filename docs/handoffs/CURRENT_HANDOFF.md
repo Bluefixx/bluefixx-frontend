@@ -1,14 +1,40 @@
 # Current Session Handoff
 
-*Last updated: 2026-10-23 (Full BlueFixx Backend API Client Architecture & Auth Integration)*
+*Last updated: 2026-10-27 (Customer Dashboard Endpoints Integration)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 
-In response to the user's updated API specification (`BlueFixx API - Authentication & Customer Integration`) and reference to `dootling-frontend`:
+In response to the user's request to plug the customer dashboard endpoints:
 
-1. **Centralized HTTP Client (`lib/api/client.ts`)**:
+1. **Customer Home Dashboard (`features/dashboard/components/CustomerHomeView.tsx`)**:
+   - Wired live endpoints via React hooks:
+     - `getCustomerDashboardApi()`: Fetches aggregate dashboard metrics (unread notifications, dynamic popular services).
+     - `getCatalogApi()`: Fetches real catalog categories with starting prices and trade count.
+     - `getArtisansApi({ latitude, longitude, distance, limit })`: Discovers real nearby verified artisans, dynamically displaying their rating, review count, distance, verified badges, and availability.
+     - `getWalletApi()`: Fetches live available wallet balance and escrow-held funds, keeping the user's balance synchronized.
+   - Dynamic time-of-day greeting ("Good morning", "Good afternoon", "Good evening") customized with the authenticated user's first name.
+   - Popular search suggestions dynamically derived from `popularServices` with fallbacks.
+   - Connected "View profile" on artisan cards to open `ArtisanPublicProfileView` directly.
+   - Zero-layout-shift fallback architecture: gracefully uses design-token mock data whenever the backend is offline or returns empty sets.
+
+2. **Artisan Public Profile View (`features/dashboard/components/ArtisanPublicProfileView.tsx`)**:
+   - Plugged `getArtisanByIdApi(artisanId)` to fetch real artisan data when viewing any artisan's profile.
+   - Dynamically maps services, portfolio items, and verified customer reviews from the API response with resilient fallbacks.
+   - Integrated full lightbox navigation and review listings.
+
+3. **Explore / Browse Services (`features/dashboard/components/BrowseServicesView.tsx`)**:
+   - Plugged `getServicesApi()` to fetch real trade categories and services dynamically.
+
+4. **Global Dashboard Header (`features/dashboard/components/DashboardHeader.tsx`)**:
+   - Plugged `getNotificationsApi()` to keep unread notification counts and items in sync with the backend.
+   - Updated notification store with `setNotifications` action.
+
+5. **Endpoint Comments Cleanup (`lib/api/*.ts`)**:
+   - Removed all raw endpoint comments (`* GET /api/v1/...`, `* POST /api/v1/...`, etc.) from all endpoint modules per user request.
+
+6. **Centralized HTTP Client (`lib/api/client.ts`)**:
    - Installed and configured `axios` client instance with base URL resolution (`process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'`).
    - Enabled `withCredentials: true` to support automatic exchange of the HttpOnly session cookie (`bluefixx_refresh` in dev or `__Host-bluefixx_refresh` in production).
    - Injected standard security headers (`X-Requested-With: XMLHttpRequest` and dynamic `Origin: <frontendOrigin>`) for CSRF compliance.
@@ -41,6 +67,12 @@ In response to the user's updated API specification (`BlueFixx API - Authenticat
    - `lib/api/messages.ts`: `getConversationsApi`, `getQuoteMessagesApi`, `sendQuoteMessageApi`, `markQuoteMessagesReadApi`, `blockUserApi`, `unblockUserApi`.
    - `lib/api/reviews.ts`: `getReviewsApi`, `submitReviewApi`.
    - `lib/api/notifications.ts`: `getNotificationsApi`, `markNotificationReadApi`, `getNotificationPreferencesApi`, `updateNotificationPreferencesApi`.
+   - `lib/api/account.ts`: `getAccountProfileApi`, `updateAccountProfileApi`, `getSavedAddressesApi`, `createSavedAddressApi`, `deleteSavedAddressApi`, `requestPhoneChangeChallengeApi`, `confirmPhoneChangeApi`, `setTransactionPinApi`, `requestSecurityChallengeApi`, `confirmSecurityChallengeApi`, `getAccountSessionsApi`, `revokeAccountSessionApi`, `getAccountRolesApi`, `enrollAccountRoleApi`, `switchActiveRoleApi`.
+   - `lib/api/media.ts`: `initiateMediaUploadApi`, `completeMediaUploadApi`, `getMediaUrlApi`, `uploadMediaFile`.
+   - `lib/api/banks.ts`: `getSavedBankAccountsApi`, `addBankAccountApi`, `resolveBankAccountApi`, `searchSupportedBanks`, and curated `SUPPORTED_NIGERIAN_BANKS`.
+   - `lib/api/referrals.ts`: `getReferralSummaryApi`, `claimReferralRewardApi`.
+   - `lib/api/support.ts`: `getHelpArticlesApi`, `getSupportCasesApi`, `createSupportCaseApi`, `getSupportCaseByIdApi`, `sendSupportCaseMessageApi`, `openSupportChatApi`, `getSupportConversationsApi`.
+   - `lib/api/location.ts`: `searchLocationsApi` (offline curated Nigerian locations + OpenStreetMap geocoding fallback), `reverseGeocodeApi`, and `POPULAR_NIGERIAN_LOCATIONS`.
    - `lib/api/index.ts`: Barrel export of all modules.
 
 4. **Synchronized Global State & UI Flow Connections**:

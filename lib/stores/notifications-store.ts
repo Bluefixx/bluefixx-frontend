@@ -93,6 +93,10 @@ export const notificationStore = {
   getSnapshot() {
     return notifications;
   },
+  setNotifications(items: NotificationItem[]) {
+    notifications = items;
+    emitChange();
+  },
   markAsRead(id: string) {
     notifications = notifications.map((n) =>
       n.id === id ? { ...n, isRead: true } : n
@@ -121,6 +125,7 @@ export function useNotifications() {
   return {
     notifications: currentNotifications,
     unreadCount,
+    setNotifications: notificationStore.setNotifications,
     markAsRead: notificationStore.markAsRead,
     markAllAsRead: notificationStore.markAllAsRead,
     clearAll: notificationStore.clearAll,

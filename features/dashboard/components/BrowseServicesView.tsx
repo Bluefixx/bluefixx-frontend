@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES, SERVICES, Category, ServiceItem } from "../data/mock-dashboard-data";
+import { getServicesApi } from "@/lib/api/customer";
+import { TradeCategory } from "@/types/customer";
 
 export default function BrowseServicesView() {
   const router = useRouter();
@@ -13,10 +15,51 @@ export default function BrowseServicesView() {
 
   const [activeCategoryId, setActiveCategoryId] = useState<string>(initialCategory);
   const [searchTerm, setSearchTerm] = useState<string>(initialQuery);
+  const [apiCategories, setApiCategories] = useState<TradeCategory[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    getServicesApi()
+      .then((data) => {
+        if (mounted && Array.isArray(data) && data.length > 0) {
+          setApiCategories(data);
+        }
+      })
+      .catch((err) => {
+        console.debug("Services endpoint offline, using fallback catalog.", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Compute all available services
+  const allServices = useMemo<ServiceItem[]>(() => {
+    if (apiCategories.length > 0) {
+      const flattened: ServiceItem[] = [];
+      apiCategories.forEach((cat) => {
+        if (cat.services) {
+          cat.services.forEach((s) => {
+            flattened.push({
+              id: s.id,
+              name: s.name,
+              categoryId: cat.id,
+              categoryName: cat.name,
+              startingPrice: s.startingPrice ? parseInt(s.startingPrice.replace(/[^0-9]/g, ""), 10) || 12000 : 15000,
+              description: `Professional ${s.name.toLowerCase()} service by verified artisans.`,
+            });
+          });
+        }
+      });
+      if (flattened.length > 0) return flattened;
+    }
+    return SERVICES;
+  }, [apiCategories]);
 
   // Filter services by category and search
   const filteredServices = useMemo(() => {
-    return SERVICES.filter((service) => {
+    return allServices.filter((service) => {
       const matchesCategory =
         activeCategoryId === "all" || service.categoryId === activeCategoryId;
       const matchesSearch =
@@ -25,7 +68,7 @@ export default function BrowseServicesView() {
         service.description.toLowerCase().includes(searchTerm.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [activeCategoryId, searchTerm]);
+  }, [allServices, activeCategoryId, searchTerm]);
 
   // Group filtered services by category
   const groupedCategories = useMemo(() => {

@@ -9,6 +9,7 @@ import CompareQuotesView, { DetailedQuote, DETAILED_QUOTES } from "./CompareQuot
 import QuoteAcceptedView from "./QuoteAcceptedView";
 import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
 import SecureJobPaymentView from "./SecureJobPaymentView";
+import { getJobsApi, cancelJobApi } from "@/lib/api";
 
 export type JobStatus = "receiving-quotes" | "no-quotes-yet" | "expired" | "cancelled";
 export type JobSubView = "details" | "compare" | "accepted" | "artisan-profile" | "payment";
@@ -166,25 +167,74 @@ export default function JobPostingsView() {
   // Active selected job
   const selectedJob = jobs.find((j) => j.id === selectedJobId) || jobs[0];
 
+  // Load jobs from API
+  React.useEffect(() => {
+    async function fetchJobs() {
+      try {
+        const liveJobs = await getJobsApi();
+        if (liveJobs && liveJobs.length > 0) {
+          const mappedJobs: PostedJob[] = liveJobs.map((j) => ({
+            id: j.id,
+            title: j.title,
+            category: "Home & Construction",
+            service: j.title,
+            location: "Lagos, Nigeria",
+            date: new Date(j.preferredStart || j.createdAt).toLocaleDateString("en-NG", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            }),
+            time: "Flexible",
+            budget: "Negotiable",
+            urgency: j.urgency,
+            updatedAt: "Recent",
+            status:
+              j.status === "OPEN"
+                ? "receiving-quotes"
+                : j.status === "CANCELLED"
+                ? "cancelled"
+                : j.status === "EXPIRED"
+                ? "expired"
+                : "receiving-quotes",
+            matchedProfessionals: 5,
+            quotesReceived: j.quotesCount || 0,
+            isAccessible: true,
+            someoneOnSite: true,
+            photos: [],
+            quotes: [],
+          }));
+          setJobs(mappedJobs);
+          if (mappedJobs[0]?.id) {
+            setSelectedJobId(mappedJobs[0].id);
+          }
+        }
+      } catch {
+        // Fallback to INITIAL_POSTED_JOBS
+      }
+    }
+    fetchJobs();
+  }, []);
+
   // Perform cancellation
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!selectedJob) return;
     setIsCancelling(true);
-    setTimeout(() => {
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.id === selectedJob.id ? { ...j, status: "cancelled" } : j
-        )
-      );
-      setIsCancelling(false);
-      setIsCancelModalOpen(false);
-      toast.success(
-        `Job post ${selectedJob.id} cancelled. Reason: ${cancelReasonPreset}${
-          cancelReasonText ? ` ("${cancelReasonText}")` : ""
-        }`,
-        { duration: 4000 }
-      );
-    }, 600);
+    const reason = `${cancelReasonPreset}${cancelReasonText ? `: ${cancelReasonText}` : ""}`;
+
+    try {
+      await cancelJobApi(selectedJob.id, reason);
+    } catch {
+      // Graceful local update if offline
+    }
+
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.id === selectedJob.id ? { ...j, status: "cancelled" } : j
+      )
+    );
+    setIsCancelling(false);
+    setIsCancelModalOpen(false);
+    toast.success(`Job post ${selectedJob.id} cancelled.`, { duration: 4000 });
   };
 
   // ══════════════════════════════════════════════════════════

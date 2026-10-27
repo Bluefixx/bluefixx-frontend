@@ -1,0 +1,137 @@
+import { apiClient } from "./client";
+import {
+  AccountProfile,
+  UpdateAccountRequest,
+  SavedAddress,
+  CreateAddressRequest,
+  UserSession,
+  UserRoleInfo,
+} from "@/types/customer";
+
+/**
+ * Get the current account profile details
+ */
+export async function getAccountProfileApi(): Promise<AccountProfile> {
+  return apiClient.get<AccountProfile>("/account");
+}
+
+/**
+ * Update the account profile details
+ */
+export async function updateAccountProfileApi(
+  payload: UpdateAccountRequest
+): Promise<AccountProfile> {
+  return apiClient.patch<AccountProfile>("/account", payload);
+}
+
+/**
+ * Get all saved user addresses
+ */
+export async function getSavedAddressesApi(): Promise<SavedAddress[]> {
+  return apiClient.get<SavedAddress[]>("/addresses");
+}
+
+/**
+ * Add a new saved address
+ */
+export async function createSavedAddressApi(
+  payload: CreateAddressRequest
+): Promise<SavedAddress> {
+  return apiClient.post<SavedAddress>("/addresses", payload);
+}
+
+/**
+ * Delete a saved address
+ */
+export async function deleteSavedAddressApi(id: string): Promise<{ success: boolean }> {
+  return apiClient.delete<{ success: boolean }>(`/addresses/${id}`);
+}
+
+/**
+ * Request a phone change challenge
+ */
+export async function requestPhoneChangeChallengeApi(
+  phone: string
+): Promise<{ challengeId: string }> {
+  return apiClient.post<{ challengeId: string }>("/account/phone/challenges", { phone });
+}
+
+/**
+ * Confirm phone change with verification code
+ */
+export async function confirmPhoneChangeApi(payload: {
+  challengeId: string;
+  code: string;
+}): Promise<{ success: boolean }> {
+  return apiClient.post<{ success: boolean }>("/account/phone/confirm", payload);
+}
+
+/**
+ * Set or change 4-digit transaction PIN
+ */
+export async function setTransactionPinApi(payload: {
+  pin: string;
+  currentPin?: string;
+}): Promise<{ success: boolean }> {
+  return apiClient.post<{ success: boolean }>("/account/pin", payload);
+}
+
+/**
+ * Request a security challenge OTP for protected operations
+ */
+export async function requestSecurityChallengeApi(
+  action: string
+): Promise<{ challengeId: string }> {
+  return apiClient.post<{ challengeId: string }>("/account/challenges", { action });
+}
+
+/**
+ * Confirm security challenge OTP
+ */
+export async function confirmSecurityChallengeApi(payload: {
+  challengeId: string;
+  code: string;
+}): Promise<{ verified: boolean }> {
+  return apiClient.post<{ verified: boolean }>("/account/challenges/confirm", payload);
+}
+
+/**
+ * List active sessions
+ */
+export async function getAccountSessionsApi(): Promise<UserSession[]> {
+  return apiClient.get<UserSession[]>("/account/sessions");
+}
+
+/**
+ * Revoke a specific active session
+ */
+export async function revokeAccountSessionApi(
+  id: string
+): Promise<{ success: boolean }> {
+  return apiClient.delete<{ success: boolean }>(`/account/sessions/${id}`);
+}
+
+/**
+ * List user roles and enrollment status
+ */
+export async function getAccountRolesApi(): Promise<UserRoleInfo[]> {
+  return apiClient.get<UserRoleInfo[]>("/account/roles");
+}
+
+/**
+ * Enroll in a new user role
+ */
+export async function enrollAccountRoleApi(
+  role: "CUSTOMER" | "ARTISAN" | "LEARNER"
+): Promise<{ success: boolean }> {
+  return apiClient.post<{ success: boolean }>("/account/roles", { role });
+}
+
+/**
+ * Switch the active role
+ */
+export async function switchActiveRoleApi(
+  role: "CUSTOMER" | "ARTISAN" | "LEARNER"
+): Promise<{ success: boolean }> {
+  return apiClient.patch<{ success: boolean }>("/account/active-role", { role });
+}

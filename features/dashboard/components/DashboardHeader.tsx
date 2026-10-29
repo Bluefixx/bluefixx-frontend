@@ -18,11 +18,12 @@ export default function DashboardHeader({
   onOpenRoleSwitcher,
   onOpenMobileMenu,
 }: DashboardHeaderProps) {
-  const { user, locationName, setLocationName, walletBalance } = useAuth();
+  const { user, locationName, setLocationName, walletBalance, activeRole, setActiveRole } = useAuth();
   const { unreadCount, setNotifications } = useNotifications();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -170,28 +171,86 @@ export default function DashboardHeader({
 
       {/* Right Controls: Role Switcher + Notifications + Wallet + Profile Avatar */}
       <div className="flex items-center gap-3 sm:gap-4">
-        {/* User Type Switcher Button (vertical toggle arrows) */}
-        <button
-          type="button"
-          onClick={onOpenRoleSwitcher}
-          title="Switch account view (Customer / Artisan / Apprentice)"
-          className="w-10 h-10 rounded-full border border-neutral-200/90 hover:border-neutral-300 hover:bg-neutral-50 flex items-center justify-center text-neutral-700 transition-all cursor-pointer shadow-2xs"
-        >
-          {/* Vertical Toggle Arrows Icon */}
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {/* User Type Switcher Button (vertical toggle arrows) & Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsRoleMenuOpen(!isRoleMenuOpen)}
+            title="Switch account view (Customer / Artisan / Talent)"
+            className="w-10 h-10 rounded-full border border-neutral-200/90 hover:border-neutral-300 hover:bg-neutral-50 flex items-center justify-center text-neutral-700 transition-all cursor-pointer shadow-2xs"
           >
-            <line x1="12" y1="3" x2="12" y2="21" />
-            <polyline points="8 7 12 3 16 7" />
-            <polyline points="16 17 12 21 8 17" />
-          </svg>
-        </button>
+            {/* Vertical Toggle Arrows Icon */}
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="3" x2="12" y2="21" />
+              <polyline points="8 7 12 3 16 7" />
+              <polyline points="16 17 12 21 8 17" />
+            </svg>
+          </button>
+
+          {/* Floating Role Menu (Screenshot 1 Right) */}
+          {isRoleMenuOpen && (
+            <div className="absolute right-0 top-12 w-48 bg-white rounded-2xl shadow-xl border border-neutral-100 py-2 z-50 animate-in fade-in duration-100 select-none">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRole("customer");
+                  setIsRoleMenuOpen(false);
+                  toast.success("Switched to Customer view");
+                }}
+                className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                  activeRole === "customer"
+                    ? "bg-[#001B40] text-white font-bold"
+                    : "text-neutral-700 hover:bg-neutral-50"
+                }`}
+              >
+                <span>Switch to Customer</span>
+                {activeRole === "customer" && <span>✓</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRole("artisan");
+                  setIsRoleMenuOpen(false);
+                  toast.success("Switched to Artisan view");
+                }}
+                className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                  activeRole === "artisan"
+                    ? "bg-[#001B40] text-white font-bold"
+                    : "text-neutral-700 hover:bg-neutral-50"
+                }`}
+              >
+                <span>Switch to Artisan</span>
+                {activeRole === "artisan" && <span>✓</span>}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveRole("apprentice");
+                  setIsRoleMenuOpen(false);
+                  toast.success("Switched to Talent view");
+                }}
+                className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                  activeRole === "apprentice"
+                    ? "bg-[#001B40] text-white font-bold"
+                    : "text-neutral-700 hover:bg-neutral-50"
+                }`}
+              >
+                <span>Switch to Talent</span>
+                {activeRole === "apprentice" && <span>✓</span>}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Notification Bell */}
         <div className="relative">

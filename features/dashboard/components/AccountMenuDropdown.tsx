@@ -46,7 +46,7 @@ export default function AccountMenuDropdown({
       ? "Customer account"
       : activeRole === "artisan"
       ? "Artisan account"
-      : "Apprentice account";
+      : "Talent account";
 
   return (
     <div

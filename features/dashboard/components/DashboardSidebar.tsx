@@ -33,6 +33,8 @@ function DashboardSidebarContent({
   const [isProfileOpen, setIsProfileOpen] = useState(
     pathname.includes("/profile") || pathname.includes("/wallet")
   );
+  const [isLearnOpen, setIsLearnOpen] = useState(true);
+  const [isProgressOpen, setIsProgressOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(
     pathname.includes("/settings")
   );
@@ -63,6 +65,16 @@ function DashboardSidebarContent({
   const isMessagesActive = pathname === "/messages" || pathname === "/dashboard/messages";
   const isReviewsActive = pathname === "/reviews" || pathname === "/dashboard/reviews";
   
+  // Talent-specific navigation state
+  const viewParam = searchParams.get("view") || "";
+  const isTalentHomeActive = (pathname === "/dashboard" || pathname === "/") && !viewParam;
+  const isFindApprenticeshipsActive = pathname.includes("/dashboard") && (viewParam === "discover" || viewParam === "master-profile");
+  const isMyApplicationsActive = pathname.includes("/dashboard") && (viewParam === "applications-list" || viewParam === "apply" || viewParam === "application-sent" || viewParam === "application-accepted" || viewParam === "application-declined");
+  const isLearnActive = isFindApprenticeshipsActive || isMyApplicationsActive;
+  const isMyApprenticeshipActive = pathname.includes("/dashboard") && viewParam === "progress" && currentTab !== "payments";
+  const isPaymentsReceiptsActive = pathname.includes("/dashboard") && (viewParam === "refund-policy" || viewParam === "request-refund" || (viewParam === "progress" && currentTab === "payments"));
+  const isProgressActive = isMyApprenticeshipActive || isPaymentsReceiptsActive;
+
   // Profile submenus
   const isMyProfileActive = pathname === "/profile" || pathname === "/dashboard/profile";
   const isWalletActive = pathname === "/wallet" || pathname === "/dashboard/wallet";
@@ -87,7 +99,7 @@ function DashboardSidebarContent({
       ? "Customer"
       : activeRole === "artisan"
       ? "Artisan"
-      : "Apprentice";
+      : "Talent";
 
   const sidebarContent = (
     <div className="w-64 bg-white border-r border-neutral-200/80 min-h-screen flex flex-col justify-between shrink-0 select-none">
@@ -131,247 +143,423 @@ function DashboardSidebarContent({
 
         {/* Navigation Items */}
         <nav className="px-3.5 space-y-1.5 mt-3">
-          {/* 1. Home */}
-          <Link
-            href="/dashboard"
-            onClick={handleLinkClick}
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
-              isHomeActive
-                ? "bg-[#001B40] text-white shadow-xs font-bold"
-                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
-            }`}
-          >
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-            <span>Home</span>
-          </Link>
-
-          {/* 2. Explore (with submenus) */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setIsExploreOpen(!isExploreOpen)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
-                isBrowseServicesActive || isPostJobActive
-                  ? "text-[#001B40] font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-                </svg>
-                <span>Explore</span>
-              </div>
-              <svg
-                className={`w-4 h-4 text-neutral-400 transition-transform ${
-                  isExploreOpen ? "rotate-180" : ""
+          {activeRole === "apprentice" ? (
+            <>
+              {/* 1. Home */}
+              <Link
+                href="/dashboard"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isTalentHomeActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
                 }`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-
-            {/* Explore Submenu */}
-            {isExploreOpen && (
-              <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
-                <Link
-                  href="/explore"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isBrowseServicesActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
-                  }`}
-                >
-                  Browse services
-                </Link>
-                <Link
-                  href="/post-job"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isPostJobActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
-                  }`}
-                >
-                  Post a job
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* 3. Bookings (with submenus) */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setIsBookingsOpen(!isBookingsOpen)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
-                isBookingsRoot
-                  ? "text-[#001B40] font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
-              }`}
-            >
-              <div className="flex items-center gap-3">
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
-                <span>Bookings</span>
+                <span>Home</span>
+              </Link>
+
+              {/* 2. Learn (with submenus) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsLearnOpen(!isLearnOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isLearnActive
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                      <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                    </svg>
+                    <span>Learn</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isLearnOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Learn Submenu */}
+                {isLearnOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/dashboard?view=discover"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isFindApprenticeshipsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Find apprenticeships
+                    </Link>
+                    <Link
+                      href="/dashboard?view=applications-list"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isMyApplicationsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      My applications
+                    </Link>
+                  </div>
+                )}
               </div>
-              <svg
-                className={`w-4 h-4 text-neutral-400 transition-transform ${
-                  isBookingsOpen ? "rotate-180" : ""
+
+              {/* 3. Progress (with submenus) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsProgressOpen(!isProgressOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isProgressActive
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                      <polyline points="17 6 23 6 23 12" />
+                    </svg>
+                    <span>Progress</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isProgressOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Progress Submenu */}
+                {isProgressOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/dashboard?view=progress"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isMyApprenticeshipActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      My apprenticeship
+                    </Link>
+                    <Link
+                      href="/dashboard?view=refund-policy"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isPaymentsReceiptsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Payments & receipts
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Messages */}
+              <Link
+                href="/messages"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isMessagesActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
                 }`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Messages</span>
+              </Link>
 
-            {/* Bookings Submenu */}
-            {isBookingsOpen && (
-              <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
-                <Link
-                  href="/bookings?tab=job-posts"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isJobPostsActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
-                  }`}
-                >
-                  Job posts
-                </Link>
-                <Link
-                  href="/bookings?tab=active"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isActiveBookingsActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
-                  }`}
-                >
-                  Active bookings
-                </Link>
-                <Link
-                  href="/bookings?tab=completed"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isCompletedActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
-                  }`}
-                >
-                  Completed
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* 4. Messages */}
-          <Link
-            href="/messages"
-            onClick={handleLinkClick}
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
-              isMessagesActive
-                ? "bg-[#001B40] text-white shadow-xs font-bold"
-                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
-            }`}
-          >
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-            <span>Messages</span>
-          </Link>
-
-          {/* 5. Reviews */}
-          <Link
-            href="/reviews"
-            onClick={handleLinkClick}
-            className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
-              isReviewsActive
-                ? "bg-[#001B40] text-white shadow-xs font-bold"
-                : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
-            }`}
-          >
-            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill={isReviewsActive ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            <span>Reviews</span>
-          </Link>
-
-          {/* 6. Profile (with submenus) */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
-                isProfileRoot
-                  ? "text-[#001B40] font-bold"
-                  : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
-              }`}
-            >
-              <div className="flex items-center gap-3">
+              {/* 5. Profile */}
+              <Link
+                href="/profile"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isMyProfileActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+                }`}
+              >
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
                 <span>Profile</span>
-              </div>
-              <svg
-                className={`w-4 h-4 text-neutral-400 transition-transform ${
-                  isProfileOpen ? "rotate-180" : ""
+              </Link>
+            </>
+          ) : (
+            <>
+              {/* 1. Home */}
+              <Link
+                href="/dashboard"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isHomeActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
                 }`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                <span>Home</span>
+              </Link>
 
-            {/* Profile Submenu */}
-            {isProfileOpen && (
-              <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
-                <Link
-                  href="/profile"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isMyProfileActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+              {/* 2. Explore (with submenus) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsExploreOpen(!isExploreOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isBrowseServicesActive || isPostJobActive
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
                   }`}
                 >
-                  My profile
-                </Link>
-                <Link
-                  href="/wallet"
-                  onClick={handleLinkClick}
-                  className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
-                    isWalletActive
-                      ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
-                      : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
-                  }`}
-                >
-                  Wallet
-                </Link>
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                    </svg>
+                    <span>Explore</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isExploreOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Explore Submenu */}
+                {isExploreOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/explore"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isBrowseServicesActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Browse services
+                    </Link>
+                    <Link
+                      href="/post-job"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isPostJobActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Post a job
+                    </Link>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* 3. Bookings (with submenus) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsBookingsOpen(!isBookingsOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isBookingsRoot
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <span>Bookings</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isBookingsOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Bookings Submenu */}
+                {isBookingsOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/bookings?tab=job-posts"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isJobPostsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Job posts
+                    </Link>
+                    <Link
+                      href="/bookings?tab=active"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isActiveBookingsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Active bookings
+                    </Link>
+                    <Link
+                      href="/bookings?tab=completed"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isCompletedActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Completed
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Messages */}
+              <Link
+                href="/messages"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isMessagesActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+                }`}
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Messages</span>
+              </Link>
+
+              {/* 5. Reviews */}
+              <Link
+                href="/reviews"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isReviewsActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+                }`}
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill={isReviewsActive ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                <span>Reviews</span>
+              </Link>
+
+              {/* 6. Profile (with submenus) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isProfileRoot
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>Profile</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isProfileOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Profile Submenu */}
+                {isProfileOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/profile"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isMyProfileActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      My profile
+                    </Link>
+                    <Link
+                      href="/wallet"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isWalletActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Wallet
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </nav>
       </div>
 

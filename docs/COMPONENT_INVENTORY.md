@@ -421,5 +421,214 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Empty State**: "You're all caught up" card with rounded bell illustration when no unread notifications remain.
 - **Used In**: `app/(dashboard)/notifications/page.tsx`
 
+---
 
+## 4. Talent / Apprentice Dashboard Modules (`features/dashboard/components/talent/`)
 
+### `TalentHomeView`
+- **File**: `features/dashboard/components/talent/TalentHomeView.tsx`
+- **Purpose**: Primary dashboard landing screen matching Figma *01 · Home & role switch (Talent Web · Home)*:
+  - **Greeting Header**: Personalized morning greeting with avatar, name, "⚡ Upgrade to Artisan" pill, and "Find opportunities" primary CTA.
+  - **Your Training Section**: Active apprenticeship card with current module badge ("Advanced Welding"), master artisan credit ("John Obiora"), 65% progress bar, attendance (92%), and "Open My Apprenticeship" CTA.
+  - **Next Session & Escrow Payment Cards**: Next scheduled session time and location, and escrow balance status (`₦50,000 held in escrow`).
+  - **Learn Another Skill Section**: Explore card with preview of alternative apprenticeships (`Home Electrical Installation · Chinedu Okafor`).
+  - **Subview Routing**: Orchestrates state-driven and URL-synchronized deep-linking between `home`, `progress`, `discover`, `master-profile`, and `apply` views.
+- **Used In**: `features/dashboard/components/ApprenticeHomeView.tsx`
+
+### `TalentTrainingProgressView`
+- **File**: `features/dashboard/components/talent/TalentTrainingProgressView.tsx`
+- **Purpose**: Full training progression and syllabus tracking matching Figma *Talent Web · Training progress*:
+  - **Master Artisan Header Card**: John Obiora profile card with workshop location, direct "Message" button, and 3 key performance metric cards: `Attendance: 92%`, `Hours: 48`, `Fee: 2/3`.
+  - **Training Timeline**: 7-stage interactive apprenticeship roadmap (`Orientation`, `Workshop Safety`, `Basic Tools`, `Welding Fundamentals`, `Advanced Welding` [active], `Final Practical`, `Completion`).
+  - **Assignments List**: Practical joint sample and safety worksheet assignments with status pills (`Due`, `Submitted`) and points.
+  - **Training Fee Breakdown & Receipts**: Total fee (`₦50,000`), paid balance (`₦35,000`), pending balance (`₦15,000`), and modal preview of downloadable official payment receipts.
+  - **Curriculum Documents**: Downloadable resource cards for PDF guides (`Programme Syllabus.pdf`, `Workshop safety guide.pdf`, `Payment receipt.pdf`).
+- **Used In**: `TalentHomeView` (accessible via "Full progress" or sidebar `My apprenticeship`)
+
+### `TalentDiscoveryView`
+- **File**: `features/dashboard/components/talent/TalentDiscoveryView.tsx`
+- **Purpose**: Apprenticeship opportunities catalog matching Figma *02 · Discover & apply (Talent Web · Discovery)*:
+  - **Trade Search & Filters**: Search input and interactive category filter chips (`All trades`, `Welding`, `Electrical`, `Plumbing`, `Carpentry`).
+  - **Apprenticeship Program Cards**: Grid listing master artisan cards with portrait, verified badge, experience rating, duration, upfront & total fee, workshop location, and remaining spots counter (`1 place left`).
+- **Used In**: `TalentHomeView` (accessible via "Find opportunities" or sidebar `Find apprenticeships`)
+
+### `MasterArtisanProfileView`
+- **File**: `features/dashboard/components/talent/MasterArtisanProfileView.tsx`
+- **Purpose**: Detailed master artisan profile and syllabus page matching Figma *Talent Web · Master artisan profile*:
+  - **Profile Hero & Stats**: Master artisan badge, verified label, accepting apprentices chip, and quick stats: `12 Apprentices trained`, `4.9 Rating`, `7 yrs Experience`.
+  - **What You Will Learn**: Skill tags list (`Workshop safety`, `Arc welding`, `Measurement & cutting`, `Gate fabrication`).
+  - **Apprenticeships Offered**: Program details with schedules, fee structure, syllabus overview, and next intake batch date.
+  - **Workshop Portfolio**: Image gallery of recent master artisan fabrication jobs.
+  - **Reviews**: Verified reviews from previous apprentices with star ratings and feedback testimonials.
+  - **Sticky Action Card**: "Apply for a place" primary button, "Message John" secondary button, trade certifications list, and workshop location pin map preview.
+- **Used In**: `TalentHomeView` (accessible when selecting any program card in Discovery)
+
+### `TalentApplicationFormView`
+- **File**: `features/dashboard/components/talent/TalentApplicationFormView.tsx`
+- **Purpose**: Multi-question apprenticeship application form matching Figma *Talent Web · Application form* and *Talent Web · Application validation*:
+  - **Dynamic Progress Counter**: Real-time counter of answered required questions (`X of 4 required questions answered`).
+  - **5 Comprehensive Questions**:
+    1. *Why do you want to learn this trade?* (Textarea with live character counter).
+    2. *What experience do you already have?* (Input field).
+    3. *Can you attend the workshop six days a week?* (Yes / No radio button cards).
+    4. *Which best describes your current situation?* (Situation selector: `Secondary school leaver`, `Currently unemployed`, `Working, changing trade`, `Student`).
+    5. *Upload examples of previous work (optional)* (File uploader for project photos).
+  - **Validation & Error States**: Highlights missing fields with red error notices matching the Figma error state.
+  - **Sticky Application Summary**: Shows applicant details, program fee, escrow policy disclaimer (`Applying is free. You will only be asked to pay after the master artisan accepts you.`), and "Submit Application" button.
+- **Used In**: `TalentHomeView` (accessible via "Apply for a place" on Master Artisan profile or sidebar `My applications`)
+
+### `ApprenticeshipCompletedModal`
+- **File**: `features/dashboard/components/talent/ApprenticeshipCompletedModal.tsx`
+- **Purpose**: Graduation celebration modal matching Figma *Talent Web · Apprenticeship completed*:
+  - **Graduation Badge**: Gold celebration mortarboard icon with subtle pulse ring.
+  - **Completion Certificate Notice**: "Congratulations, [Name] - You have completed Welding & Metal Fabrication with John Obiora. Your certificate is now on your Bluefixx profile, and you can apply to become a verified artisan."
+  - **Action Triggers**: "View certificate" (triggers digital certificate preview/download) and "Review John" (submits artisan feedback).
+- **Used In**: `TalentHomeView` and `TalentTrainingProgressView`
+
+### `TalentApplicationSentView`
+- **File**: `features/dashboard/components/talent/TalentApplicationSentView.tsx`
+- **Purpose**: Application confirmation view matching Figma *Talent Web · Application sent*:
+  - **Confirmation Card**: Green checkmark circle with title and review timing expectation ("John Obiora will review your application. Response takes about 2 days.").
+  - **Programme Details**: Summary card showing Trade, Master artisan, Workshop location, and Duration.
+  - **Action Buttons**: "Track my application" and "Find more opportunities".
+- **Used In**: `TalentHomeView` (accessible upon submitting an application)
+
+### `TalentApplicationsListView`
+- **File**: `features/dashboard/components/talent/TalentApplicationsListView.tsx`
+- **Purpose**: Comprehensive applications tracker matching Figma *03 · Applications (Talent Web · My applications)*:
+  - **Interactive Application Cards**:
+    - *Accepted card*: Green highlight banner, start date, schedule (`Monday - Saturday · 8:00 AM - 5:00 PM`), and "Make payment to enrol now" trigger.
+    - *Under review card*: 3-stage progress track (`Application submitted` → `Under review · in progress` → `Decision`).
+    - *Declined card*: Rejection rationale banner and "Find another apprenticeship" CTA.
+  - **Empty State**: Matching Figma *Talent Web · Applications: none yet* with clipboard illustration and "Find opportunities" action.
+- **Used In**: `TalentHomeView` (accessible via sidebar `My applications`)
+
+### `TalentApplicationAcceptedDetailView`
+- **File**: `features/dashboard/components/talent/TalentApplicationAcceptedDetailView.tsx`
+- **Purpose**: Acceptance overview matching Figma *Talent Web · Accepted detail*:
+  - **Celebration Card**: Offer announcement from John Obiora with start date and artisan credentials.
+  - **Escrow & Spot Hold Notice**: Highlights 72-hour enrollment hold window and milestone escrow release.
+  - **Sticky Programme Summary**: Programme specs, paid-in-full breakdown (`₦150,000`), and "Continue to payment" CTA.
+- **Used In**: `TalentHomeView` (accessible by selecting an accepted application)
+
+### `TalentApplicationDeclinedDetailView`
+- **File**: `features/dashboard/components/talent/TalentApplicationDeclinedDetailView.tsx`
+- **Purpose**: Decline notice matching Figma *Talent Web · Application declined*:
+  - **Notice Card**: Red icon, decline explanation ("All 3 places on Welding & Metal Fabrication have been filled"), and artisan details.
+  - **Alternative Discovery CTA**: Side card with programme recap and "Find other apprenticeships" button.
+- **Used In**: `TalentHomeView` (accessible by selecting a declined application)
+
+### `TalentApprenticeshipPaymentView`
+- **File**: `features/dashboard/components/talent/TalentApprenticeshipPaymentView.tsx`
+- **Purpose**: Apprenticeship payment suite matching Figma *04 · Payment (Talent Web · Payment selection)*:
+  - **Payment Structure**: "Pay in full (`₦150,000 · Nothing else to pay`)".
+  - **Payment Methods**: Multi-option selector between Bluefixx Wallet (`Balance: ₦185,500`) and Paystack (`Card, bank transfer, USSD`).
+  - **Transaction PIN Dialog**: Modal matching *Talent Web · Payment PIN dialog* with 4-digit security dots and interactive numeric keypad (`1-9`, `0`, `⌫`).
+  - **Paystack Checkout Dialog**: Modal matching *Talent Web · Paystack checkout* with "Pay with Card" and "Pay with Transfer".
+  - **Payment Processing Spinner**: Animated dialog matching *Talent Web · Payment processing* with escrow transaction reference (`PTX-78194-2025`).
+  - **Refund Protection Card**: Integrated link to the 30-day refund policy.
+- **Used In**: `TalentHomeView` (accessible from accepted application detail)
+
+### `TalentRefundPolicyView`
+- **File**: `features/dashboard/components/talent/TalentRefundPolicyView.tsx`
+- **Purpose**: Policy documentation matching Figma *Talent Web · 30-day refund policy*:
+  - **Rules & Qualifications**: Explains escrow protection, criteria for full refunds, partial refund calculation, and 24-hour wallet reimbursement.
+  - **Apprenticeship Status Card**: Fee paid (`₦150,000`), start date, and countdown to refund window end with "Request a refund" button.
+- **Used In**: `TalentHomeView` (accessible via sidebar `Payments & receipts` or payment selection)
+
+### `TalentRequestRefundView`
+- **File**: `features/dashboard/components/talent/TalentRequestRefundView.tsx`
+- **Purpose**: Refund submission form matching Figma *Talent Web · Request a refund*:
+  - **Reason Chips**: Interactive chips (`Sessions cancelled or missed`, `Training not as described`, `Unsafe workshop`, `Changed my mind`, `Other`).
+  - **Detailed Textarea**: "Tell us what happened" with validation.
+  - **Destination Selector**: Bluefixx wallet (within 24 hours) or Bank account.
+  - **Escrow Guarantee Note**: "Up to ₦150,000 held in escrow. Master artisan will respond or Bluefixx will auto-resolve within 2 working days."
+- **Used In**: `TalentHomeView` (accessible from refund policy)
+
+### `TalentRefundRequestedConfirmationView`
+- **File**: `features/dashboard/components/talent/TalentRefundRequestedConfirmationView.tsx`
+- **Purpose**: Confirmation screen matching Figma *Talent Web · Refund requested*:
+  - **Confirmation Card**: Return arrow icon, "Refund request sent" title, paused payout notice, and 24-hour wallet turnaround message.
+  - **Action Triggers**: "View request" and "Back to payments".
+- **Used In**: `TalentHomeView` (accessible upon submitting refund form)
+
+### `TalentApprenticeshipActivatedView`
+- **File**: `features/dashboard/components/talent/TalentApprenticeshipActivatedView.tsx`
+- **Purpose**: Enrollment & escrow confirmation view matching Figma *Talent Web · Apprenticeship activated*:
+  - **Confirmation Status**: Green checkmark badge, "Apprenticeship activated!" headline, and escrow protection banner.
+  - **Payment & Enrollment Breakdown**: Detailed receipt displaying Programme Title, Master Artisan, Start Date, Payment Method (`Paystack · Debit Card **** 4012`), and unique reference (`BFX-TRN-4417202`).
+  - **Action Triggers**: Primary "View Apprenticeship" button and secondary "Manage master artisan" link.
+- **Used In**: `TalentHomeView` (routed upon successful payment completion)
+
+### `TalentPaymentFailedView`
+- **File**: `features/dashboard/components/talent/TalentPaymentFailedView.tsx`
+- **Purpose**: Failed payment & recovery view matching Figma *Talent Web · Payment failed (empty state)*:
+  - **Notice Badge**: Red alert circle with "Payment was not completed" explanation.
+  - **Escrow Spot Hold Notice**: Highlights 48-hour place reservation before release to waitlisted candidates.
+  - **Recovery Actions**: "Use wallet instead" primary CTA and "Try payment again" secondary button.
+- **Used In**: `TalentHomeView` (routed upon payment failure)
+
+### `TalentMessagesView`
+- **File**: `features/dashboard/components/talent/TalentMessagesView.tsx`
+- **Purpose**: Comprehensive messaging suite matching Figma *Talent Web · Inbox*, *Talent Web · Mentor conversation*, and *Talent Web · Locked offer*:
+  - **Master Artisan Conversation**: Direct chat thread with mentor John Obiora displaying apprenticeship status banner, live workshop guidance, and voice note player with waveform animation.
+  - **Locked Offer Preview**: Modal displaying the formal Apprenticeship Agreement contract terms with John Obiora.
+  - **Empty Inbox Fallback**: Zero-state matching *Talent Web · Messages: no messages (empty state)* with chat illustration and "Find opportunities" trigger.
+- **Used In**: `TalentHomeView` (accessible via sidebar `Messages` or direct links)
+
+### `TalentProfileSettingsView`
+- **File**: `features/dashboard/components/talent/TalentProfileSettingsView.tsx`
+- **Purpose**: Account overview and configuration hub matching Figma *Talent Web · Settings*:
+  - **Profile Hero Banner**: Talent avatar, full name, phone number, and "Edit profile" action.
+  - **Two-Column Settings Hub**:
+    - *Account Section*: Personal details, Transaction PIN, Notifications, and Language selector.
+    - *Payments & Support Section*: Bluefixx Wallet, Safety Center & live location, Report a problem, and Invite & Earn referrals.
+  - **Account Danger Zone**: Logout and Delete Account triggers connected to global auth modals.
+- **Used In**: `TalentHomeView` (accessible via sidebar `Settings` or `Profile`)
+
+### `TalentEditProfileView`
+- **File**: `features/dashboard/components/talent/TalentEditProfileView.tsx`
+- **Purpose**: Personal information management view matching Figma *Talent Web · Edit profile*:
+  - **Avatar Uploader**: Circular profile picture uploader with camera badge and live photo preview.
+  - **Profile Fields**: First name, Last name, Phone number, Email address, Residential address, and Emergency Contact.
+  - **Action Buttons**: "Save changes" with simulated saving feedback and "Cancel" back navigation.
+- **Used In**: `TalentHomeView` (accessible from Profile settings)
+
+### `TalentTransactionPinView`
+- **File**: `features/dashboard/components/talent/TalentTransactionPinView.tsx`
+- **Purpose**: Clean inline 4-digit security PIN creator matching Figma *Talent Web · Create PIN*, *Talent Web · Confirm PIN*, and *Talent Web · PIN success*:
+  - **No Virtual Keypad Dialogue**: Complies with requirement by providing direct, accessible 4-digit inline PIN input boxes with auto-focus advancing.
+  - **Three Step State Flow**:
+    1. *Create PIN*: Enter initial 4 digits.
+    2. *Confirm PIN*: Re-enter 4 digits with mismatch validation.
+    3. *PIN Created Success*: Celebration checkmark and confirmation message.
+- **Used In**: `TalentHomeView` (accessible from Account settings)
+
+### `TalentReferralView`
+- **File**: `features/dashboard/components/talent/TalentReferralView.tsx`
+- **Purpose**: Invite & Earn incentive center matching Figma *Talent Web · Referral (Invite & earn)*:
+  - **Reward Banner**: "Get ₦3,000 for every friend who enrols in an apprenticeship" with 1-click clipboard copy for code `BLUE-SIMEON`.
+  - **Promo Callout**: Double referral week banner (earn ₦6,000 per referral).
+  - **Metrics Row**: Total earned (`₦18,000`), Friends invited (`7`), Pending rewards (`₦6,000`), and Available to withdraw (`₦12,000`).
+  - **Milestone Progress Tracker**: 5-step reward milestone ladder (`Level 1 - Starter` to `Level 5 - Ambassador`).
+  - **Tabbed Activity Tracker**: Filter referrals across `All (7)`, `In progress (3)`, `Reward earned (3)`, and `Not qualified (1)`.
+- **Used In**: `TalentHomeView` (accessible from Settings or referral links)
+
+### `TalentSafetyCenterView`
+- **File**: `features/dashboard/components/talent/TalentSafetyCenterView.tsx`
+- **Purpose**: Workshop emergency and security suite matching Figma *Talent Web · Safety support* and *Talent Web · Safety report sheet*:
+  - **Emergency 112 Banner**: Direct red emergency dialer banner for immediate dispatch.
+  - **Live GPS Workshop Sharing**: Toggleable live location sharing with emergency contact (Ada Eze) active during training hours.
+  - **Workshop Verification Card**: Address confirmation (`14 Ziks Avenue, Enugu`) with interactive pin preview.
+  - **Report Safety Issue Sheet**: Accessible modal with issue selector (`I feel unsafe at the workshop`, `Artisan absent`, `Harassment`, `Safety gear not provided`), description textarea, and urgent report submission.
+- **Used In**: `TalentHomeView` (accessible from settings or training progress)
+
+### `TalentReviewsSuite`
+- **File**: `features/dashboard/components/talent/TalentReviewsSuite.tsx`
+- **Purpose**: Completed apprenticeship review workflow matching Figma *Talent Web · Completed apprenticeship: review pending* and *Talent Web · Review your master artisan*:
+  - **Pending Review Notice**: Highlight banner alerting graduate to review John Obiora to finalize certification on their public profile.
+  - **Interactive 5-Star Rating Selector**: Responsive hover and selection star rating component.
+  - **"What went well?" Multi-Select Chips**: Interactive feedback tags (`Patient mentor`, `Hands-on training`, `Safe workshop`, `Modern tools`, `Punctual`, `Good communication`).
+  - **Review Submission Form**: Detailed comments textarea, anonymous submission toggle, and "Submit review" button.
+  - **Side Trust Card**: Explains how verified apprentice reviews build credibility across the Bluefixx marketplace.
+- **Used In**: `TalentHomeView` (accessible via sidebar `Reviews`, after graduation, or from pending review alerts)

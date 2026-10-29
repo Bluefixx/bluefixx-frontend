@@ -1,0 +1,348 @@
+"use client";
+
+import React, { useState } from "react";
+import Image from "next/image";
+import toast from "react-hot-toast";
+
+interface MasterArtisanProfileViewProps {
+  onBack: () => void;
+  onApply: (programme: { id: string; title: string; fee: string; duration: string }) => void;
+  onMessage?: () => void;
+}
+
+export function MasterArtisanProfileView({
+  onBack,
+  onApply,
+  onMessage,
+}: MasterArtisanProfileViewProps) {
+  const [selectedProgramme, setSelectedProgramme] = useState({
+    id: "prog-welding-1",
+    title: "Welding & Metal Fabrication Apprenticeship",
+    fee: "₦50,000",
+    duration: "3 months",
+  });
+
+  const skills = [
+    "Workshop safety",
+    "Gas welding",
+    "Measurement & cutting",
+    "Gate fabrication",
+    "Arc welding",
+    "Grinding & finishing",
+  ];
+
+  const portfolio = [
+    { title: "Burglary proof installation", img: "/images/workers.png" },
+    { title: "Industrial gate project", img: "/images/customers.png" },
+  ];
+
+  const reviews = [
+    {
+      name: "Kelechi N.",
+      role: "apprentice, 2025",
+      text: "He teaches patiently and makes sure you can do each step yourself before moving on.",
+    },
+    {
+      name: "Ifeanyi U.",
+      role: "apprentice, 2024",
+      text: "Very strict on safety. I got my first paid welding job two weeks after finishing.",
+    },
+  ];
+
+  return (
+    <div className="space-y-6 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
+      {/* Top Header */}
+      <div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-neutral-800 transition-colors mb-2 cursor-pointer"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          <span>Learn</span>
+        </button>
+
+        <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40] tracking-tight">
+          Master artisan
+        </h1>
+      </div>
+
+      {/* Profile Header Card */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/80 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-white shadow-xs bg-neutral-100 shrink-0">
+              <Image
+                src="/images/david.jpg"
+                alt="John Obiora"
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
+                  John Obiora
+                </h2>
+                <span className="text-[11px] font-bold text-white bg-[#001B40] px-2.5 py-0.5 rounded-full">
+                  Master Artisan
+                </span>
+                <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                  Accepting apprentices
+                </span>
+              </div>
+              <p className="font-sans text-xs sm:text-sm text-neutral-500 mt-1">
+                Welding & metal fabrication · Emene workshop, Enugu
+              </p>
+            </div>
+          </div>
+
+          {/* Stats Badges Row */}
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-100 text-center min-w-[80px]">
+              <span className="font-sans font-bold text-lg text-[#001B40] block">
+                12
+              </span>
+              <span className="font-sans text-[10px] text-neutral-400 font-medium">
+                Apprentices trained
+              </span>
+            </div>
+
+            <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-100 text-center min-w-[80px]">
+              <span className="font-sans font-bold text-lg text-[#001B40] block">
+                4.9
+              </span>
+              <span className="font-sans text-[10px] text-neutral-400 font-medium">
+                Rating
+              </span>
+            </div>
+
+            <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-100 text-center min-w-[80px]">
+              <span className="font-sans font-bold text-lg text-[#001B40] block">
+                7 yrs
+              </span>
+              <span className="font-sans text-[10px] text-neutral-400 font-medium">
+                Experience
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (8 cols): What you will learn, Apprenticeships, Portfolio, Reviews */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* What you will learn */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
+            <h3 className="font-heading font-bold text-base text-[#0F1115]">
+              What you will learn
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {skills.map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="px-3.5 py-1.5 rounded-full bg-neutral-100/80 text-neutral-700 font-sans text-xs font-semibold"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Apprenticeships offered */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
+            <h3 className="font-heading font-bold text-base text-[#0F1115]">
+              Apprenticeships offered
+            </h3>
+
+            <div className="space-y-3">
+              {/* Option 1 */}
+              <div
+                onClick={() =>
+                  setSelectedProgramme({
+                    id: "prog-welding-1",
+                    title: "Welding & Metal Fabrication Apprenticeship",
+                    fee: "₦50,000",
+                    duration: "3 months",
+                  })
+                }
+                className="p-5 rounded-2xl border-2 border-blue-900 bg-blue-50/20 cursor-pointer transition-all space-y-2"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-sans font-bold text-sm text-[#0F1115]">
+                    Welding & Metal Fabrication Apprenticeship
+                  </h4>
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0">
+                    1 place left
+                  </span>
+                </div>
+                <p className="font-sans text-xs text-neutral-500">
+                  3 months · Mon–Sat, 8am–5pm · Emene workshop
+                </p>
+                <p className="font-sans text-xs text-neutral-700 font-medium">
+                  ₦50,000 paid once · 1 place left
+                </p>
+                <p className="font-sans text-xs text-neutral-500 leading-relaxed pt-1">
+                  Hands-on training from workshop safety to building and fitting a burglar gate.
+                </p>
+              </div>
+
+              {/* Option 2 */}
+              <div
+                onClick={() =>
+                  setSelectedProgramme({
+                    id: "prog-welding-2",
+                    title: "Gate & Burglary-Proof Fabrication",
+                    fee: "₦30,000",
+                    duration: "1 month",
+                  })
+                }
+                className="p-5 rounded-2xl border border-neutral-200 hover:border-neutral-300 bg-white cursor-pointer transition-all space-y-2 opacity-90"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="font-sans font-bold text-sm text-[#0F1115]">
+                    Gate & Burglary-Proof Fabrication
+                  </h4>
+                  <span className="text-[11px] font-semibold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
+                    Next intake: Oct 2026
+                  </span>
+                </div>
+                <p className="font-sans text-xs text-neutral-500">
+                  1 month short course · For apprentices who can already weld.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Portfolio */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
+            <h3 className="font-heading font-bold text-base text-[#0F1115]">
+              Portfolio
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {portfolio.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-2xl overflow-hidden border border-neutral-200/80 group"
+                >
+                  <div className="relative aspect-[16/10] bg-neutral-100">
+                    <Image
+                      src={item.img}
+                      alt={item.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="p-3 bg-white">
+                    <p className="font-sans font-bold text-xs text-[#0F1115]">
+                      {item.title}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Reviews */}
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                Reviews
+              </h3>
+              <span className="font-bold text-xs text-[#001B40]">★ 4.9 (10)</span>
+            </div>
+
+            <div className="space-y-3">
+              {reviews.map((rev, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-neutral-50 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#0F1115]">{rev.name}</span>
+                    <span className="text-neutral-400">{rev.role}</span>
+                  </div>
+                  <p className="font-sans text-xs text-neutral-600 leading-relaxed">
+                    &ldquo;{rev.text}&rdquo;
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (4 cols): Sticky CTA, Certifications, Location */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Action CTA Card */}
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 sticky top-24">
+            <div>
+              <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
+                SELECTED PROGRAMME
+              </span>
+              <h4 className="font-heading font-bold text-base text-[#0F1115] mt-1">
+                {selectedProgramme.title}
+              </h4>
+              <p className="font-sans text-xs text-neutral-500 mt-1">
+                {selectedProgramme.fee} paid once · {selectedProgramme.duration} · 1 place left
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => onApply(selectedProgramme)}
+                className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+              >
+                Apply for a place
+              </button>
+
+              <button
+                type="button"
+                onClick={onMessage || (() => toast.success("Opening chat with John Obiora"))}
+                className="w-full py-3 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Message John
+              </button>
+            </div>
+          </div>
+
+          {/* Certifications Card */}
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-3">
+            <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
+              CERTIFICATIONS
+            </span>
+            <div>
+              <p className="font-sans font-bold text-xs sm:text-sm text-[#0F1115]">
+                Trade Test 1 · Welding & fabrication
+              </p>
+              <p className="font-sans text-[11px] text-neutral-400 mt-0.5">
+                Federal Ministry of Labour · 2019
+              </p>
+            </div>
+          </div>
+
+          {/* Workshop Location Card */}
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-3">
+            <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
+              WORKSHOP LOCATION
+            </span>
+            <div className="h-32 rounded-2xl bg-blue-50 border border-blue-100 flex flex-col items-center justify-center p-4 text-center">
+              <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs mb-2">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </div>
+              <p className="font-sans font-bold text-xs text-[#001B40]">
+                Emene Industrial Layout
+              </p>
+              <p className="font-sans text-[11px] text-neutral-500">
+                Enugu, Nigeria
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

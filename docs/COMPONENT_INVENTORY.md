@@ -625,10 +625,12 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `TalentReviewsSuite`
 - **File**: `features/dashboard/components/talent/TalentReviewsSuite.tsx`
-- **Purpose**: Completed apprenticeship review workflow matching Figma *Talent Web · Completed apprenticeship: review pending* and *Talent Web · Review your master artisan*:
+- **Purpose**: Completed apprenticeship review workflow matching Figma *Talent Web · Completed apprenticeship: review pending*, *Talent Web · Review your master artisan*, and *Talent Web · Review submitted*:
   - **Pending Review Notice**: Highlight banner alerting graduate to review John Obiora to finalize certification on their public profile.
   - **Interactive 5-Star Rating Selector**: Responsive hover and selection star rating component.
   - **"What went well?" Multi-Select Chips**: Interactive feedback tags (`Patient mentor`, `Hands-on training`, `Safe workshop`, `Modern tools`, `Punctual`, `Good communication`).
   - **Review Submission Form**: Detailed comments textarea, anonymous submission toggle, and "Submit review" button.
+  - **Review Submitted Confirmation Screen**: Matching *Talent Web · Review submitted* with green checkmark badge, "Thanks for your review" headline, "Your review is live on John's master artisan profile and helps the next apprentice choose", "View certificate" outlined button, and "Back to my apprenticeship" primary button.
   - **Side Trust Card**: Explains how verified apprentice reviews build credibility across the Bluefixx marketplace.
 - **Used In**: `TalentHomeView` (accessible via sidebar `Reviews`, after graduation, or from pending review alerts)
+

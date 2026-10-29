@@ -27,6 +27,7 @@ import { TalentTransactionPinView } from "./TalentTransactionPinView";
 import { TalentReferralView } from "./TalentReferralView";
 import { TalentSafetyCenterView } from "./TalentSafetyCenterView";
 import { TalentReviewsSuite } from "./TalentReviewsSuite";
+import { NotificationsSettingsView } from "@/features/dashboard/components/settings/NotificationsSettingsView";
 
 export type TalentSubView =
   | "home"
@@ -51,7 +52,8 @@ export type TalentSubView =
   | "transaction-pin"
   | "referrals"
   | "safety-support"
-  | "reviews";
+  | "reviews"
+  | "notifications-settings";
 
 interface TalentHomeViewProps {
   onSwitchToCustomer?: () => void;
@@ -91,6 +93,7 @@ export function TalentHomeView({
     "referrals",
     "safety-support",
     "reviews",
+    "notifications-settings",
   ];
 
   // Subview navigation
@@ -382,7 +385,7 @@ export function TalentHomeView({
       <TalentProfileSettingsView
         onEditProfile={() => setCurrentView("edit-profile")}
         onOpenPin={() => setCurrentView("transaction-pin")}
-        onOpenNotifications={() => toast("Notification preferences")}
+        onOpenNotifications={() => setCurrentView("notifications-settings")}
         onOpenCertifications={() => setIsCompletedModalOpen(true)}
         onOpenWallet={() => setCurrentView("payment")}
         onOpenSafetySupport={() => setCurrentView("safety-support")}
@@ -443,16 +446,29 @@ export function TalentHomeView({
   }
 
   // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 21: REVIEWS (PENDING & SUBMISSION SUITE)
+  // SUBVIEW 21: REVIEWS (PENDING, FORM & SUBMITTED SUITE)
   // ══════════════════════════════════════════════════════════════
   if (currentView === "reviews") {
     return (
       <TalentReviewsSuite
         onBack={() => setCurrentView("home")}
-        onSubmitSuccess={() => setCurrentView("progress")}
+        onBackToApprenticeship={() => setCurrentView("progress")}
+        onViewCertificate={() => setIsCompletedModalOpen(true)}
+        onSubmitSuccess={() => {}}
         programmeTitle={activeProgramme.title}
         artisanName="John Obiora"
         duration={activeProgramme.duration}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 22: NOTIFICATIONS SETTINGS
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "notifications-settings") {
+    return (
+      <NotificationsSettingsView
+        onBack={() => setCurrentView("profile")}
       />
     );
   }

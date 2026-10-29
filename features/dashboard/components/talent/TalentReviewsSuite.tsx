@@ -6,19 +6,25 @@ import toast from "react-hot-toast";
 interface TalentReviewsSuiteProps {
   onBack: () => void;
   onSubmitSuccess?: () => void;
+  onViewCertificate?: () => void;
+  onBackToApprenticeship?: () => void;
   programmeTitle?: string;
   artisanName?: string;
   duration?: string;
+  initialState?: "pending" | "form" | "submitted";
 }
 
 export function TalentReviewsSuite({
   onBack,
   onSubmitSuccess,
+  onViewCertificate,
+  onBackToApprenticeship,
   programmeTitle = "Welding & Metal Fabrication",
   artisanName = "John Obiora",
   duration = "3 months",
+  initialState = "form",
 }: TalentReviewsSuiteProps) {
-  const [viewState, setViewState] = useState<"pending" | "form" | "submitted">("form");
+  const [viewState, setViewState] = useState<"pending" | "form" | "submitted">(initialState);
   const [rating, setRating] = useState(4);
   const [selectedChips, setSelectedChips] = useState<string[]>([
     "Patient mentor",
@@ -63,6 +69,71 @@ export function TalentReviewsSuite({
       onSubmitSuccess?.();
     }, 1000);
   };
+
+  // 1. Submitted Confirmation View (Talent Web · Review submitted)
+  if (viewState === "submitted") {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto pb-16 select-none animate-in fade-in duration-200">
+        {/* Breadcrumb Back */}
+        <button
+          type="button"
+          onClick={onBackToApprenticeship || onBack}
+          className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-neutral-600 hover:text-neutral-900 transition-colors cursor-pointer"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          <span>My apprenticeship</span>
+        </button>
+
+        {/* Heading */}
+        <div>
+          <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40] tracking-tight">
+            Review {artisanName}
+          </h1>
+        </div>
+
+        {/* Success Card */}
+        <div className="pt-6">
+          <div className="max-w-xl mx-auto bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/80 shadow-2xs text-center space-y-5">
+            {/* Green Checkmark Badge */}
+            <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-100">
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#001B40]">
+                Thanks for your review
+              </h2>
+              <p className="font-sans text-xs sm:text-sm text-neutral-500 max-w-md mx-auto leading-relaxed">
+                Your review is live on {artisanName}&apos;s master artisan profile and helps the next apprentice choose.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+              <button
+                type="button"
+                onClick={onViewCertificate || (() => toast.success("Opening verified certificate..."))}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-700 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                View certificate
+              </button>
+              <button
+                type="button"
+                onClick={onBackToApprenticeship || onBack}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+              >
+                Back to my apprenticeship
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Pending Status View
   if (viewState === "pending") {
@@ -115,33 +186,6 @@ export function TalentReviewsSuite({
     );
   }
 
-  // 2. Submitted Confirmation
-  if (viewState === "submitted") {
-    return (
-      <div className="space-y-6 max-w-xl mx-auto pb-16 select-none animate-in fade-in duration-200">
-        <div className="bg-white rounded-3xl p-8 sm:p-14 border border-neutral-200/80 shadow-2xs text-center space-y-6">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mx-auto text-2xl shadow-xs">
-            ★
-          </div>
-          <div className="space-y-2">
-            <h2 className="font-heading font-extrabold text-2xl text-[#0F1115]">
-              Review submitted
-            </h2>
-            <p className="font-sans text-xs sm:text-sm text-neutral-500 max-w-sm mx-auto leading-relaxed">
-              Your feedback is now visible on {artisanName}&apos;s profile and helps other talents discover great master artisans.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-3 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
-          >
-            Back to my apprenticeship
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // 3. Write a Review Form (Matching Figma Screenshot 6 Bottom Right)
   return (

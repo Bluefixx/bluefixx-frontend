@@ -61,7 +61,7 @@ export async function addBankAccountApi(
 }
 
 /**
- * Resolve / verify bank account number with bank code
+ *Resolve / verify bank account number with bank code
  */
 export async function resolveBankAccountApi(
   bankCode: string,

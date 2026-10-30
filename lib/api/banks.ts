@@ -75,7 +75,7 @@ export async function resolveBankAccountApi(
       }
     );
   } catch {
-    // If backend resolves on save or mock is enabled, return candidate display
+    //If backend resolves on save or mock is enabled, return candidate display
     const bank = SUPPORTED_NIGERIAN_BANKS.find((b) => b.code === bankCode);
     return {
       accountName: "Verified Account Name",

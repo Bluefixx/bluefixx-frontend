@@ -101,12 +101,14 @@ export default function CustomerHomeView() {
     };
   }, [setWalletBalance]);
 
-  // Dynamic time-of-day greeting
-  const greeting = useMemo(() => {
+  // Dynamic time-of-day greeting (evaluated client-side to prevent SSR prerender mismatch)
+  const [greeting, setGreeting] = useState("Good morning");
+
+  useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) setGreeting("Good morning");
+    else if (hour < 17) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
   }, []);
 
   const userFirstName = useMemo(() => {

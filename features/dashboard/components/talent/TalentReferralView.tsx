@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { getReferralSummaryApi } from "@/lib/api/referrals";
 
 interface ReferralItem {
   id: string;
@@ -19,9 +20,26 @@ interface TalentReferralViewProps {
 
 export function TalentReferralView({
   onBack,
-  referralCode = "BLUE-SIMEON",
+  referralCode: defaultCode = "BLUE-SIMEON",
 }: TalentReferralViewProps) {
   const [activeTab, setActiveTab] = useState<"all" | "in_progress" | "reward_earned" | "not_qualified">("all");
+  const [code, setCode] = useState<string>(defaultCode);
+
+  useEffect(() => {
+    let isMounted = true;
+    getReferralSummaryApi()
+      .then((data) => {
+        if (!isMounted || !data) return;
+        if (data.referralCode) setCode(data.referralCode);
+      })
+      .catch(() => {
+        // Retain default code
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const referrals: ReferralItem[] = [
     {
@@ -85,12 +103,12 @@ export function TalentReferralView({
   });
 
   const handleCopyCode = () => {
-    navigator.clipboard?.writeText(referralCode);
+    navigator.clipboard?.writeText(code);
     toast.success("Referral code copied to clipboard!");
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard?.writeText(`https://bluefixx.com/signup?ref=${referralCode}`);
+    navigator.clipboard?.writeText(`https://bluefixx.com/signup?ref=${code}`);
     toast.success("Referral invite link copied!");
   };
 
@@ -135,7 +153,7 @@ export function TalentReferralView({
             <div>
               <span className="text-[11px] text-blue-200 block">Your referral code</span>
               <span className="font-mono font-bold text-lg text-white tracking-wider">
-                {referralCode}
+                {code}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">

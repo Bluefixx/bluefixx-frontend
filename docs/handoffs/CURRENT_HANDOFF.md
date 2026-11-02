@@ -1,12 +1,67 @@
 # Current Session Handoff
 
-*Last updated: 2026-10-28 (Talents / Apprentice Dashboard UI Implementation)*
+*Last updated: 2026-11-02 (Talents API Endpoints Integration)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 
-### A. Talents / Apprentice Dashboard UI Suite (`features/dashboard/components/talent/`)
+### A. Talent API Integration Suite (`types/talent.ts` & `lib/api/talent.ts`)
+Connected the complete Talent/Apprentice Dashboard interface to the live backend endpoints according to the BlueFixx Talent API specification:
+
+1. **TypeScript Contracts (`types/talent.ts`)**:
+   - Strictly typed data models matching OpenAPI schemas:
+     - `TalentProgramListItem`, `TalentProgramDetail`, `TalentProgramFilterParams`, `TalentArtisan`
+     - `TalentApplicationListItem`, `CreateTalentApplicationPayload`, `TalentApplicationStatus`, `TalentCurrentSituation`
+     - `TalentEnrollmentDetail`, `TalentEnrollmentSummary`, `TalentMilestone`, `TalentAssignment`, `TalentAttendanceRecord`
+     - `PayTalentEnrollmentPayload`, `PayTalentEnrollmentResponse`, `TalentPaymentSource`
+     - `SubmitAssignmentPayload`, `ConfirmMilestoneResponse`, `ConfirmTalentCompletionResponse`
+     - `TalentCertificateRecord`, `SubmitArtisanReviewPayload`, `RequestTalentRefundPayload`
+     - `TalentMessage`, `SendTalentMessagePayload`, `TalentAlert`
+
+2. **Modular Talent API Service (`lib/api/talent.ts`)**:
+   - `getTalentHomeApi`: `GET /talent/home`
+   - `getTalentProgramsApi`: `GET /talent/programs`
+   - `getTalentProgramByIdApi`: `GET /talent/programs/{id}`
+   - `submitTalentApplicationApi`: `POST /talent/programs/{id}/applications`
+   - `getTalentApplicationsApi`: `GET /talent/applications`
+   - `withdrawTalentApplicationApi`: `POST /talent/applications/{id}/withdraw`
+   - `getTalentAlertsApi`, `createTalentAlertApi`, `deleteTalentAlertApi`: `/talent/alerts`
+   - `payTalentEnrollmentApi`: `POST /talent/enrollments/{id}/pay` (with UUID `Idempotency-Key` header)
+   - `getTalentEnrollmentByIdApi`: `GET /talent/enrollments/{id}`
+   - `submitAssignmentApi`: `POST /talent/training/assignments/{id}/submission`
+   - `confirmMilestoneApi`: `POST /talent/training/milestones/{id}/confirm`
+   - `confirmTalentCompletionApi`: `POST /talent/enrollments/{id}/completion/confirm`
+   - `getTalentCertificateApi`: `GET /talent/certificates/{id}`
+   - `submitArtisanReviewApi`: `POST /talent/enrollments/{id}/review`
+   - `getProgramMessagesApi`: `GET /talent/programs/{id}/messages`
+   - `sendProgramMessageApi`: `POST /talent/programs/{id}/messages`
+   - `requestTalentRefundApi`: `POST /talent/enrollments/{id}/refunds`
+
+3. **Wallet & Financial Utilities Enhancement (`lib/api/wallet.ts`)**:
+   - `getWalletActivityApi`: `GET /wallet/activity`
+   - `getPaymentStatusApi`: `GET /payments/{id}`
+   - `downloadPaymentReceiptApi`: `GET /payments/{id}/receipt` (blob download)
+   - `getReferralHistoryApi`: `GET /account/referrals/history` in `lib/api/referrals.ts`
+
+4. **UI Components Integration (`features/dashboard/components/talent/`)**:
+   - `TalentHomeView.tsx`: Integrated `getTalentHomeApi()` for dynamic enrollment summary, session schedule in Africa/Lagos, and escrow held balance.
+   - `TalentDiscoveryView.tsx`: Integrated `getTalentProgramsApi()` for trade and search filtering.
+   - `MasterArtisanProfileView.tsx`: Integrated `getTalentProgramByIdApi()` for dynamic outcomes, remaining spots, and pricing.
+   - `TalentApplicationFormView.tsx`: Integrated `submitTalentApplicationApi()` and binary work sample uploads via `uploadMediaFile`.
+   - `TalentApplicationsListView.tsx`: Integrated `getTalentApplicationsApi()` and `withdrawTalentApplicationApi()`.
+   - `TalentApprenticeshipPaymentView.tsx`: Integrated `payTalentEnrollmentApi()`, `getWalletApi()`, `verifyPaymentApi()`, and fresh idempotency key generation.
+   - `TalentTrainingProgressView.tsx`: Integrated `getTalentEnrollmentByIdApi()`, `submitAssignmentApi()`, `confirmMilestoneApi()`, and PDF receipt download.
+   - `ApprenticeshipCompletedModal.tsx`: Integrated `confirmTalentCompletionApi()` and `getTalentCertificateApi()`.
+   - `TalentReviewsSuite.tsx`: Integrated `submitArtisanReviewApi()`.
+   - `TalentMessagesView.tsx`: Integrated `getProgramMessagesApi()` and `sendProgramMessageApi()`.
+   - `TalentRequestRefundView.tsx`: Integrated `requestTalentRefundApi()`.
+   - `TalentReferralView.tsx`: Integrated `getReferralSummaryApi()`.
+   - `TalentSafetyCenterView.tsx`: Integrated `createSupportCaseApi()`.
+
+---
+
+## 2. Talents / Apprentice Dashboard UI Suite (Previous Session Baseline)
 Built the complete Talent/Apprentice Dashboard interface pixel-perfect against the 5 user-provided Figma design screenshots:
 
 1. **Talent Home Screen (`TalentHomeView.tsx`)**:

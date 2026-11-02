@@ -7,6 +7,32 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 1. Completed Work
+- [x] **Talent API Endpoints Integration (`lib/api/talent.ts` & `types/talent.ts`)**:
+  - Implemented typed domain contracts matching the BlueFixx Talent OpenAPI specification:
+    - `TalentProgram`, `TalentProgramDetail`, `TalentArtisan`, `TalentHomeSummary`
+    - `TalentApplication`, `TalentApplicationStatus`, `CreateTalentApplicationPayload`
+    - `TalentEnrollmentDetail`, `TalentMilestone`, `TalentAssignment`, `TalentAttendanceRecord`
+    - `PayTalentEnrollmentPayload`, `PayTalentEnrollmentResponse`, `TalentPaymentSource`
+    - `SubmitAssignmentPayload`, `ConfirmMilestoneResponse`, `ConfirmTalentCompletionResponse`
+    - `TalentCertificateRecord`, `SubmitArtisanReviewPayload`, `RequestTalentRefundPayload`
+    - `TalentMessage`, `SendTalentMessagePayload`, `TalentAlert`
+  - Created modular `lib/api/talent.ts` providing all 19 Talent API operations.
+  - Enhanced `lib/api/wallet.ts` with `getWalletActivityApi`, `getPaymentStatusApi`, and `downloadPaymentReceiptApi`.
+  - Enhanced `lib/api/referrals.ts` with `getReferralHistoryApi`.
+  - Wired live endpoints into the complete Talent UI suite (`features/dashboard/components/talent/`):
+    - `TalentHomeView.tsx`: Integrated `getTalentHomeApi()` for active apprenticeships and next scheduled workshop sessions.
+    - `TalentDiscoveryView.tsx`: Integrated `getTalentProgramsApi()` for trade and search filtering with fallback.
+    - `MasterArtisanProfileView.tsx`: Integrated `getTalentProgramByIdApi()` for outcomes, remaining capacity, reviews, and fees.
+    - `TalentApplicationFormView.tsx`: Integrated `submitTalentApplicationApi()` and binary work sample uploads via `uploadMediaFile`.
+    - `TalentApplicationsListView.tsx`: Integrated `getTalentApplicationsApi()` and `withdrawTalentApplicationApi()`.
+    - `TalentApprenticeshipPaymentView.tsx`: Integrated `payTalentEnrollmentApi()` with Wallet PIN and Paystack options, generating fresh UUID `Idempotency-Key` headers, and `getWalletApi()` for live spendable balance.
+    - `TalentTrainingProgressView.tsx`: Integrated `getTalentEnrollmentByIdApi()`, `submitAssignmentApi()`, `confirmMilestoneApi()`, and PDF receipt download via `downloadPaymentReceiptApi()`.
+    - `ApprenticeshipCompletedModal.tsx`: Integrated `confirmTalentCompletionApi()` and `getTalentCertificateApi()`.
+    - `TalentReviewsSuite.tsx`: Integrated `submitArtisanReviewApi()`.
+    - `TalentMessagesView.tsx`: Integrated `getProgramMessagesApi()` and `sendProgramMessageApi()`.
+    - `TalentRequestRefundView.tsx`: Integrated `requestTalentRefundApi()`.
+    - `TalentReferralView.tsx`: Integrated `getReferralSummaryApi()`.
+    - `TalentSafetyCenterView.tsx`: Integrated `createSupportCaseApi()`.
 - [x] **Primary Entry Route (`/`)**: Starts with the onboarding flow (Splash -> Intro -> Language Selection -> Welcome).
 - [x] **Next.js App Router Route Groups `(dashboard)` & `(artisan)`**:
   - `app/(dashboard)` for all customer routes (`/dashboard`, `/explore`, `/post-job`, `/bookings`, `/messages`, `/profile`, `/settings`).

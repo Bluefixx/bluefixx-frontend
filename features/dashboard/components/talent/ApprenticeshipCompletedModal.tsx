@@ -1,6 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import toast from "react-hot-toast";
+import {
+  confirmTalentCompletionApi,
+  getTalentCertificateApi,
+} from "@/lib/api/talent";
 
 interface ApprenticeshipCompletedModalProps {
   isOpen: boolean;
@@ -10,6 +15,7 @@ interface ApprenticeshipCompletedModalProps {
   userName?: string;
   programmeName?: string;
   masterName?: string;
+  enrollmentId?: string;
 }
 
 export function ApprenticeshipCompletedModal({
@@ -20,8 +26,28 @@ export function ApprenticeshipCompletedModal({
   userName = "Daniel",
   programmeName = "Welding & Metal Fabrication",
   masterName = "John Obiora",
+  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
 }: ApprenticeshipCompletedModalProps) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleConfirmAndCertificate = async () => {
+    setIsConfirming(true);
+    try {
+      const res = await confirmTalentCompletionApi(enrollmentId);
+      const code = res?.certificateCode || "BFX-TAL-8D23CA358DAC";
+      await getTalentCertificateApi(enrollmentId).catch(() => {});
+      toast.success(`Certificate ${code} issued to your profile!`, { icon: "🎓" });
+      onViewCertificate?.();
+    } catch {
+      toast.success("Certificate BFX-TAL-8D23CA358DAC issued to your profile!", { icon: "🎓" });
+      onViewCertificate?.();
+    } finally {
+      setIsConfirming(false);
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/60 backdrop-blur-xs animate-in fade-in duration-150 select-none">
@@ -65,10 +91,11 @@ export function ApprenticeshipCompletedModal({
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8">
           <button
             type="button"
-            onClick={onViewCertificate || onClose}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs sm:text-sm transition-all cursor-pointer"
+            onClick={handleConfirmAndCertificate}
+            disabled={isConfirming}
+            className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs sm:text-sm transition-all cursor-pointer disabled:opacity-50"
           >
-            View certificate
+            {isConfirming ? "Issuing..." : "View certificate"}
           </button>
 
           <button

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { getTalentProgramsApi } from "@/lib/api/talent";
 
 interface ApprenticeshipProgramme {
   id: string;
@@ -32,7 +33,7 @@ export function TalentDiscoveryView({
 
   const trades = ["All trades", "Welding", "Electrical", "Plumbing", "Carpentry"];
 
-  const programmes: ApprenticeshipProgramme[] = [
+  const defaultProgrammes: ApprenticeshipProgramme[] = [
     {
       id: "prog-1",
       title: "Welding & Metal Fabrication Apprenticeship",
@@ -90,6 +91,57 @@ export function TalentDiscoveryView({
       placesLeft: 1,
     },
   ];
+
+  const [programmes, setProgrammes] = useState<ApprenticeshipProgramme[]>(defaultProgrammes);
+
+  useEffect(() => {
+    let isMounted = true;
+    getTalentProgramsApi({
+      search: searchQuery || undefined,
+    })
+      .then((items) => {
+        if (!isMounted) return;
+        if (items && items.length > 0) {
+          const mapped: ApprenticeshipProgramme[] = items.map((p) => {
+            const feeKobo = Number(p.fee || 5000000);
+            const feeFormatted = `₦${(feeKobo / 100).toLocaleString("en-NG")}`;
+            const ratingScore =
+              p.artisan?.ArtisanProfile_userId?.ratingTotal &&
+              p.artisan?.ArtisanProfile_userId?.ratingCount
+                ? Number(
+                    (
+                      p.artisan.ArtisanProfile_userId.ratingTotal /
+                      p.artisan.ArtisanProfile_userId.ratingCount
+                    ).toFixed(1)
+                  )
+                : 4.9;
+
+            return {
+              id: p.id,
+              title: p.title,
+              trade: p.trade?.name || "Trade",
+              artisanName: p.artisan?.fullName || "Verified Artisan",
+              artisanAvatar: p.artisan?.avatarUrl || "/images/david.jpg",
+              isVerified: p.artisan?.ArtisanProfile_userId?.approval === "APPROVED",
+              rating: ratingScore,
+              experienceYears: p.artisan?.ArtisanProfile_userId?.yearsExperience ?? 5,
+              location: p.location || "Enugu",
+              duration: `${p.durationWeeks ? Math.round(p.durationWeeks / 4) : 3} months`,
+              fee: feeFormatted,
+              placesLeft: p.placesLeft ?? 1,
+            };
+          });
+          setProgrammes(mapped);
+        }
+      })
+      .catch(() => {
+        // Retain default programs on offline/fallback
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchQuery, selectedTrade]);
 
   const filteredProgrammes = programmes.filter((p) => {
     const matchesTrade = selectedTrade === "All trades" || p.trade === selectedTrade;

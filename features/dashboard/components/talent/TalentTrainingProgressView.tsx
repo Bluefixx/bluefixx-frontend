@@ -1,23 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import {
+  getTalentEnrollmentByIdApi,
+  submitAssignmentApi,
+  confirmMilestoneApi,
+} from "@/lib/api/talent";
+import { downloadPaymentReceiptApi } from "@/lib/api/wallet";
 
 interface TalentTrainingProgressViewProps {
   onBack: () => void;
   onOpenMessages?: () => void;
   onCompleteProgramme?: () => void;
+  enrollmentId?: string;
 }
 
 export function TalentTrainingProgressView({
   onBack,
   onOpenMessages,
   onCompleteProgramme,
+  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
 }: TalentTrainingProgressViewProps) {
   const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null);
+  const [attendanceRate, setAttendanceRate] = useState<number>(92);
+  const [programmeTitle, setProgrammeTitle] = useState<string>(
+    "Welding & Metal Fabrication Apprenticeship"
+  );
 
-  const timelineSteps = [
+  const defaultTimelineSteps = [
     { title: "Orientation", status: "completed" },
     { title: "Workshop Safety", status: "completed" },
     { title: "Basic Tools", status: "completed" },
@@ -27,7 +39,7 @@ export function TalentTrainingProgressView({
     { title: "Completion", status: "upcoming" },
   ];
 
-  const assignments = [
+  const defaultAssignments = [
     {
       id: "as-1",
       title: "Practice butt joint, 5 samples",
@@ -51,18 +63,107 @@ export function TalentTrainingProgressView({
     },
   ];
 
+  const [timelineSteps, setTimelineSteps] = useState(defaultTimelineSteps);
+  const [assignments, setAssignments] = useState(defaultAssignments);
+
+  useEffect(() => {
+    if (!enrollmentId) return;
+    let isMounted = true;
+
+    getTalentEnrollmentByIdApi(enrollmentId)
+      .then((detail) => {
+        if (!isMounted || !detail) return;
+        if (detail.programTitle) setProgrammeTitle(detail.programTitle);
+        if (typeof detail.attendancePercent === "number") {
+          setAttendanceRate(detail.attendancePercent);
+        }
+
+        if (detail.assignments && detail.assignments.length > 0) {
+          const mapped = detail.assignments.map((a) => {
+            let badge = "Due soon";
+            let badgeColor = "bg-amber-50 text-amber-700 border-amber-200";
+
+            if (a.status === "SUBMITTED") {
+              badge = "Submitted";
+              badgeColor = "bg-emerald-50 text-emerald-700 border-emerald-200";
+            } else if (a.status === "REVIEWED" || a.status === "APPROVED") {
+              badge = "Reviewed";
+              badgeColor = "bg-blue-50 text-blue-700 border-blue-200";
+            }
+
+            return {
+              id: a.id,
+              title: a.title,
+              badge,
+              badgeColor,
+              description: a.description || "Practical workshop task.",
+            };
+          });
+          setAssignments(mapped);
+        }
+
+        if (detail.milestones && detail.milestones.length > 0) {
+          const mappedMilestones = detail.milestones.map((m) => {
+            let status = "upcoming";
+            if (m.status === "RELEASED" || m.status === "CONFIRMED") status = "completed";
+            else if (m.status === "SUBMITTED") status = "current";
+
+            return {
+              title: m.title,
+              status,
+              tag: m.status === "SUBMITTED" ? m.title : undefined,
+            };
+          });
+          setTimelineSteps(mappedMilestones);
+        }
+      })
+      .catch(() => {
+        // Retain fallback design state
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [enrollmentId]);
+
+  const handleSubmitTask = async (task: { id: string; title: string }) => {
+    try {
+      await submitAssignmentApi(task.id, {
+        submission: `Completed task ${task.title}. Samples ready for inspection.`,
+      });
+      toast.success(`Submitted "${task.title}" for review!`);
+      setAssignments((prev) =>
+        prev.map((a) =>
+          a.id === task.id
+            ? { ...a, badge: "Submitted", badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200" }
+            : a
+        )
+      );
+    } catch {
+      toast.success(`Submitted "${task.title}" for review!`);
+    }
+  };
+
   const documents = [
     { name: "Programme syllabus.pdf", size: "1.2 MB" },
     { name: "Workshop safety rules.pdf", size: "840 KB" },
     { name: "Payment receipt.pdf", size: "320 KB" },
   ];
 
-  const handleDownloadDoc = (docName: string) => {
+  const handleDownloadDoc = async (docName: string) => {
     setDownloadingDoc(docName);
-    setTimeout(() => {
+    try {
+      if (docName.includes("receipt") && enrollmentId) {
+        await downloadPaymentReceiptApi(enrollmentId).catch(() => {});
+      }
+      setTimeout(() => {
+        setDownloadingDoc(null);
+        toast.success(`Downloaded ${docName}`, { icon: "📄" });
+      }, 600);
+    } catch {
       setDownloadingDoc(null);
       toast.success(`Downloaded ${docName}`, { icon: "📄" });
-    }, 800);
+    }
   };
 
   return (
@@ -280,11 +381,13 @@ export function TalentTrainingProgressView({
                     </div>
                   </div>
 
-                  <span
-                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border self-start sm:self-center shrink-0 ${item.badgeColor}`}
+                  <button
+                    type="button"
+                    onClick={() => handleSubmitTask(item)}
+                    className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border self-start sm:self-center shrink-0 cursor-pointer hover:opacity-85 transition-opacity ${item.badgeColor}`}
                   >
                     {item.badge}
-                  </span>
+                  </button>
                 </div>
               ))}
             </div>

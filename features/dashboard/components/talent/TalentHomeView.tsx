@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { getTalentHomeApi } from "@/lib/api/talent";
 import { TalentTrainingProgressView } from "./TalentTrainingProgressView";
 import { TalentDiscoveryView } from "./TalentDiscoveryView";
 import { MasterArtisanProfileView } from "./MasterArtisanProfileView";
@@ -122,6 +123,56 @@ export function TalentHomeView({
     duration: "3 months",
   });
 
+  const [homeData, setHomeData] = useState<{
+    enrollmentTitle: string;
+    stageName: string;
+    artisanName: string;
+    progressPercent: number;
+    attendancePercent: number;
+    enrollmentId: string;
+    nextSessionText: string;
+    escrowHeldText: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getTalentHomeApi()
+      .then((data) => {
+        if (!isMounted) return;
+        if (data && data.enrollments && data.enrollments.length > 0) {
+          const primary = data.enrollments[0];
+          const nextSession = data.upcomingSessions?.[0];
+          const feeKobo = Number(primary.fee || 5000000);
+          const feeNgn = (feeKobo / 100).toLocaleString("en-NG");
+
+          setHomeData({
+            enrollmentTitle: primary.programTitle || "Welding & Metal Fabrication Apprenticeship",
+            stageName: "Advanced Welding",
+            artisanName: primary.masterArtisanName || "John Obiora",
+            progressPercent: primary.progressPercent ?? 65,
+            attendancePercent: primary.attendancePercent ?? 92,
+            enrollmentId: primary.id,
+            nextSessionText: nextSession
+              ? `${nextSession.date} · ${nextSession.time} · ${nextSession.location}`
+              : "Thursday 28 August · 8:00am · Emene workshop",
+            escrowHeldText: `₦${feeNgn} held in escrow and released to ${primary.masterArtisanName || "John"} as you learn.`,
+          });
+          setActiveProgramme((prev) => ({
+            ...prev,
+            id: primary.id,
+            title: primary.programTitle || prev.title,
+          }));
+        }
+      })
+      .catch(() => {
+        // Resilient offline fallback preserves UI
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // ══════════════════════════════════════════════════════════════
   // SUBVIEW 1: TRAINING PROGRESS (Screenshot 2 Left)
   // ══════════════════════════════════════════════════════════════
@@ -132,6 +183,7 @@ export function TalentHomeView({
           onBack={() => setCurrentView("home")}
           onOpenMessages={() => setCurrentView("messages")}
           onCompleteProgramme={() => setIsCompletedModalOpen(true)}
+          enrollmentId={homeData?.enrollmentId || activeProgramme.id}
         />
         <ApprenticeshipCompletedModal
           isOpen={isCompletedModalOpen}
@@ -141,6 +193,7 @@ export function TalentHomeView({
             setCurrentView("reviews");
           }}
           userName={userName}
+          enrollmentId={homeData?.enrollmentId || activeProgramme.id}
         />
       </>
     );
@@ -173,6 +226,7 @@ export function TalentHomeView({
     return (
       <MasterArtisanProfileView
         onBack={() => setCurrentView("discover")}
+        programId={activeProgramme.id}
         onApply={(programme) => {
           setActiveProgramme(programme);
           setCurrentView("apply");
@@ -189,6 +243,7 @@ export function TalentHomeView({
     return (
       <TalentApplicationFormView
         onBack={() => setCurrentView("master-profile")}
+        programId={activeProgramme.id}
         programmeTitle={activeProgramme.title}
         duration={activeProgramme.duration}
         fee={activeProgramme.fee}
@@ -284,6 +339,7 @@ export function TalentHomeView({
         onPaymentFailed={() => {
           setCurrentView("payment-failed");
         }}
+        enrollmentId={homeData?.enrollmentId || activeProgramme.id}
         programmeTitle={activeProgramme.title}
         fee={activeProgramme.fee}
       />
@@ -312,6 +368,7 @@ export function TalentHomeView({
       <TalentRequestRefundView
         onBack={() => setCurrentView("refund-policy")}
         onSubmitSuccess={() => setCurrentView("refund-requested")}
+        enrollmentId={homeData?.enrollmentId || activeProgramme.id}
         programmeTitle={activeProgramme.title}
         heldInEscrow={activeProgramme.fee}
       />
@@ -373,6 +430,7 @@ export function TalentHomeView({
         onBack={() => setCurrentView("home")}
         onOpenTraining={() => setCurrentView("progress")}
         onFindMore={() => setCurrentView("discover")}
+        programId={activeProgramme.id}
       />
     );
   }
@@ -458,6 +516,7 @@ export function TalentHomeView({
         programmeTitle={activeProgramme.title}
         artisanName="John Obiora"
         duration={activeProgramme.duration}
+        enrollmentId={homeData?.enrollmentId || activeProgramme.id}
       />
     );
   }
@@ -555,25 +614,31 @@ export function TalentHomeView({
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
-                  Welding & Metal Fabrication Apprenticeship
+                  {homeData?.enrollmentTitle || "Welding & Metal Fabrication Apprenticeship"}
                 </h3>
                 <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full shrink-0">
-                  Advanced Welding
+                  {homeData?.stageName || "Advanced Welding"}
                 </span>
               </div>
               <p className="font-sans text-xs text-neutral-400 font-medium">
-                Master artisan: <span className="font-semibold text-neutral-700">John Obiora</span>
+                Master artisan:{" "}
+                <span className="font-semibold text-neutral-700">
+                  {homeData?.artisanName || "John Obiora"}
+                </span>
               </p>
             </div>
 
             {/* Progress Bar & Stats */}
             <div className="space-y-2">
               <div className="w-full bg-neutral-100 rounded-full h-2.5 overflow-hidden">
-                <div className="bg-[#001B40] h-full rounded-full transition-all duration-500 w-[65%]" />
+                <div
+                  className="bg-[#001B40] h-full rounded-full transition-all duration-500"
+                  style={{ width: `${homeData?.progressPercent ?? 65}%` }}
+                />
               </div>
               <div className="flex items-center justify-between text-xs text-neutral-400 font-medium">
-                <span>65% complete</span>
-                <span>Attendance: 92%</span>
+                <span>{homeData?.progressPercent ?? 65}% complete</span>
+                <span>Attendance: {homeData?.attendancePercent ?? 92}%</span>
               </div>
             </div>
 
@@ -595,7 +660,7 @@ export function TalentHomeView({
                 NEXT SESSION
               </span>
               <p className="font-sans font-bold text-sm text-[#0F1115] leading-snug">
-                Thursday 28 August · 8:00am · Emene workshop
+                {homeData?.nextSessionText || "Thursday 28 August · 8:00am · Emene workshop"}
               </p>
             </div>
 
@@ -605,7 +670,9 @@ export function TalentHomeView({
                 PAYMENT
               </span>
               <p className="font-sans text-xs text-neutral-600 leading-relaxed">
-                <span className="font-bold text-neutral-800">Held in escrow:</span> ₦50,000 held in escrow and released to John as you learn.
+                <span className="font-bold text-neutral-800">Held in escrow:</span>{" "}
+                {homeData?.escrowHeldText ||
+                  "₦50,000 held in escrow and released to John as you learn."}
               </p>
             </div>
           </div>

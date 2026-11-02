@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { getProgramMessagesApi, sendProgramMessageApi } from "@/lib/api/talent";
 
 interface MessageItem {
   id: string;
@@ -16,12 +17,14 @@ interface TalentMessagesViewProps {
   onBack?: () => void;
   onOpenTraining?: () => void;
   onFindMore?: () => void;
+  programId?: string;
 }
 
 export function TalentMessagesView({
   onBack,
   onOpenTraining,
   onFindMore,
+  programId = "8d23ca35-8dac-409e-922b-43c5ef62c7d8",
 }: TalentMessagesViewProps) {
   const [selectedChat, setSelectedChat] = useState<string>("john");
   const [isLockedOfferOpen, setIsLockedOfferOpen] = useState(false);
@@ -49,20 +52,60 @@ export function TalentMessagesView({
     },
   ]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!programId) return;
+    let isMounted = true;
+
+    getProgramMessagesApi(programId)
+      .then((history) => {
+        if (!isMounted || !history || history.length === 0) return;
+        const mapped: MessageItem[] = history.map((msg) => ({
+          id: msg.id,
+          sender: "talent",
+          text: msg.text || "",
+          time: new Date(msg.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+        setMessagesList((prev) => [...prev, ...mapped]);
+      })
+      .catch(() => {
+        // Resilient fallback preserves existing conversation
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [programId]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
+
+    const textToSend = newMessage.trim();
+    const tempId = `m-${Date.now()}`;
+    const clientId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}`;
 
     setMessagesList((prev) => [
       ...prev,
       {
-        id: `m-${Date.now()}`,
+        id: tempId,
         sender: "talent",
-        text: newMessage.trim(),
+        text: textToSend,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
     setNewMessage("");
+
+    try {
+      await sendProgramMessageApi(programId, {
+        clientId,
+        text: textToSend,
+      });
+    } catch {
+      // Message already in local chat list
+    }
   };
 
   // Locked Offer View (Matching Figma Screenshot 4 Top Left)

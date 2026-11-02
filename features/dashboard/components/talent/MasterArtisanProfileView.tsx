@@ -1,35 +1,74 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { getTalentProgramByIdApi } from "@/lib/api/talent";
 
 interface MasterArtisanProfileViewProps {
   onBack: () => void;
   onApply: (programme: { id: string; title: string; fee: string; duration: string }) => void;
   onMessage?: () => void;
+  programId?: string;
 }
 
 export function MasterArtisanProfileView({
   onBack,
   onApply,
   onMessage,
+  programId,
 }: MasterArtisanProfileViewProps) {
   const [selectedProgramme, setSelectedProgramme] = useState({
-    id: "prog-welding-1",
+    id: programId || "prog-welding-1",
     title: "Welding & Metal Fabrication Apprenticeship",
     fee: "₦50,000",
     duration: "3 months",
   });
 
-  const skills = [
+  const [skills, setSkills] = useState<string[]>([
     "Workshop safety",
     "Gas welding",
     "Measurement & cutting",
     "Gate fabrication",
     "Arc welding",
     "Grinding & finishing",
-  ];
+  ]);
+
+  const [placesRemaining, setPlacesRemaining] = useState<number>(1);
+
+  useEffect(() => {
+    if (!programId) return;
+    let isMounted = true;
+
+    getTalentProgramByIdApi(programId)
+      .then((detail) => {
+        if (!isMounted || !detail) return;
+        const feeKobo = Number(detail.fee || 5000000);
+        const feeNgn = `₦${(feeKobo / 100).toLocaleString("en-NG")}`;
+
+        setSelectedProgramme({
+          id: detail.id,
+          title: detail.title,
+          fee: feeNgn,
+          duration: `${detail.durationWeeks ? Math.round(detail.durationWeeks / 4) : 3} months`,
+        });
+
+        if (detail.outcomes && detail.outcomes.length > 0) {
+          setSkills(detail.outcomes);
+        }
+
+        if (typeof detail.placesLeft === "number") {
+          setPlacesRemaining(detail.placesLeft);
+        }
+      })
+      .catch(() => {
+        // Retain fallback design state
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [programId]);
 
   const portfolio = [
     { title: "Burglary proof installation", img: "/images/workers.png" },

@@ -1,6 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import toast from "react-hot-toast";
+import {
+  getTalentApplicationsApi,
+  withdrawTalentApplicationApi,
+} from "@/lib/api/talent";
 
 export type ApplicationStatus = "accepted" | "under_review" | "declined";
 
@@ -31,7 +36,7 @@ export function TalentApplicationsListView({
   onMakePayment,
   onFindMore,
 }: TalentApplicationsListViewProps) {
-  const [applications, setApplications] = useState<TalentApplicationItem[]>([
+  const defaultApplications: TalentApplicationItem[] = [
     {
       id: "app-1",
       programmeTitle: "Electrical Installation",
@@ -66,7 +71,70 @@ export function TalentApplicationsListView({
       fee: "₦65,000",
       duration: "3 months",
     },
-  ]);
+  ];
+
+  const [applications, setApplications] = useState<TalentApplicationItem[]>(defaultApplications);
+
+  useEffect(() => {
+    let isMounted = true;
+    getTalentApplicationsApi()
+      .then((items) => {
+        if (!isMounted || !items || items.length === 0) return;
+        const mapped: TalentApplicationItem[] = items.map((app) => {
+          let uiStatus: ApplicationStatus = "under_review";
+          if (app.status === "ACCEPTED") uiStatus = "accepted";
+          else if (app.status === "DECLINED" || app.status === "EXPIRED" || app.status === "WITHDRAWN")
+            uiStatus = "declined";
+
+          const feeKobo = Number(app.program?.fee || 5000000);
+          const feeNgn = `₦${(feeKobo / 100).toLocaleString("en-NG")}`;
+
+          return {
+            id: app.id,
+            programmeTitle: app.program?.title || "Apprenticeship Programme",
+            artisanName: app.program?.artisan?.fullName || "Verified Master Artisan",
+            location: app.program?.location || "Enugu",
+            appliedDate: app.createdAt
+              ? new Date(app.createdAt).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "Recently",
+            status: uiStatus,
+            startDate: "Upcoming intake",
+            schedule: "Monday - Saturday · 8:00 AM - 5:00 PM",
+            declineReason: app.decisionReason,
+            fee: feeNgn,
+            duration: `${app.program?.durationWeeks ? Math.round(app.program.durationWeeks / 4) : 3} months`,
+          };
+        });
+        setApplications(mapped);
+      })
+      .catch(() => {
+        // Retain fallback applications
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleWithdraw = async (appId: string) => {
+    try {
+      await withdrawTalentApplicationApi(appId);
+      setApplications((prev) =>
+        prev.map((a) =>
+          a.id === appId
+            ? { ...a, status: "declined", declineReason: "Withdrawn by applicant." }
+            : a
+        )
+      );
+      toast.success("Application withdrawn.");
+    } catch {
+      toast.error("Could not withdraw application at this time.");
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 select-none animate-in fade-in duration-200">

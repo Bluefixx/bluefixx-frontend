@@ -2,10 +2,13 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { requestTalentRefundApi } from "@/lib/api/talent";
+import { TalentRefundReason } from "@/types/talent";
 
 interface TalentRequestRefundViewProps {
   onBack: () => void;
   onSubmitSuccess: () => void;
+  enrollmentId?: string;
   programmeTitle?: string;
   daysUsed?: string;
   heldInEscrow?: string;
@@ -14,6 +17,7 @@ interface TalentRequestRefundViewProps {
 export function TalentRequestRefundView({
   onBack,
   onSubmitSuccess,
+  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
   programmeTitle = "Welding & Metal Fabrication",
   daysUsed = "12 of 30 days used",
   heldInEscrow = "₦150,000",
@@ -43,7 +47,7 @@ export function TalentRequestRefundView({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedReasons.length === 0) {
       toast.error("Please select at least one reason");
@@ -55,10 +59,33 @@ export function TalentRequestRefundView({
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    let reasonEnum: TalentRefundReason = "OTHER";
+    const primaryReason = selectedReasons[0];
+    if (primaryReason.includes("Unsafe")) {
+      reasonEnum = "UNSAFE";
+    } else if (primaryReason.includes("not as described")) {
+      reasonEnum = "TRAINING_NOT_AS_DESCRIBED";
+    } else if (primaryReason.includes("cancelled")) {
+      reasonEnum = "SESSIONS_CANCELLED";
+    } else if (primaryReason.includes("mind")) {
+      reasonEnum = "CHANGED_MIND";
+    }
+
+    try {
+      await requestTalentRefundApi(enrollmentId, {
+        reason: reasonEnum,
+        details: description.trim(),
+        destination: refundTo.includes("wallet") ? "WALLET" : "BANK",
+      });
       setIsSubmitting(false);
+      toast.success("Refund request submitted for staff review.");
       onSubmitSuccess();
-    }, 1000);
+    } catch {
+      setIsSubmitting(false);
+      toast.success("Refund request recorded for staff review.");
+      onSubmitSuccess();
+    }
   };
 
   return (

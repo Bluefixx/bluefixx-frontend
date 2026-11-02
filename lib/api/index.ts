@@ -14,3 +14,4 @@ export * from "./banks";
 export * from "./referrals";
 export * from "./support";
 export * from "./location";
+export * from "./talent";

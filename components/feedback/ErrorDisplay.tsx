@@ -34,7 +34,7 @@ export default function ErrorDisplay({
           onClick={onRetry}
           className="border-red-700 text-red-700 hover:bg-red-200 shrink-0"
         >
-          Try Again
+          Try Again.
         </Button>
       )}
     </div>

@@ -35,6 +35,9 @@ function DashboardSidebarContent({
   );
   const [isLearnOpen, setIsLearnOpen] = useState(true);
   const [isProgressOpen, setIsProgressOpen] = useState(true);
+  const [isArtisanJobsOpen, setIsArtisanJobsOpen] = useState(true);
+  const [isArtisanTalentOpen, setIsArtisanTalentOpen] = useState(false);
+  const [isArtisanProfileOpen, setIsArtisanProfileOpen] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(
     pathname.includes("/settings")
   );
@@ -74,6 +77,25 @@ function DashboardSidebarContent({
   const isMyApprenticeshipActive = pathname.includes("/dashboard") && viewParam === "progress" && currentTab !== "payments";
   const isPaymentsReceiptsActive = pathname.includes("/dashboard") && (viewParam === "refund-policy" || viewParam === "request-refund" || (viewParam === "progress" && currentTab === "payments"));
   const isProgressActive = isMyApprenticeshipActive || isPaymentsReceiptsActive;
+
+  // Artisan-specific navigation state
+  const isArtisanHomeActive = (pathname === "/dashboard" || pathname === "/") && (!viewParam || viewParam === "dashboard");
+  const isArtisanFindJobsActive = pathname.includes("/dashboard") && (viewParam === "find-jobs" || viewParam === "job-detail");
+  const isArtisanRequestsActive = pathname.includes("/dashboard") && viewParam === "requests";
+  const isArtisanQuotesActive = pathname.includes("/dashboard") && viewParam === "quotes";
+  const isArtisanActiveJobsActive = pathname.includes("/dashboard") && viewParam === "active-jobs";
+  const isArtisanCompletedJobsActive = pathname.includes("/dashboard") && viewParam === "completed-jobs";
+  const isArtisanJobsSectionActive = isArtisanFindJobsActive || isArtisanRequestsActive || isArtisanQuotesActive || isArtisanActiveJobsActive || isArtisanCompletedJobsActive;
+  
+  const isArtisanProgrammesActive = pathname.includes("/dashboard") && viewParam === "training-programmes";
+  const isArtisanApprenticeAppsActive = pathname.includes("/dashboard") && viewParam === "apprentice-applications";
+  const isArtisanActiveApprenticesActive = pathname.includes("/dashboard") && viewParam === "active-apprentices";
+  const isArtisanTalentSectionActive = isArtisanProgrammesActive || isArtisanApprenticeAppsActive || isArtisanActiveApprenticesActive;
+
+  const isArtisanVerificationActive = pathname.includes("/dashboard") && (viewParam === "verification" || viewParam === "become-artisan");
+  const isArtisanEarningsActive = pathname.includes("/wallet") || (pathname.includes("/dashboard") && viewParam === "earnings");
+  const isArtisanMyProfileActive = pathname === "/profile" || (pathname.includes("/dashboard") && viewParam === "profile");
+  const isArtisanProfileSectionActive = isArtisanMyProfileActive || isArtisanVerificationActive || isArtisanEarningsActive;
 
   // Profile submenus
   const isMyProfileActive = pathname === "/profile" || pathname === "/dashboard/profile";
@@ -314,6 +336,281 @@ function DashboardSidebarContent({
                 </svg>
                 <span>Profile</span>
               </Link>
+            </>
+          ) : activeRole === "artisan" ? (
+            <>
+              {/* 1. Home */}
+              <Link
+                href="/dashboard"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isArtisanHomeActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+                }`}
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                <span>Home</span>
+              </Link>
+
+              {/* 2. Jobs (with badge '4' and accordion) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsArtisanJobsOpen(!isArtisanJobsOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isArtisanJobsSectionActive
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                    </svg>
+                    <span>Jobs</span>
+                    <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
+                      4
+                    </span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isArtisanJobsOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {isArtisanJobsOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/dashboard?view=find-jobs"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanFindJobsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Find jobs
+                    </Link>
+                    <Link
+                      href="/dashboard?view=requests"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanRequestsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Requests
+                    </Link>
+                    <Link
+                      href="/dashboard?view=quotes"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanQuotesActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      My quotes
+                    </Link>
+                    <Link
+                      href="/dashboard?view=active-jobs"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanActiveJobsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Active jobs
+                    </Link>
+                    <Link
+                      href="/dashboard?view=completed-jobs"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanCompletedJobsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Completed jobs
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Talent (with accordion) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsArtisanTalentOpen(!isArtisanTalentOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isArtisanTalentSectionActive
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                      <path d="M6 12v5c3 3 9 3 12 0v-5" />
+                    </svg>
+                    <span>Talent</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isArtisanTalentOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {isArtisanTalentOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/dashboard?view=training-programmes"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanProgrammesActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Training programmes
+                    </Link>
+                    <Link
+                      href="/dashboard?view=apprentice-applications"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanApprenticeAppsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Apprentice applications
+                    </Link>
+                    <Link
+                      href="/dashboard?view=active-apprentices"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanActiveApprenticesActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Active apprentices
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Messages (with badge '1') */}
+              <Link
+                href="/messages"
+                onClick={handleLinkClick}
+                className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isMessagesActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span>Messages</span>
+                </div>
+                <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
+                  1
+                </span>
+              </Link>
+
+              {/* 5. Profile (with accordion matching Screenshot 02) */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsArtisanProfileOpen(!isArtisanProfileOpen)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+                    isArtisanProfileSectionActive
+                      ? "text-[#001B40] font-bold"
+                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                    <span>Profile</span>
+                  </div>
+                  <svg
+                    className={`w-4 h-4 text-neutral-400 transition-transform ${
+                      isArtisanProfileOpen ? "rotate-180" : ""
+                    }`}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {isArtisanProfileOpen && (
+                  <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+                    <Link
+                      href="/profile"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanMyProfileActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      My profile
+                    </Link>
+                    <Link
+                      href="/dashboard?view=verification"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanVerificationActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Verification
+                    </Link>
+                    <Link
+                      href="/wallet"
+                      onClick={handleLinkClick}
+                      className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                        isArtisanEarningsActive
+                          ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                          : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                      }`}
+                    >
+                      Earnings
+                    </Link>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             <>

@@ -1,13 +1,99 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-02 (Talents API Endpoints Integration)*
+*Last updated: 2026-11-03 (Artisan Dashboard Suite & Prerender Build Resolution)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 
-### A. Talent API Integration Suite (`types/talent.ts` & `lib/api/talent.ts`)
-Connected the complete Talent/Apprentice Dashboard interface to the live backend endpoints according to the BlueFixx Talent API specification:
+### A. Artisan Dashboard UI Suite (`features/dashboard/components/artisan/`)
+Built the complete, pixel-perfect Artisan Web experience based on the 5 Figma design boards provided by the user:
+
+1. **`ArtisanHomeView.tsx` (`01 · Dashboard & role switch`, `03 · Unverified states`, `04 · Just verified`)**:
+   - **4 Verification States**:
+     - *Verified*: "Verified artisan: John Obiora", `🟢 Available for new jobs` interactive toggle, 5 metric cards (New requests: 3, Active jobs: 2, Rating: 4.8, Withdrawable balance: ₦168,000, Held in escrow: ₦46,500), active job card (`Bathroom Plumbing Repair - ● Scheduled`), 2 recommended job cards with `View job` action, bottom 2-column grid (Training: 3 waiting applications + apprentice progress bars; Recent earnings ledger: Shower line +₦85,000, Kitchen sink +₦62,000, Bathroom +₦48,000).
+     - *Not Verified*: Blue notification banner with 1 of 4 step progress bar, locked artisan pill, empty active jobs state.
+     - *In Review*: Amber notification banner with 3 of 4 step progress bar ("Usually approved within 24 hours").
+     - *Just Verified*: Green celebratory badge banner with "Find jobs →" CTA and dismiss action.
+   - **Interactive State Switcher**: Dropdown control embedded in the view to test all 4 verification states with one click.
+   - **Availability Toggle**: `Available for new jobs` pill button with live state change and toast feedback.
+
+2. **`ArtisanFindJobsView.tsx` (`04 · Find Jobs: not verified`)**:
+   - Verification status banner for unverified artisans.
+   - Search bar with Filter trigger.
+   - Trade filter category chips (`My trade`, `Nearby`, `Newest`, `Urgent`, `Highest budget`).
+   - Matching job feed cards showing location distance, customer budget range, excerpt, and photo preview.
+
+3. **`ArtisanJobDetailView.tsx` (`05 · Job detail: quoting locked`)**:
+   - Customer Requirements specification table: Service, Date, Time, Budget, Urgency.
+   - Photos from the customer with image preview and caption.
+   - Voice note player from the customer with custom animated sound wave bars and duration counter.
+   - Daniel C. customer summary card with escrow guarantee assurance.
+   - Verification status card (2 of 4 steps done) with disabled/enabled `Send Quote` button, `Ask Question`, and `Decline`.
+   - Additional questions checklist and location/area map preview card.
+
+4. **`ArtisanSendQuoteModal.tsx`**:
+   - Interactive quote submission modal with labour fee, materials cost, duration, and notes.
+
+5. **`ArtisanOnboardingFlow.tsx` (`02 · Onboarding: Become an artisan` & `Identity check failed`)**:
+   - **Step 1 (Your details)**: Name, phone, whole years of experience, and bio textarea with public profile trust badge card.
+   - **Step 2 (Identity check & incomplete validation)**: 11-digit NIN input with inline error validation, Government ID upload simulation, Liveness selfie camera check, encrypted privacy card, and interactive trigger to preview the failed verification screen.
+   - **Step 3 (Trade & service area)**: Multi-select trade pills (Plumbing, Welding, Generator Repair, etc.), base location input, and travel distance selector (5 km, 10 km, 25 km, Anywhere in Enugu).
+   - **Step 4 (Pricing)**: Indicative price ranges for selected trades with 3× quote request boost notice and 7% fee explanation.
+   - **Step 5 (Portfolio & Portfolio Complete)**: Photo uploader supporting empty (0 of 3) and complete (5 photos added) states with "Submit for review" action.
+   - **Identity check failed screen**: Dedicated empty/error state matching Figma with "We could not verify your identity", "Contact support", and "Try again".
+
+6. **Updated `ArtisanFindJobsView.tsx` & `ArtisanFiltersModal.tsx`**:
+   - Filter Modal matching *Artisan Web · Filters open* with Trade, Distance, Budget, Urgency, and Date options.
+   - Urgent filter support matching *Artisan Web · Find Jobs urgent*.
+   - Empty state matching *Artisan Web · Find jobs: no jobs nearby (empty state)* with "No jobs in your area right now" and action buttons to "Edit trades" and "Widen travel distance".
+
+7. **`ArtisanJobsListView.tsx` (`06 · Requests & job lists`)**:
+   - 4-tab requests and job lists management matching *Requests*, *Active jobs*, *Completed jobs*, and *Declined jobs*.
+   - Requests feed with status badges (New, Emergency) and "View request" CTA.
+   - Active jobs feed with "Manage job" actions.
+   - Completed & Declined payout ledger with paid out badges.
+
+8. **`ArtisanQuoteFormView.tsx` (`07 · Quoting`)**:
+   - Complete quote form matching *Artisan Web · Quote form*.
+   - Customer budget reference banner (`₦25,000 - ₦50,000`).
+   - Inputs for Labour, Materials, Estimated completion pills, Warranty minimum pills, Work description, Materials included/excluded, and Additional notes.
+   - Sticky calculation card displaying Quote total, 7% platform fee deduction (₦3,150), and net earnings payout (₦41,850).
+   - Sending quote seamlessly returns to the dashboard with toast confirmation.
+
+9. **`DashboardSidebar.tsx` Profile Accordion for Artisan**:
+   - Added `Profile` accordion submenu (`My profile`, `Verification`, `Earnings`) matching Figma Screenshot 02.
+
+5. **`DashboardSidebar.tsx` Artisan Navigation Branch**:
+   - Added `activeRole === "artisan"` navigation block:
+     - `Home` (`/dashboard`)
+     - `Jobs` (with badge `4` and accordion: `Find jobs`, `Requests`, `My quotes`, `Active jobs`, `Completed jobs`)
+     - `Talent` (with accordion: `Training programmes`, `Apprentice applications`, `Active apprentices`)
+     - `Messages` (with badge `1`)
+     - `Profile` (`/profile`)
+
+---
+
+### B. Prerender Build Resolution (`CustomerHomeView.tsx`)
+- **Root Cause**: `new Date().getHours()` was invoked inside a `useMemo` during Next.js SSG static prerendering for `/dashboard`. Next.js 16 prerender worker requires static determinism and threw `[BUILD_UTILS_SPAWN_1] Command "npm run build" exited with 1`.
+- **Fix**: Replaced static evaluation with a `useState("Good morning")` default and moved dynamic hour calculation to `useEffect` on the client.
+
+---
+
+### C. Vercel Hobby Organization Workaround
+Documented strategy for deploying private GitHub organization repositories on Vercel Hobby plan using GitHub Actions with `vercel-action` / Vercel CLI token deployment, or repository mirroring.
+
+---
+
+## 2. Verification Results
+- **TypeScript Strictness**: `npx tsc --noEmit` passed with 0 errors.
+- **Design Tokens**: Used semantic color tokens (`bg-[#001B40]`, `bg-[#074292]`, neutral scales) and Montserrat/Poppins typography.
+
+---
+
+## 3. Next Steps
+1. Wire backend endpoints for Artisan actions when the Artisan API guide is provided (similar to the Talent API).
+2. Wire Artisan settings and earnings pages (`/wallet` & `/account/earnings`).
 
 1. **TypeScript Contracts (`types/talent.ts`)**:
    - Strictly typed data models matching OpenAPI schemas:

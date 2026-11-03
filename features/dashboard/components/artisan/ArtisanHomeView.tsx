@@ -1,0 +1,877 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import { ArtisanFindJobsView } from "./ArtisanFindJobsView";
+import { ArtisanJobDetailView, JobDetailData } from "./ArtisanJobDetailView";
+import { ArtisanSendQuoteModal } from "./ArtisanSendQuoteModal";
+import { ArtisanOnboardingFlow } from "./ArtisanOnboardingFlow";
+import { ArtisanJobsListView, JobsListTab } from "./ArtisanJobsListView";
+import { ArtisanQuoteFormView } from "./ArtisanQuoteFormView";
+
+export type ArtisanVerificationState =
+  | "verified"
+  | "not_verified"
+  | "in_review"
+  | "just_verified";
+
+interface ArtisanHomeViewProps {
+  onSwitchToCustomer?: () => void;
+  onOpenRoleSwitcher?: () => void;
+  initialVerificationState?: ArtisanVerificationState;
+}
+
+export function ArtisanHomeView({
+  onSwitchToCustomer,
+  onOpenRoleSwitcher,
+  initialVerificationState = "verified",
+}: ArtisanHomeViewProps) {
+  const { user } = useAuth();
+  const userName = user?.fullName ? user.fullName.split(" ")[0] : "John";
+  const searchParams = useSearchParams();
+  const urlView = searchParams.get("view");
+
+  // Subviews: 'dashboard' | 'find-jobs' | 'job-detail' | 'verification' | 'jobs-list' | 'send-quote'
+  const [currentView, setCurrentView] = useState<
+    "dashboard" | "find-jobs" | "job-detail" | "verification" | "jobs-list" | "send-quote"
+  >(
+    urlView === "find-jobs"
+      ? "find-jobs"
+      : urlView === "verification" || urlView === "become-artisan"
+      ? "verification"
+      : urlView === "requests" || urlView === "active-jobs" || urlView === "completed-jobs" || urlView === "declined"
+      ? "jobs-list"
+      : urlView === "quotes"
+      ? "send-quote"
+      : "dashboard"
+  );
+
+  const [jobsListTab, setJobsListTab] = useState<JobsListTab>(
+    urlView === "active-jobs"
+      ? "active"
+      : urlView === "completed-jobs"
+      ? "completed"
+      : urlView === "declined"
+      ? "declined"
+      : "requests"
+  );
+
+  // Verification state (verified, not_verified, in_review, just_verified)
+  const [verificationState, setVerificationState] = useState<ArtisanVerificationState>(
+    initialVerificationState
+  );
+  const [dismissJustVerifiedBanner, setDismissJustVerifiedBanner] = useState(false);
+
+  // Availability toggle
+  const [isAvailable, setIsAvailable] = useState(true);
+
+  // Selected job for detail view
+  const [selectedJob, setSelectedJob] = useState<JobDetailData | null>(null);
+
+  // Send Quote Modal
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (urlView === "find-jobs") {
+      setCurrentView("find-jobs");
+    } else if (urlView === "verification" || urlView === "become-artisan") {
+      setCurrentView("verification");
+    } else if (urlView === "requests") {
+      setJobsListTab("requests");
+      setCurrentView("jobs-list");
+    } else if (urlView === "active-jobs") {
+      setJobsListTab("active");
+      setCurrentView("jobs-list");
+    } else if (urlView === "completed-jobs") {
+      setJobsListTab("completed");
+      setCurrentView("jobs-list");
+    } else if (urlView === "quotes") {
+      setCurrentView("send-quote");
+    } else if (!urlView) {
+      setCurrentView("dashboard");
+    }
+  }, [urlView]);
+
+  const toggleAvailability = () => {
+    setIsAvailable(!isAvailable);
+    toast.success(
+      !isAvailable
+        ? "🟢 You are now marked as available for new job requests."
+        : "⚪ You are now paused/busy. New job requests are silenced.",
+      { icon: !isAvailable ? "✅" : "⏸️" }
+    );
+  };
+
+  const isVerified = verificationState === "verified" || verificationState === "just_verified";
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 1: FIND JOBS
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "find-jobs") {
+    return (
+      <ArtisanFindJobsView
+        isVerified={isVerified}
+        onSelectJob={(job) => {
+          setSelectedJob(job);
+          setCurrentView("job-detail");
+        }}
+        onContinueVerification={() => setCurrentView("verification")}
+        onBackToDashboard={() => setCurrentView("dashboard")}
+        onEditTrades={() => setCurrentView("verification")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 2: JOB DETAIL (QUOTING LOCKED / ACTIVE)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "job-detail" && selectedJob) {
+    return (
+      <>
+        <ArtisanJobDetailView
+          job={selectedJob}
+          isVerified={isVerified}
+          onBack={() => setCurrentView("find-jobs")}
+          onContinueVerification={() => setCurrentView("verification")}
+          onSendQuote={() => setCurrentView("send-quote")}
+          onAskQuestion={() => toast(`Opening conversation with ${selectedJob.customerName}...`)}
+        />
+        <ArtisanSendQuoteModal
+          isOpen={isQuoteModalOpen}
+          onClose={() => setIsQuoteModalOpen(false)}
+          jobTitle={selectedJob.title}
+          customerName={selectedJob.customerName}
+          onQuoteSent={() => {
+            setCurrentView("dashboard");
+          }}
+        />
+      </>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 3: SEND QUOTE FORM (Screenshot 5 Right)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "send-quote") {
+    return (
+      <ArtisanQuoteFormView
+        jobTitle={selectedJob?.title || "Kitchen Plumbing Repair"}
+        customerName={selectedJob?.customerName || "Daniel C."}
+        customerBudget={selectedJob?.budget || "₦25,000 - ₦50,000"}
+        onBack={() => {
+          if (selectedJob) setCurrentView("job-detail");
+          else setCurrentView("dashboard");
+        }}
+        onQuoteSent={() => {
+          setCurrentView("dashboard");
+        }}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 4: JOBS LIST (REQUESTS, ACTIVE, COMPLETED, DECLINED)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "jobs-list") {
+    return (
+      <ArtisanJobsListView
+        initialTab={jobsListTab}
+        onSelectRequest={(job) => {
+          setSelectedJob(job);
+          setCurrentView("send-quote");
+        }}
+        onBackToDashboard={() => setCurrentView("dashboard")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 5: ONBOARDING / BECOME AN ARTISAN (STEPS 1-5 & FAILED STATE)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "verification") {
+    return (
+      <ArtisanOnboardingFlow
+        onBackToDashboard={() => setCurrentView("dashboard")}
+        onCompleteVerification={() => {
+          setVerificationState("in_review");
+          setCurrentView("dashboard");
+        }}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // MAIN VIEW: ARTISAN DASHBOARD
+  // ══════════════════════════════════════════════════════════════
+  return (
+    <div className="space-y-8 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
+      {/* Top Header & Greeting */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-[#001B40] tracking-tight">
+            Good morning, {userName}
+          </h1>
+        </div>
+
+        {/* State Simulator Dropdown (Helpful for reviewing all 4 Figma verification variants) */}
+        <div className="flex items-center gap-2 self-start sm:self-center">
+          <span className="text-[11px] font-medium text-neutral-400">View state:</span>
+          <select
+            value={verificationState}
+            onChange={(e) => {
+              setVerificationState(e.target.value as ArtisanVerificationState);
+              setDismissJustVerifiedBanner(false);
+            }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-700 shadow-2xs focus:outline-hidden cursor-pointer"
+          >
+            <option value="verified">Verified (Active)</option>
+            <option value="not_verified">Not Verified (Banner 1)</option>
+            <option value="in_review">Verification In Review (Banner 2)</option>
+            <option value="just_verified">Just Verified (Banner 3)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* STATE 1: Unverified Blue Notice Banner (Screenshot 3 Left) */}
+      {verificationState === "not_verified" && (
+        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs space-y-4 animate-in fade-in duration-150">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
+                  Verify your identity to start earning
+                </h3>
+                <p className="font-sans text-xs text-neutral-500 max-w-2xl leading-relaxed">
+                  You can explore jobs now. Sending quotes, receiving jobs and withdrawals unlock once your identity is verified.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCurrentView("verification")}
+              className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer shrink-0 self-start sm:self-center"
+            >
+              Continue verification →
+            </button>
+          </div>
+
+          <div className="pt-2 border-t border-neutral-100 flex items-center gap-3">
+            <div className="w-48 bg-neutral-100 rounded-full h-2 overflow-hidden">
+              <div className="bg-[#001B40] h-full rounded-full w-1/4" />
+            </div>
+            <span className="font-sans text-xs font-medium text-neutral-400">
+              1 of 4 steps done
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* STATE 2: In Review Amber Banner (Screenshot 3 Right) */}
+      {verificationState === "in_review" && (
+        <div className="bg-amber-50/90 rounded-3xl p-5 sm:p-6 border border-amber-200/80 shadow-2xs space-y-4 animate-in fade-in duration-150">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-heading font-bold text-sm sm:text-base text-amber-950">
+                  Your identity check is in review
+                </h3>
+                <p className="font-sans text-xs text-amber-800/90 max-w-2xl leading-relaxed">
+                  Usually approved within 24 hours. We will notify you the moment you can send quotes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-amber-200/60 flex items-center gap-3">
+            <div className="w-48 bg-amber-200/80 rounded-full h-2 overflow-hidden">
+              <div className="bg-amber-700 h-full rounded-full w-3/4" />
+            </div>
+            <span className="font-sans text-xs font-medium text-amber-900">
+              3 of 4 steps done · awaiting review
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* STATE 3: Just Verified Green Banner (Screenshot 4 Left) */}
+      {verificationState === "just_verified" && !dismissJustVerifiedBanner && (
+        <div className="bg-emerald-50 rounded-3xl p-5 sm:p-6 border border-emerald-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in duration-150">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-800 flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-heading font-bold text-sm sm:text-base text-emerald-950">
+                You are verified. Quoting is now open
+              </h3>
+              <p className="font-sans text-xs text-emerald-800/90 max-w-2xl leading-relaxed">
+                Your Verified badge is live on your profile. Send your first quote to get your first job.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-start sm:self-center shrink-0">
+            <button
+              type="button"
+              onClick={() => setCurrentView("find-jobs")}
+              className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+            >
+              Find jobs →
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissJustVerifiedBanner(true)}
+              className="p-2 rounded-xl text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+              aria-label="Dismiss banner"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Artisan Status Profile Card (Matching Screenshot 1) */}
+      <div className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-white shadow-xs bg-neutral-100 shrink-0">
+            <Image
+              src="/images/david.jpg"
+              alt={userName}
+              fill
+              className="object-cover"
+            />
+          </div>
+          <div>
+            <span className="font-sans text-xs text-neutral-400 font-medium block">
+              {isVerified ? "Verified artisan" : "Not yet verified"}
+            </span>
+            <span className="font-heading font-extrabold text-base sm:text-lg text-[#0F1115]">
+              {user?.fullName || "John Obiora"}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap shrink-0">
+          {/* Availability Toggle Switch */}
+          {isVerified ? (
+            <button
+              type="button"
+              onClick={toggleAvailability}
+              className={`px-3.5 py-2 rounded-xl font-sans text-xs font-bold flex items-center gap-2 border transition-colors cursor-pointer ${
+                isAvailable
+                  ? "bg-[#001B40] text-white border-[#001B40]"
+                  : "bg-neutral-100 text-neutral-600 border-neutral-300"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${isAvailable ? "bg-emerald-400" : "bg-neutral-400"}`} />
+              <span>{isAvailable ? "Available for new jobs" : "Paused / Busy"}</span>
+              <span className="text-[10px] text-neutral-300 font-normal pl-1">
+                Tap to change
+              </span>
+            </button>
+          ) : (
+            <div className="px-3.5 py-2 rounded-xl bg-neutral-100 border border-neutral-200 text-neutral-400 font-sans text-xs font-medium flex items-center gap-1.5">
+              <span>🔒</span>
+              <span>Jobs open after verification</span>
+              <span className="text-[10px] text-neutral-400 bg-neutral-200/60 px-1.5 py-0.5 rounded-sm">
+                Locked
+              </span>
+            </div>
+          )}
+
+          {/* Find Jobs CTA Button */}
+          <button
+            type="button"
+            onClick={() => setCurrentView("find-jobs")}
+            className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+          >
+            Find jobs
+          </button>
+        </div>
+      </div>
+
+      {/* Metrics Row: 5 Cards (Matching Screenshot 1) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Metric 1: New Requests */}
+        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
+          <span className="text-neutral-400 font-sans text-xs font-medium block">
+            New requests
+          </span>
+          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115]">
+            {isVerified ? 3 : 0}
+          </span>
+        </div>
+
+        {/* Metric 2: Active Jobs */}
+        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
+          <span className="text-neutral-400 font-sans text-xs font-medium block">
+            Active jobs
+          </span>
+          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115]">
+            {isVerified ? 2 : 0}
+          </span>
+        </div>
+
+        {/* Metric 3: Rating */}
+        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
+          <span className="text-neutral-400 font-sans text-xs font-medium block">
+            Rating
+          </span>
+          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115]">
+            {isVerified ? "4.8" : "New"}
+          </span>
+        </div>
+
+        {/* Metric 4: Withdrawable Balance */}
+        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1 flex flex-col justify-between">
+          <div>
+            <span className="text-neutral-400 font-sans text-xs font-medium block">
+              Withdrawable balance
+            </span>
+            <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
+              {isVerified ? "₦168,000" : "₦0"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => toast("Opening earnings ledger...")}
+            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left pt-1"
+          >
+            Earnings →
+          </button>
+        </div>
+
+        {/* Metric 5: Held in Escrow */}
+        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1 flex flex-col justify-between">
+          <div>
+            <span className="text-neutral-400 font-sans text-xs font-medium block">
+              Held in escrow
+            </span>
+            <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
+              {isVerified ? "₦46,500" : "₦0"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => toast("Opening escrow ledger...")}
+            className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left pt-1"
+          >
+            View more →
+          </button>
+        </div>
+      </div>
+
+      {/* SECTION 1: Active Jobs */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading font-bold text-lg sm:text-xl text-[#0F1115]">
+            Active jobs
+          </h2>
+          <button
+            type="button"
+            onClick={() => setCurrentView("find-jobs")}
+            className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+          >
+            Manage
+          </button>
+        </div>
+
+        {isVerified ? (
+          /* Active Job Card */
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1.5">
+              <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
+                Bathroom Plumbing Repair
+              </h3>
+              <p className="font-sans text-xs text-neutral-400">
+                Daniel C. · Tomorrow · 9:00 AM
+              </p>
+            </div>
+
+            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full self-start sm:self-center shrink-0">
+              ● Scheduled
+            </span>
+          </div>
+        ) : (
+          /* Empty State for Unverified / Just Verified */
+          <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-2xs text-center space-y-2">
+            <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
+              No active jobs yet
+            </h3>
+            <p className="font-sans text-xs text-neutral-400">
+              Jobs you win will appear here once you are verified.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* SECTION 2: Recommended Jobs */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-heading font-bold text-lg sm:text-xl text-[#0F1115]">
+            Recommended jobs
+          </h2>
+          <button
+            type="button"
+            onClick={() => setCurrentView("find-jobs")}
+            className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+          >
+            Find jobs
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Recommended Job 1 */}
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5">
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                    Kitchen Plumbing Repair
+                  </h3>
+                  <p className="font-sans text-xs text-neutral-400">
+                    Plumbing · Pipe repair
+                  </p>
+                </div>
+                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
+                  <Image
+                    src="/images/workers.png"
+                    alt="Plumbing"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                  Receiving Quotes
+                </span>
+                <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
+                  Urgent
+                </span>
+              </div>
+
+              <div className="space-y-0.5 pt-1">
+                <p className="font-sans text-xs text-neutral-600 font-medium">
+                  2.8 km away · Tomorrow · Sat 23 Aug
+                </p>
+                <p className="font-heading font-extrabold text-sm text-[#001B40]">
+                  ₦25,000 - ₦65,000
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+              <span className="font-sans text-[11px] text-neutral-400">
+                Posted 10 minutes ago
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedJob({
+                    id: "job-1",
+                    code: "BFX-72810",
+                    title: "Kitchen Plumbing Repair",
+                    category: "Plumbing",
+                    subCategory: "Pipe repair",
+                    postedTime: "posted 10 minutes ago",
+                    isUrgent: true,
+                    status: "Receiving Quotes",
+                    description:
+                      "Kitchen pipe underneath the sink is leaking. Water collects inside the cabinet every time we run the tap, and the wood is starting to swell.",
+                    service: "Plumbing · Pipe repair",
+                    date: "Tomorrow · Sat 23 Aug",
+                    time: "Morning · 9am - 12pm",
+                    budget: "₦25,000 - ₦65,000",
+                    urgency: "Urgent",
+                    customerName: "Daniel C.",
+                    customerLocation: "Enugu, Nigeria",
+                    distance: "approx 2.8 km away",
+                    driveTime: "8 min from your base",
+                    photoUrl: "/images/workers.png",
+                    photoCaption: "Leak under the sink",
+                    audioDuration: "0:41",
+                    questions: [
+                      { question: "Is water currently leaking?", answer: "Yes" },
+                      { question: "Is the affected area accessible?", answer: "Yes" },
+                    ],
+                  });
+                  setCurrentView("job-detail");
+                }}
+                className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
+              >
+                View job
+              </button>
+            </div>
+          </div>
+
+          {/* Recommended Job 2 */}
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5">
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                    Generator Repair, 7.5 KVA
+                  </h3>
+                  <p className="font-sans text-xs text-neutral-400">
+                    Generator Repair · Servicing
+                  </p>
+                </div>
+                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
+                  <Image
+                    src="/images/james.jpg"
+                    alt="Generator"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                  Receiving Quotes
+                </span>
+                <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
+                  Urgent
+                </span>
+              </div>
+
+              <div className="space-y-0.5 pt-1">
+                <p className="font-sans text-xs text-neutral-600 font-medium">
+                  5.2 km away · Today · Fri 22 Aug
+                </p>
+                <p className="font-heading font-extrabold text-sm text-[#001B40]">
+                  ₦10,000 - ₦25,000
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+              <span className="font-sans text-[11px] text-neutral-400">
+                Posted 10 minutes ago
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedJob({
+                    id: "job-2",
+                    code: "BFX-90145",
+                    title: "Generator Repair, 7.5 KVA",
+                    category: "Generator Repair",
+                    subCategory: "Servicing",
+                    postedTime: "posted 10 minutes ago",
+                    isUrgent: true,
+                    status: "Receiving Quotes",
+                    description:
+                      "7.5 KVA Sumec Firman generator making loud coughing sound and shutting down after 5 minutes under load.",
+                    service: "Generator Repair · Servicing",
+                    date: "Today · Fri 22 Aug",
+                    time: "Morning · 10am - 1pm",
+                    budget: "₦10,000 - ₦25,000",
+                    urgency: "Urgent",
+                    customerName: "Chijioke E.",
+                    customerLocation: "Enugu, Nigeria",
+                    distance: "approx 5.2 km away",
+                    driveTime: "15 min from your base",
+                    photoUrl: "/images/james.jpg",
+                    photoCaption: "Generator unit in outdoor shed",
+                    audioDuration: "0:30",
+                    questions: [
+                      { question: "When was it last serviced?", answer: "3 months ago" },
+                      { question: "Is power output zero?", answer: "Yes" },
+                    ],
+                  });
+                  setCurrentView("job-detail");
+                }}
+                className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
+              >
+                View job
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 3: 2-Column Split (Training + Recent Earnings) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left Column: Training (6 cols) */}
+        <div className="lg:col-span-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading font-bold text-lg sm:text-xl text-[#0F1115]">
+              Training
+            </h2>
+            <button
+              type="button"
+              onClick={() => toast("Opening apprenticeship training management...")}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+            >
+              Manage
+            </button>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-5">
+            {/* Waiting applications callout */}
+            <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <div className="space-y-0.5">
+                <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                  3 applications waiting
+                </h4>
+                <p className="font-sans text-[11px] text-neutral-400">
+                  Welding & Metal Fabrication Apprenticeship
+                </p>
+              </div>
+            </div>
+
+            {/* In Training Progress Bars */}
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center justify-between text-xs text-neutral-500 font-medium">
+                <span className="font-bold text-neutral-800">2 apprentices in training</span>
+                <span>Daniel (65%) · Samuel (40%)</span>
+              </div>
+
+              {/* Daniel bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px] text-neutral-500 font-medium">
+                  <span>Daniel</span>
+                  <span>65%</span>
+                </div>
+                <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
+                  <div className="bg-[#001B40] h-full rounded-full w-[65%]" />
+                </div>
+              </div>
+
+              {/* Samuel bar */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px] text-neutral-500 font-medium">
+                  <span>Samuel</span>
+                  <span>40%</span>
+                </div>
+                <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
+                  <div className="bg-[#001B40] h-full rounded-full w-[40%]" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Recent Earnings (6 cols) */}
+        <div className="lg:col-span-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-heading font-bold text-lg sm:text-xl text-[#0F1115]">
+              Recent earnings
+            </h2>
+            <button
+              type="button"
+              onClick={() => toast("Opening full earnings ledger...")}
+              className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+            >
+              All earnings
+            </button>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-3.5">
+            {/* Earning 1 */}
+            <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                    Shower line replacement
+                  </h4>
+                  <p className="font-sans text-[11px] text-neutral-400">
+                    Festus M. · Aug 19
+                  </p>
+                </div>
+              </div>
+              <span className="font-heading font-extrabold text-sm text-emerald-700">
+                +₦85,000
+              </span>
+            </div>
+
+            {/* Earning 2 */}
+            <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                    Kitchen sink installation
+                  </h4>
+                  <p className="font-sans text-[11px] text-neutral-400">
+                    Ngozi A. · Aug 18
+                  </p>
+                </div>
+              </div>
+              <span className="font-heading font-extrabold text-sm text-emerald-700">
+                +₦62,000
+              </span>
+            </div>
+
+            {/* Earning 3 */}
+            <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="20" height="14" x="2" y="5" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                    Bathroom re-piping
+                  </h4>
+                  <p className="font-sans text-[11px] text-neutral-400">
+                    Chidiadi O. · Aug 17
+                  </p>
+                </div>
+              </div>
+              <span className="font-heading font-extrabold text-sm text-emerald-700">
+                +₦48,000
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+export default ArtisanHomeView;
+

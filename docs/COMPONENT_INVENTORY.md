@@ -634,3 +634,83 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Side Trust Card**: Explains how verified apprentice reviews build credibility across the Bluefixx marketplace.
 - **Used In**: `TalentHomeView` (accessible via sidebar `Reviews`, after graduation, or from pending review alerts)
 
+---
+
+## 4. Artisan Dashboard Suite (`features/dashboard/components/artisan/`)
+
+### `ArtisanHomeView`
+- **File**: `features/dashboard/components/artisan/ArtisanHomeView.tsx`
+- **Purpose**: Central hub for the Artisan role matching Figma *01 · Dashboard & role switch*, *03 · Unverified states*, and *04 · Just verified*:
+  - **Verification States**: Supports 4 distinct states (`verified`, `not_verified`, `in_review`, `just_verified`) with live preview switcher.
+  - **Online/Available Toggle**: Interactive `Available for new jobs` switch with instant feedback.
+  - **5 Metric Cards**: New requests, Active jobs, Rating, Withdrawable balance, and Held in escrow.
+  - **Active Jobs Card**: Live scheduled job card (`Bathroom Plumbing Repair - ● Scheduled`) with client name and timing.
+  - **Recommended Jobs Feed**: Job cards with trade, urgent/receiving quotes pills, customer budget range, and thumbnail preview.
+  - **Training & Earnings Grid**: Training summary (waiting applications + apprentice progress bars) alongside recent earnings ledger (+₦85,000, +₦62,000, +₦48,000).
+- **Used In**: `app/(dashboard)/dashboard/page.tsx` when `activeRole === "artisan"`
+
+### `ArtisanFindJobsView`
+- **File**: `features/dashboard/components/artisan/ArtisanFindJobsView.tsx`
+- **Purpose**: Live job discovery feed for artisans matching Figma *04 · Find Jobs: not verified*:
+  - **Unverified Banner**: Progress banner informing unverified artisans to complete ID verification to quote.
+  - **Search & Filters**: Keyword search bar and filter button.
+  - **Filter Category Pills**: `My trade`, `Nearby`, `Newest`, `Urgent`, `Highest budget`.
+  - **Feed Cards**: Rich cards with location distance, budget, quote snippet, thumbnail photo, and "View job" CTA.
+- **Used In**: `ArtisanHomeView` (`view === "find-jobs"`)
+
+### `ArtisanJobDetailView`
+- **File**: `features/dashboard/components/artisan/ArtisanJobDetailView.tsx`
+- **Purpose**: Comprehensive job proposal and review screen matching Figma *05 · Job detail: quoting locked*:
+  - **Customer Requirements Table**: Detailed breakdown of Service, Date, Time, Budget range, and Urgency.
+  - **Customer Photo Gallery**: Attached photo preview of the issue (`Kitchen pipe under the sink`).
+  - **Customer Voice Note Player**: Interactive audio player with custom waveform visualizer, play/pause state, and elapsed counter.
+  - **Customer Profile Card**: Customer initials, escrow guarantee badge, and review metrics.
+  - **Quoting Locked Callout**: Prominent amber card when ID verification is incomplete with "Continue verification →".
+  - **Action Buttons**: `Send Quote` (opens modal or locked state), `Ask Question`, and `Decline`.
+  - **Area & Map View**: Location map snippet with pin marker and approximate distance.
+- **Used In**: `ArtisanHomeView` (`view === "job-detail"`)
+
+### `ArtisanSendQuoteModal`
+- **File**: `features/dashboard/components/artisan/ArtisanSendQuoteModal.tsx`
+- **Purpose**: Interactive modal for submitting a formal job quote:
+  - **Labor & Materials Inputs**: Real-time total calculation.
+  - **Duration & Scope Notes**: Timeline estimator and explanatory notes.
+  - **Submission Feedback**: Toast notification and state sync.
+- **Used In**: `ArtisanJobDetailView`
+
+### `ArtisanOnboardingFlow`
+- **File**: `features/dashboard/components/artisan/ArtisanOnboardingFlow.tsx`
+- **Purpose**: 5-step onboarding and identity verification wizard matching Figma *02 · Onboarding: Become an artisan*:
+  - **Step 1 (Your details)**: Full name, phone number, years of experience, and bio textarea with public profile trust card.
+  - **Step 2 (Identity check)**: 11-digit NIN input with inline error validation, Government ID uploader with simulated upload state, Liveness selfie check, encrypted privacy callout, and interactive trigger to preview the Identity Check Failed state.
+  - **Step 3 (Trade & service area)**: Multi-select trade pills (Plumbing, Welding, Generator Repair, etc.), base location input, and travel distance radius selector (5 km, 10 km, 25 km, Anywhere in Enugu).
+  - **Step 4 (Pricing)**: Indicative price ranges for selected trades (Leak repair, Water heater, Pressure pump, Gate fabrication) with 3× quote request boost notice and 7% fee explanation.
+  - **Step 5 (Portfolio)**: Photo uploader with empty (`0 of 3 photos added`) and completed (`5 photos added · minimum met`) states, image cards, and "Submit for review" action.
+  - **Identity Check Failed Screen**: Dedicated error state view (`We could not verify your identity`) with Contact support and Try again recovery actions.
+- **Used In**: `ArtisanHomeView` (`view === "verification"` or when clicking "Continue verification →")
+
+### `ArtisanFiltersModal`
+- **File**: `features/dashboard/components/artisan/ArtisanFiltersModal.tsx`
+- **Purpose**: Centered filter modal matching Figma *Artisan Web · Filters open*:
+  - **5 Filter Dimensions**: Trade (Plumbing, Tiling, Generator Repair, All trades), Distance (Within 5 km, Within 10 km, Within 25 km, Any distance), Budget (Any budget, ₦25k+, ₦50k+, ₦100k+), Urgency (Any urgency, Urgent, Soon, Flexible), and Date (Any date, Today, Tomorrow, This week).
+  - **Single Action**: Full-width "Show" action applying selections.
+- **Used In**: `ArtisanFindJobsView`
+
+### `ArtisanJobsListView`
+- **File**: `features/dashboard/components/artisan/ArtisanJobsListView.tsx`
+- **Purpose**: 4-tab requests & job list management hub matching Figma *06 · Requests & job lists*:
+  - **Requests Tab**: Displays incoming job requests with badge count (3), cards (AC repair, Generator changeover wiring, No power emergency), and "View request" CTA.
+  - **Active Tab**: Live in-progress job cards (AC repair, Full house rewiring) with "Manage job" actions.
+  - **Completed Tab**: Completed payout ledger cards (`Lighting installation`, Kelechi Nwosu, Completed badge, `₦25,740 · paid out`).
+  - **Declined Tab**: Declined job history (`Lighting installation`, Kelechi Nwosu, Declined badge, `₦28,000 · paid out`).
+- **Used In**: `ArtisanHomeView` (`view === "requests"`, `view === "active-jobs"`, `view === "completed-jobs"`, `view === "declined"`)
+
+### `ArtisanQuoteFormView`
+- **File**: `features/dashboard/components/artisan/ArtisanQuoteFormView.tsx`
+- **Purpose**: Comprehensive quote proposal page matching Figma *07 · Quoting (Artisan Web · Quote form)*:
+  - **Customer Budget Reference Banner**: `Customer budget: ₦25,000 - ₦50,000` with pricing guidelines.
+  - **Detailed Inputs**: Labour fee, Materials fee, Estimated completion pills, Warranty minimum pills, Work description textarea, Materials included/excluded, and Additional notes.
+  - **Sticky Quote Calculation Card**: Live total calculation (₦45,000), 7% platform fee breakdown (₦3,150 deduction, ₦41,850 net earnings), and full-width "Send Quote" button.
+  - **Acceptance Tip Banner**: Advice on clear quote descriptions boosting acceptance by 40%.
+- **Used In**: `ArtisanHomeView` (`view === "send-quote"`, or when clicking "Send Quote" in `ArtisanJobDetailView`)
+

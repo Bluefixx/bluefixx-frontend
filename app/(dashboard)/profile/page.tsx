@@ -2,10 +2,24 @@
 
 import React from "react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/stores/auth-store";
+import { ArtisanProfileView } from "@/features/dashboard/components/artisan/ArtisanProfileView";
 
 export default function ProfilePage() {
   const { user, activeRole, locationName } = useAuth();
+  const router = useRouter();
+
+  if (activeRole === "artisan") {
+    return (
+      <ArtisanProfileView
+        onBackToDashboard={() => router.push("/dashboard")}
+        onNavigateToEarnings={() => router.push("/dashboard?view=earnings")}
+        onNavigateToTalent={() => router.push("/dashboard?view=training-programmes")}
+        onNavigateToNotifications={() => router.push("/notifications")}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6 pb-16 max-w-4xl mx-auto">

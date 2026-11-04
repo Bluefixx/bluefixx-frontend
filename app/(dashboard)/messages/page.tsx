@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
 import { sendQuoteMessageApi, getQuoteMessagesApi, getConversationsApi, uploadMediaFile } from "@/lib/api";
+import { ArtisanMessagesView } from "@/features/dashboard/components/artisan/ArtisanMessagesView";
 
 interface ChatMessage {
   id: string;
@@ -19,8 +21,13 @@ interface ChatMessage {
 }
 
 function MessagesPageContent() {
+  const { activeRole } = useAuth();
   const searchParams = useSearchParams();
   const initialConversation = searchParams.get("conversation") === "support" ? "support" : "emeka";
+
+  if (activeRole === "artisan") {
+    return <ArtisanMessagesView />;
+  }
 
   const [activeConversation, setActiveConversation] = useState<"emeka" | "support">(initialConversation);
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);

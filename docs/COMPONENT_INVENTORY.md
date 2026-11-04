@@ -739,8 +739,9 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `ArtisanEarningsView`
 - **File**: `features/dashboard/components/artisan/ArtisanEarningsView.tsx`
-- **Purpose**: Full-featured earnings and balance analytics dashboard matching Figma *09 · Earnings & withdrawals (Artisan Web · Earnings dashboard)*:
+- **Purpose**: Full-featured earnings and balance analytics dashboard matching Figma *09 · Earnings & withdrawals (Artisan Web · Earnings dashboard)* & *Artisan Web · Earnings: no earnings yet (empty state)*:
   - **Hero Balance Card**: High-contrast dark blue card with Withdrawable balance (`₦168,000`), primary "Withdraw to bank" CTA, In escrow (`₦46,500`), Paid out this month (`₦412,000`), and Apprentice earnings (`₦212,000`).
+  - **Empty State**: No earnings yet card with empty wallet icon and "Find jobs" CTA.
   - **Standing & Weekly Performance**: "Your standing" badge with monthly revenue and BlueFixx Rewards, paired with a daily bar chart showing 7-day volume.
   - **Itemized Transaction Ledger**: Chronological history of job payouts with category icons, customer names, dates, and amounts (e.g., Shower line replacement +₦85,000, Kitchen sink installation +₦62,000, Bathroom re-piping +₦48,000).
   - **Fee Policy Notice**: Platform fee (7%) and optional insurance (1%) terms reminder card.
@@ -748,11 +749,51 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `ArtisanWithdrawFlowView`
 - **File**: `features/dashboard/components/artisan/ArtisanWithdrawFlowView.tsx`
-- **Purpose**: Complete 5-state withdrawal and account management flow matching Figma *Artisan Web · Withdraw*, *Withdrawal processing*, *Withdrawal sent*, *Withdrawal failed*, and *Add withdrawal account*:
+- **Purpose**: Complete 7-state withdrawal and account management flow matching Figma *Artisan Web · Withdraw*, *Withdrawal processing*, *Withdrawal sent*, *Withdrawal failed*, *Add withdrawal account*, *Add withdrawal account: confirm PIN*, and *Add withdrawal account: added*:
   - **Withdraw Request Form**: Amount input with quick-select pills (₦5k, ₦10k, ₦20k, all), bank dropdown, account number, verified name badge (`JOHN OBIORA`), name matching restriction notice, and fee breakdown card (₦0 withdrawal fee).
   - **Processing State**: Animated spinner with transfer details table and 5-minute SLA notice.
   - **Success / Sent State**: Celebratory green badge, reference code (`BFX-WD-49180`), itemized bank breakdown, and navigation back to Home or Earnings.
   - **Failed State**: Alert badge, name mismatch diagnosis comparing registered profile name with bank account holder, support escalation CTA, and fallback account selection.
   - **Add Withdrawal Account View**: Bank directory selector, 10-digit NUBAN input, name resolution verification badge, and regulatory name matching guide.
+  - **Confirm PIN View**: 4-box transaction PIN confirmation dialog (`Enter your transaction PIN`, `Confirm you want to add GTBank •••• 6789 (JOHN OBIORA)`).
+  - **Account Added View**: Success state with checkmark, confirmation text, and `Back to earnings` / `Withdraw now` CTAs.
 - **Used In**: `ArtisanHomeView` (`view === "withdraw"`, or via "Withdraw to bank" in `ArtisanEarningsView`)
+
+### `ArtisanMessagesView`
+- **File**: `features/dashboard/components/artisan/ArtisanMessagesView.tsx`
+- **Purpose**: Complete artisan messaging hub matching Figma *10 · Messages (Artisan Web · Messages inbox, Conversation, Quote conversation, and Job booking)*:
+  - **Conversations List**: Unread badges, timestamps, search, context tags (e.g. `Booking #BF-304 · Leak repair`, `Quote request · Electrical`).
+  - **Empty State**: `Select a conversation` placeholder card when no thread is active.
+  - **Booking Conversation Workbench**: Online indicator, direct `View job →` header link, system divider pill, voice note player with animated waveform bars, customer/artisan message bubbles, and composer (attachments, mic, send).
+  - **Quote Conversation**: Customer photo attachment preview with caption under sink, quoting system banner, and proposal discussion.
+  - **Job Booking Detail View**: Accessible via `View job →`, displays locked offer card (`₦43,500`), Labour (`₦24,000`), Materials breakdown with who supplies, Warranty, Timeline, and green `🔒 Accepted, terms locked` banner.
+- **Used In**: `app/(dashboard)/messages/page.tsx` (when `activeRole === "artisan"`) & `ArtisanHomeView` (`view === "messages"`)
+
+### `ArtisanCreateApprenticeshipView`
+- **File**: `features/dashboard/components/artisan/ArtisanCreateApprenticeshipView.tsx`
+- **Purpose**: Modular 4-step apprenticeship creator matching Figma *11 · Apprenticeship: create & publish (Creation step 1, Questionnaire step 2, Fees step 3, Review step 4, and Published)*:
+  - **Step 1 (Details)**: Trade/skill selector chips, Skills taught input, Workplace address, Available slots, Duration in months, Working days picker, Start/Close times, and `Hands-on · Offline apprenticeship` notice card.
+  - **Step 2 (Questionnaire)**: Customer application questions manager with question type tags (`Long Answer`, `Short Answer`, `Yes/No`, `File Upload`), `Required` / `Optional` badges, move up/down reorder handles, trash delete, and interactive `+ Add Custom Question` creator.
+  - **Step 3 (Fees & Structure)**: Training fee input (`₦150,000`), `Paid in full upfront` structure pill, locked capacity indicator (`3 from Step 1`), amount per apprentice and total (₦450,000) breakdown card, and escrow milestone release policy notice.
+  - **Step 4 (Review & Summary)**: Program overview card with skills taught tags and talent application warning, comprehensive details ledger (Trade, Duration, Location, Start date, Capacity, Fee, Payment terms, Questions count), and `Publish` CTA.
+  - **Published Success State**: High-impact green checkmark card with program summary, `View my apprenticeship`, and `Back to Dashboard` navigation.
+- **Used In**: `ArtisanHomeView` (`view === "create-apprenticeship"`) & `ArtisanApprenticeshipsHubView` (`onCreateNew`)
+
+### `ArtisanApprenticeshipsHubView`
+- **File**: `features/dashboard/components/artisan/ArtisanApprenticeshipsHubView.tsx`
+- **Purpose**: Comprehensive apprenticeship management hub matching Figma *Artisan Web · Active programmes*, *Applications overview*, *New applicants*, and *No apprenticeship created yet (empty state)*:
+  - **Active Programmes Tab**: Live cards (Welding & Metal Fabrication, Plumbing Basics) displaying duration, open slots, weekly operating schedule, applicant counts, and `Manage` trigger.
+  - **Applications Overview Tab**: Grouped apprenticeship listings with `2 new`, `1 new`, and `Filled` status badges, paired with `View applications` actions.
+  - **New Applicants Drilldown**: 4-subtab pipeline (`New`, `Reviewing`, `Accepted`, `Declined`) with detailed applicant cards (Chinedu Agu, Ifeanyi Ugwu), background notes, and one-click `View`, `Decline`, and `Accept` actions.
+  - **Empty State**: Graduation cap empty state card with `Create apprenticeship` primary trigger.
+- **Used In**: `ArtisanHomeView` (`view === "apprenticeships-hub"`, `view === "training-programmes"`, or via Training card "Manage")
+
+### `ArtisanProfileView`
+- **File**: `features/dashboard/components/artisan/ArtisanProfileView.tsx`
+- **Purpose**: Master artisan public/management profile matching Figma *Artisan Web · Master artisan profile*:
+  - **Hero Master Card**: Business name (`Obiora Welding & Fabrication`), artisan name (`John Obiora`), address, verified badges (`Already verified`, `Master Artisan verified`), and 4-metric grid (`126 Jobs`, `4.8 Rating`, `7 Posts`, `4 Talent`).
+  - **Services & Portfolio**: Offered trade chips and dual photo preview gallery.
+  - **Reviews Section**: Average rating `★ 4.8 (121)` with customer review quotes.
+  - **Side Actions**: Active apprenticeship opportunities widget (`Manage →`), service area coverage list, and profile navigation menu (Earnings, Talent, Notifications, Support, Logout).
+- **Used In**: `app/(dashboard)/profile/page.tsx` (when `activeRole === "artisan"`) & `ArtisanHomeView` (`view === "profile"`)
 

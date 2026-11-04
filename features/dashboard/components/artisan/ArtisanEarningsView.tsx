@@ -1,17 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import toast from "react-hot-toast";
 
 interface ArtisanEarningsViewProps {
   onWithdrawToBank: () => void;
   onBackToDashboard: () => void;
+  onFindJobs?: () => void;
+  initialHasEarnings?: boolean;
 }
 
 export function ArtisanEarningsView({
   onWithdrawToBank,
   onBackToDashboard,
+  onFindJobs,
+  initialHasEarnings = true,
 }: ArtisanEarningsViewProps) {
+  const [hasEarnings, setHasEarnings] = useState(initialHasEarnings);
   const transactions = [
     {
       id: "tx-1",
@@ -60,22 +65,67 @@ export function ArtisanEarningsView({
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 select-none animate-in fade-in duration-200 space-y-6">
       {/* Top Header */}
-      <div>
+      <div className="flex items-center justify-between">
+        <div>
+          <button
+            type="button"
+            onClick={onBackToDashboard}
+            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-500 hover:text-neutral-900 mb-2 cursor-pointer transition-colors"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Home</span>
+          </button>
+
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
+            Earnings
+          </h1>
+        </div>
+
+        {/* State Toggle for QA Preview */}
         <button
           type="button"
-          onClick={onBackToDashboard}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-500 hover:text-neutral-900 mb-2 cursor-pointer transition-colors"
+          onClick={() => setHasEarnings(!hasEarnings)}
+          className="text-[11px] font-bold px-3 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 text-neutral-600 hover:bg-neutral-100 transition-colors"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          <span>Profile</span>
+          {hasEarnings ? "Preview Empty State" : "Preview With Data"}
         </button>
-
-        <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
-          Earnings
-        </h1>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════
+          EMPTY STATE: NO EARNINGS YET (Screenshot 2)
+          ═══════════════════════════════════════════════════════════ */}
+      {!hasEarnings ? (
+        <div className="max-w-md mx-auto pt-10 sm:pt-16">
+          <div className="bg-white rounded-3xl p-8 sm:p-10 border border-neutral-200/80 shadow-xs text-center space-y-5">
+            <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-500 mx-auto">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect width="20" height="14" x="2" y="5" rx="2" />
+                <line x1="2" y1="10" x2="22" y2="10" />
+              </svg>
+            </div>
+            <div className="space-y-1.5">
+              <h3 className="font-heading font-extrabold text-xl text-[#0F1115]">
+                No earnings yet
+              </h3>
+              <p className="font-sans text-xs sm:text-sm text-neutral-500 leading-relaxed max-w-sm mx-auto">
+                When a customer confirms your first job, your payout shows here and you can withdraw to your bank.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onFindJobs || onBackToDashboard}
+                className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+              >
+                Find jobs
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* ═══════════════════════════════════════════════════════════
           HERO ROW: DARK BLUE WITHDRAWABLE BALANCE CARD
@@ -232,6 +282,8 @@ export function ArtisanEarningsView({
           1% professional job insurance is deducted from your take only when the service fee is.
         </p>
       </div>
+        </>
+      )}
     </div>
   );
 }

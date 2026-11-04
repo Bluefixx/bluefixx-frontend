@@ -87,15 +87,45 @@ Built the complete, pixel-perfect Artisan Web experience based on the 5 Figma de
     - Itemized transaction ledger with category icons, customer names, dates, and amounts (+₦85k, +₦62k, +₦48k).
     - Platform fee notice (7% fee + 1% optional insurance).
 
-13. **`ArtisanWithdrawFlowView.tsx` (`Withdrawal request, processing, sent, failed, add account`)**:
-    - Complete 5-state withdrawal experience:
+13. **`ArtisanWithdrawFlowView.tsx` (`Withdrawal request, processing, sent, failed, add account, confirm PIN, account added`)**:
+    - Complete 7-state withdrawal experience:
       - Form mode: Amount input with quick pills (₦5k, ₦10k, ₦20k, all), bank dropdown, account number, green verified name badge (`JOHN OBIORA`), name restriction notice, and fee breakdown card (₦0 withdrawal fee).
       - Processing state: Animated spinner with account transfer details and 5-minute SLA notice.
       - Sent state: Green checkmark with reference code (`BFX-WD-49180`), itemized bank breakdown, and navigation back to Home or Earnings.
       - Failed state: Red alert badge, name mismatch diagnosis (comparing profile name with bank account holder), support escalation, and account switcher.
       - Add Account view: Bank selector, 10-digit account input, real-time name validation card, and regulatory name matching guide.
+      - Confirm PIN view: 4-digit transaction PIN verification modal (`Confirm you want to add GTBank •••• 6789 (JOHN OBIORA)`).
+      - Account Added view: Green checkmark confirmation card with `Back to earnings` and `Withdraw now` primary actions.
 
-14. **`DashboardSidebar.tsx` Artisan Navigation & Profile Accordion**:
+14. **`ArtisanMessagesView.tsx` (`10 · Messages: Inbox, Conversation, Quote conversation, and Job booking`)**:
+    - Integrated with `app/(dashboard)/messages/page.tsx` for artisans.
+    - Conversation list: Chiamaka Obi (Online, unread badge, voice message preview), Fatima Bello (Quote request), and BlueFixx Support.
+    - Empty conversation selection state.
+    - Active conversation workbench with audio waveform voice note player, chat composer, attachments, and mic.
+    - Quote conversation with customer damage photo preview under sink and quoting system pill.
+    - `Job Booking` detail screen (`View job →` action) with locked offer card (₦43,500), labour, materials breakdown, warranty, timeline, and green `Accepted, terms locked` status.
+
+15. **`ArtisanCreateApprenticeshipView.tsx` (`11 · Apprenticeship: create & publish: Steps 1-4 & Published`)**:
+    - Step 1 (Creation): Trade/skill selector chips (Welding, Electrical, etc.), Skills taught, Workplace address, Available slots, Duration in months, Working days picker (Mon-Sat), Start/Close times, and Hands-on offline apprenticeship notice.
+    - Step 2 (Questionnaire): Dynamic application questions manager with question type tags (`Long Answer`, `Short Answer`, `Yes/No`, `File Upload`), `Required`/`Optional` chips, move up/down reorder handles, trash delete, and `+ Add Custom Question` dialog.
+    - Step 3 (Fees & Structure): Training fee input (`₦150,000`), `Paid in full upfront` structure pill, locked capacity indicator (`3 from Step 1`), amount per apprentice and total (₦450,000) breakdown card, and escrow policy notice.
+    - Step 4 (Review & Summary): Program overview card with skills taught tags, details ledger (Trade, Duration, Location, Start date, Capacity, Fee, Payment terms, Questions count), and `Publish` CTA.
+    - Published State: Green checkmark card with program summary, `View my apprenticeship`, and `Back to Dashboard` navigation.
+
+16. **`ArtisanApprenticeshipsHubView.tsx` (`Active programmes`, `Applications overview`, `New applicants`, and empty state)**:
+    - Active Programmes Tab: Live cards (Welding & Metal Fabrication, Plumbing Basics) displaying duration, open slots, weekly operating schedule, applicant counts, and `Manage` trigger.
+    - Applications Overview Tab: Grouped apprenticeship listings with `2 new`, `1 new`, and `Filled` status badges, paired with `View applications` actions.
+    - New Applicants Drilldown: 4-subtab pipeline (`New`, `Reviewing`, `Accepted`, `Declined`) with detailed applicant cards (Chinedu Agu, Ifeanyi Ugwu), background notes, and one-click `View`, `Decline`, and `Accept` actions.
+    - Empty State: Graduation cap empty state card with `Create apprenticeship` primary trigger.
+
+17. **`ArtisanProfileView.tsx` (`Artisan Web · Master artisan profile`)**:
+    - Hero Master Card: Business name (`Obiora Welding & Fabrication`), artisan name (`John Obiora`), address, verified badges (`Already verified`, `Master Artisan verified`), and 4-metric grid (`126 Jobs`, `4.8 Rating`, `7 Posts`, `4 Talent`).
+    - Services & Portfolio: Offered trade chips and dual photo preview gallery.
+    - Reviews Section: Average rating `★ 4.8 (121)` with customer review quotes.
+    - Side Actions: Active apprenticeship opportunities widget (`Manage →`), service area coverage list, and profile navigation menu (Earnings, Talent, Notifications, Support, Logout).
+    - Automatically rendered in `app/(dashboard)/profile/page.tsx` for artisans.
+
+18. **`DashboardSidebar.tsx` Artisan Navigation & Profile Accordion**:
    - Added `activeRole === "artisan"` navigation block:
      - `Home` (`/dashboard`)
      - `Jobs` (with badge `4` and accordion: `Find jobs`, `Requests`, `My quotes`, `Active jobs`, `Completed jobs`)

@@ -15,6 +15,10 @@ import { ArtisanQuoteSentView } from "./ArtisanQuoteSentView";
 import { ArtisanActiveJobDetailView } from "./ArtisanActiveJobDetailView";
 import { ArtisanEarningsView } from "./ArtisanEarningsView";
 import { ArtisanWithdrawFlowView } from "./ArtisanWithdrawFlowView";
+import { ArtisanMessagesView } from "./ArtisanMessagesView";
+import { ArtisanCreateApprenticeshipView } from "./ArtisanCreateApprenticeshipView";
+import { ArtisanApprenticeshipsHubView } from "./ArtisanApprenticeshipsHubView";
+import { ArtisanProfileView } from "./ArtisanProfileView";
 
 export type ArtisanVerificationState =
   | "verified"
@@ -38,9 +42,9 @@ export function ArtisanHomeView({
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view");
 
-  // Subviews: 'dashboard' | 'find-jobs' | 'job-detail' | 'verification' | 'jobs-list' | 'send-quote' | 'quote-sent' | 'active-job-detail' | 'earnings' | 'withdraw'
+  // Subviews: 'dashboard' | 'find-jobs' | 'job-detail' | 'verification' | 'jobs-list' | 'send-quote' | 'quote-sent' | 'active-job-detail' | 'earnings' | 'withdraw' | 'messages' | 'create-apprenticeship' | 'apprenticeships-hub' | 'profile'
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "find-jobs" | "job-detail" | "verification" | "jobs-list" | "send-quote" | "quote-sent" | "active-job-detail" | "earnings" | "withdraw"
+    "dashboard" | "find-jobs" | "job-detail" | "verification" | "jobs-list" | "send-quote" | "quote-sent" | "active-job-detail" | "earnings" | "withdraw" | "messages" | "create-apprenticeship" | "apprenticeships-hub" | "profile"
   >(
     urlView === "find-jobs"
       ? "find-jobs"
@@ -54,6 +58,14 @@ export function ArtisanHomeView({
       ? "earnings"
       : urlView === "withdraw"
       ? "withdraw"
+      : urlView === "messages"
+      ? "messages"
+      : urlView === "create-apprenticeship"
+      ? "create-apprenticeship"
+      : urlView === "training-programmes" || urlView === "apprenticeships" || urlView === "apprentice-applications"
+      ? "apprenticeships-hub"
+      : urlView === "profile"
+      ? "profile"
       : "dashboard"
   );
 
@@ -104,6 +116,14 @@ export function ArtisanHomeView({
       setCurrentView("earnings");
     } else if (urlView === "withdraw") {
       setCurrentView("withdraw");
+    } else if (urlView === "messages") {
+      setCurrentView("messages");
+    } else if (urlView === "create-apprenticeship") {
+      setCurrentView("create-apprenticeship");
+    } else if (urlView === "training-programmes" || urlView === "apprenticeships" || urlView === "apprentice-applications") {
+      setCurrentView("apprenticeships-hub");
+    } else if (urlView === "profile") {
+      setCurrentView("profile");
     } else if (!urlView) {
       setCurrentView("dashboard");
     }
@@ -277,6 +297,57 @@ export function ArtisanHomeView({
       <ArtisanWithdrawFlowView
         onBackToEarnings={() => setCurrentView("earnings")}
         onBackToHome={() => setCurrentView("dashboard")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 10: ARTISAN MESSAGES (10 · Messages)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "messages") {
+    return (
+      <ArtisanMessagesView
+        onBackToDashboard={() => setCurrentView("dashboard")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 11: CREATE APPRENTICESHIP (11 · Apprenticeship: create & publish)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "create-apprenticeship") {
+    return (
+      <ArtisanCreateApprenticeshipView
+        onBackToDashboard={() => setCurrentView("dashboard")}
+        onViewApprenticeship={() => setCurrentView("apprenticeships-hub")}
+        onSuccess={() => setCurrentView("apprenticeships-hub")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 12: APPRENTICESHIPS HUB & APPLICATIONS (Screenshot 3 Left & Screenshot 5)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "apprenticeships-hub") {
+    return (
+      <ArtisanApprenticeshipsHubView
+        onCreateNew={() => setCurrentView("create-apprenticeship")}
+        onBackToDashboard={() => setCurrentView("dashboard")}
+        initialTab={urlView === "apprentice-applications" ? "applications" : "active"}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 13: MASTER ARTISAN PROFILE (Screenshot 3 Right)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "profile") {
+    return (
+      <ArtisanProfileView
+        onBackToDashboard={() => setCurrentView("dashboard")}
+        onNavigateToEarnings={() => setCurrentView("earnings")}
+        onNavigateToTalent={() => setCurrentView("apprenticeships-hub")}
+        onNavigateToNotifications={() => toast("Opening notifications...")}
       />
     );
   }
@@ -804,7 +875,7 @@ export function ArtisanHomeView({
             </h2>
             <button
               type="button"
-              onClick={() => toast("Opening apprenticeship training management...")}
+              onClick={() => setCurrentView("apprenticeships-hub")}
               className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
             >
               Manage
@@ -813,7 +884,10 @@ export function ArtisanHomeView({
 
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-5">
             {/* Waiting applications callout */}
-            <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3">
+            <div
+              onClick={() => setCurrentView("apprenticeships-hub")}
+              className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3 cursor-pointer hover:bg-neutral-100/70 transition-colors"
+            >
               <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />

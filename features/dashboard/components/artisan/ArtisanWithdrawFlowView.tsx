@@ -8,7 +8,9 @@ type WithdrawStep =
   | "processing"
   | "sent"
   | "failed"
-  | "add_account";
+  | "add_account"
+  | "confirm_pin"
+  | "account_added";
 
 interface ArtisanWithdrawFlowViewProps {
   availableBalance?: number;
@@ -29,6 +31,7 @@ export function ArtisanWithdrawFlowView({
   // Add account form state
   const [newBank, setNewBank] = useState("Guaranty Trust Bank");
   const [newAccountNumber, setNewAccountNumber] = useState("0123456789");
+  const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
 
   const numAmount = parseInt(withdrawAmount.replace(/\D/g, ""), 10) || 0;
   const transferFee = 50;
@@ -497,11 +500,8 @@ export function ArtisanWithdrawFlowView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    toast.success("Withdrawal account added successfully!");
-                    setStep("form");
-                  }}
-                  className="px-8 py-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs"
+                  onClick={() => setStep("confirm_pin")}
+                  className="px-8 py-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"
                 >
                   Continue
                 </button>
@@ -516,6 +516,162 @@ export function ArtisanWithdrawFlowView({
               <p className="text-xs text-neutral-600 leading-relaxed">
                 To protect your earnings, BlueFixx only pays into accounts in the same name as your verified ID. You can save up to 3 accounts.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          STATE 6: CONFIRM PIN (Screenshot 1 Left)
+          ═══════════════════════════════════════════════════════════ */}
+      {step === "confirm_pin" && (
+        <div className="space-y-6">
+          <div>
+            <button
+              type="button"
+              onClick={() => setStep("add_account")}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-500 hover:text-neutral-900 mb-2 cursor-pointer transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              <span>Earnings</span>
+            </button>
+            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
+              Add a withdrawal account
+            </h1>
+          </div>
+
+          <div className="max-w-md mx-auto pt-4 sm:pt-8">
+            <div className="bg-white rounded-3xl p-7 sm:p-9 border border-neutral-200/80 shadow-xs text-center space-y-6">
+              {/* Bank Icon Circle */}
+              <div className="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-700 mx-auto">
+                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 2l10 5H2l10-5z" />
+                </svg>
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="font-heading font-extrabold text-lg sm:text-xl text-[#0F1115]">
+                  Enter your transaction PIN
+                </h3>
+                <p className="font-sans text-xs sm:text-sm text-neutral-500">
+                  Confirm you want to add GTBank •••• 6789 (JOHN OBIORA).
+                </p>
+              </div>
+
+              {/* 4 PIN Boxes */}
+              <div className="flex justify-center items-center gap-3">
+                {[0, 1, 2, 3].map((index) => (
+                  <input
+                    key={index}
+                    id={`pin-box-${index}`}
+                    type="password"
+                    maxLength={1}
+                    value={pinDigits[index]}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      const next = [...pinDigits];
+                      next[index] = val;
+                      setPinDigits(next);
+                      if (val && index < 3) {
+                        const nextInput = document.getElementById(`pin-box-${index + 1}`);
+                        nextInput?.focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !pinDigits[index] && index > 0) {
+                        const prevInput = document.getElementById(`pin-box-${index - 1}`);
+                        prevInput?.focus();
+                      }
+                    }}
+                    className="w-12 h-14 text-center text-2xl font-bold rounded-2xl border-2 border-neutral-200 focus:border-[#001B40] focus:outline-none transition-all"
+                  />
+                ))}
+              </div>
+
+              {/* Submit CTA */}
+              <button
+                type="button"
+                onClick={() => {
+                  toast.success("PIN verified successfully!");
+                  setStep("account_added");
+                }}
+                className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+              >
+                Add account
+              </button>
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => toast("Reset link sent to your phone & email.")}
+                  className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                >
+                  Forgot PIN?
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          STATE 7: ACCOUNT ADDED (Screenshot 1 Right)
+          ═══════════════════════════════════════════════════════════ */}
+      {step === "account_added" && (
+        <div className="space-y-6">
+          <div>
+            <button
+              type="button"
+              onClick={onBackToEarnings}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-neutral-500 hover:text-neutral-900 mb-2 cursor-pointer transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              <span>Earnings</span>
+            </button>
+            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
+              Add a withdrawal account
+            </h1>
+          </div>
+
+          <div className="max-w-md mx-auto pt-4 sm:pt-8">
+            <div className="bg-white rounded-3xl p-7 sm:p-9 border border-neutral-200/80 shadow-xs text-center space-y-6">
+              {/* Green Checkmark Circle */}
+              <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="font-heading font-extrabold text-xl text-[#0F1115]">
+                  Account added
+                </h3>
+                <p className="font-sans text-xs sm:text-sm text-neutral-500 leading-relaxed">
+                  GTBank •••• 6789 (JOHN OBIORA) is now saved for withdrawals. You can set it as your default in settings.
+                </p>
+              </div>
+
+              {/* Actions side by side */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onBackToEarnings}
+                  className="flex-1 py-3.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs sm:text-sm font-bold text-[#001B40] transition-colors cursor-pointer"
+                >
+                  Back to earnings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep("form")}
+                  className="flex-1 py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"
+                >
+                  Withdraw now
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -61,16 +61,47 @@ Built the complete, pixel-perfect Artisan Web experience based on the 5 Figma de
    - Sticky calculation card displaying Quote total, 7% platform fee deduction (₦3,150), and net earnings payout (₦41,850).
    - Sending quote seamlessly returns to the dashboard with toast confirmation.
 
-9. **`DashboardSidebar.tsx` Profile Accordion for Artisan**:
-   - Added `Profile` accordion submenu (`My profile`, `Verification`, `Earnings`) matching Figma Screenshot 02.
+9. **`ArtisanQuoteSentView.tsx` (`Quote sent`, `Withdraw confirmation`, `Withdrawn success`)**:
+   - Quote submission status overview matching *Artisan Web · Quote sent* and *Quote sent variant*.
+   - Detailed specification table with "View Job" and "Withdraw Quote" actions.
+   - Modal dialog for quote withdrawal confirmation.
+   - Information banner for withdrawn status with "Find more jobs" CTA.
 
-5. **`DashboardSidebar.tsx` Artisan Navigation Branch**:
+10. **Updated `ArtisanJobDetailView.tsx` (`Job detail after quote sent` & `Declined job detail`)**:
+    - Post-quote state: Displays primary "View Your Quote" CTA taking the artisan directly to their submitted proposal.
+    - Declined state: Displays top notice banner ("You declined this job. It has been removed from your recommendations...") with "Back to Find Jobs" button.
+
+11. **`ArtisanActiveJobDetailView.tsx` (`Active-job detail`, `Additional cost`, `Completion checklist`, `Awaiting confirmation`, `Payment released`)**:
+    - In-progress workbench with secured escrow notice (₦60,000 held, ₦55,242 payout).
+    - Timeline work updates feed with photo upload support and real-time posting.
+    - Dynamic status panel and full lifecycle state machine:
+      - Default mode: Customer info, map pin, approved quote, `Mark Completed`, `Messages`, `Extra Cost`.
+      - Request Additional Cost mode: Inputs for reason, additional labour, and materials with automatic total computation (₦60k + ₦25k = ₦85k).
+      - Completion Checklist mode: 3-item mandatory verification checklist (Work completed, Final record, Customer notified) with proof photo attachments.
+      - Awaiting Confirmation mode: Amber banner indicating 48-hour customer review window before automatic escrow release.
+      - Completed & Payment Released mode: Celebratory green banner with 7-day warranty notice, fee deductions breakdown (₦35,000 labour + ₦25,000 materials - ₦4,200 platform fee - ₦600 insurance = ₦55,242 net payout), `Rate Customer`, and `Find more jobs` CTAs.
+
+12. **`ArtisanEarningsView.tsx` (`09 · Earnings & withdrawals: Earnings dashboard`)**:
+    - Dark blue hero card with Withdrawable balance (`₦168,000`), "Withdraw to bank" CTA, In escrow (`₦46,500`), Paid out this month (`₦412,000`), and Apprentice earnings (`₦212,000`).
+    - Performance section: "Your standing" badge with monthly revenue and BlueFixx Rewards, paired with a daily bar chart.
+    - Itemized transaction ledger with category icons, customer names, dates, and amounts (+₦85k, +₦62k, +₦48k).
+    - Platform fee notice (7% fee + 1% optional insurance).
+
+13. **`ArtisanWithdrawFlowView.tsx` (`Withdrawal request, processing, sent, failed, add account`)**:
+    - Complete 5-state withdrawal experience:
+      - Form mode: Amount input with quick pills (₦5k, ₦10k, ₦20k, all), bank dropdown, account number, green verified name badge (`JOHN OBIORA`), name restriction notice, and fee breakdown card (₦0 withdrawal fee).
+      - Processing state: Animated spinner with account transfer details and 5-minute SLA notice.
+      - Sent state: Green checkmark with reference code (`BFX-WD-49180`), itemized bank breakdown, and navigation back to Home or Earnings.
+      - Failed state: Red alert badge, name mismatch diagnosis (comparing profile name with bank account holder), support escalation, and account switcher.
+      - Add Account view: Bank selector, 10-digit account input, real-time name validation card, and regulatory name matching guide.
+
+14. **`DashboardSidebar.tsx` Artisan Navigation & Profile Accordion**:
    - Added `activeRole === "artisan"` navigation block:
      - `Home` (`/dashboard`)
      - `Jobs` (with badge `4` and accordion: `Find jobs`, `Requests`, `My quotes`, `Active jobs`, `Completed jobs`)
      - `Talent` (with accordion: `Training programmes`, `Apprentice applications`, `Active apprentices`)
      - `Messages` (with badge `1`)
-     - `Profile` (`/profile`)
+     - `Profile` accordion submenu (`My profile`, `Verification`, `Earnings`) matching Figma Screenshot 02.
 
 ---
 

@@ -11,6 +11,10 @@ import { ArtisanSendQuoteModal } from "./ArtisanSendQuoteModal";
 import { ArtisanOnboardingFlow } from "./ArtisanOnboardingFlow";
 import { ArtisanJobsListView, JobsListTab } from "./ArtisanJobsListView";
 import { ArtisanQuoteFormView } from "./ArtisanQuoteFormView";
+import { ArtisanQuoteSentView } from "./ArtisanQuoteSentView";
+import { ArtisanActiveJobDetailView } from "./ArtisanActiveJobDetailView";
+import { ArtisanEarningsView } from "./ArtisanEarningsView";
+import { ArtisanWithdrawFlowView } from "./ArtisanWithdrawFlowView";
 
 export type ArtisanVerificationState =
   | "verified"
@@ -34,9 +38,9 @@ export function ArtisanHomeView({
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view");
 
-  // Subviews: 'dashboard' | 'find-jobs' | 'job-detail' | 'verification' | 'jobs-list' | 'send-quote'
+  // Subviews: 'dashboard' | 'find-jobs' | 'job-detail' | 'verification' | 'jobs-list' | 'send-quote' | 'quote-sent' | 'active-job-detail' | 'earnings' | 'withdraw'
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "find-jobs" | "job-detail" | "verification" | "jobs-list" | "send-quote"
+    "dashboard" | "find-jobs" | "job-detail" | "verification" | "jobs-list" | "send-quote" | "quote-sent" | "active-job-detail" | "earnings" | "withdraw"
   >(
     urlView === "find-jobs"
       ? "find-jobs"
@@ -46,8 +50,14 @@ export function ArtisanHomeView({
       ? "jobs-list"
       : urlView === "quotes"
       ? "send-quote"
+      : urlView === "earnings"
+      ? "earnings"
+      : urlView === "withdraw"
+      ? "withdraw"
       : "dashboard"
   );
+
+  const [isQuoteSent, setIsQuoteSent] = useState(false);
 
   const [jobsListTab, setJobsListTab] = useState<JobsListTab>(
     urlView === "active-jobs"
@@ -90,6 +100,10 @@ export function ArtisanHomeView({
       setCurrentView("jobs-list");
     } else if (urlView === "quotes") {
       setCurrentView("send-quote");
+    } else if (urlView === "earnings") {
+      setCurrentView("earnings");
+    } else if (urlView === "withdraw") {
+      setCurrentView("withdraw");
     } else if (!urlView) {
       setCurrentView("dashboard");
     }
@@ -134,9 +148,11 @@ export function ArtisanHomeView({
         <ArtisanJobDetailView
           job={selectedJob}
           isVerified={isVerified}
+          isQuoteSent={isQuoteSent}
           onBack={() => setCurrentView("find-jobs")}
           onContinueVerification={() => setCurrentView("verification")}
           onSendQuote={() => setCurrentView("send-quote")}
+          onViewQuote={() => setCurrentView("quote-sent")}
           onAskQuestion={() => toast(`Opening conversation with ${selectedJob.customerName}...`)}
         />
         <ArtisanSendQuoteModal
@@ -145,7 +161,8 @@ export function ArtisanHomeView({
           jobTitle={selectedJob.title}
           customerName={selectedJob.customerName}
           onQuoteSent={() => {
-            setCurrentView("dashboard");
+            setIsQuoteSent(true);
+            setCurrentView("quote-sent");
           }}
         />
       </>
@@ -166,14 +183,50 @@ export function ArtisanHomeView({
           else setCurrentView("dashboard");
         }}
         onQuoteSent={() => {
-          setCurrentView("dashboard");
+          setIsQuoteSent(true);
+          setCurrentView("quote-sent");
         }}
       />
     );
   }
 
   // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 4: JOBS LIST (REQUESTS, ACTIVE, COMPLETED, DECLINED)
+  // SUBVIEW 4: QUOTE SENT & STATUS (Screenshot 1 & 3)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "quote-sent") {
+    return (
+      <ArtisanQuoteSentView
+        jobTitle={selectedJob?.title || "Kitchen Plumbing Repair"}
+        customerName={selectedJob?.customerName || "Daniel C."}
+        quoteAmount="₦45,000"
+        submittedTime="Today · 11:37"
+        estimatedCompletion="1 week"
+        warrantyPeriod="30 days"
+        onViewJob={() => setCurrentView("job-detail")}
+        onFindMoreJobs={() => setCurrentView("find-jobs")}
+        onBackToDashboard={() => setCurrentView("dashboard")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 5: ACTIVE JOB DETAIL & ADDITIONAL COST / COMPLETION
+  // (Screenshot 4 & 5)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "active-job-detail") {
+    return (
+      <ArtisanActiveJobDetailView
+        onBack={() => {
+          setJobsListTab("active");
+          setCurrentView("jobs-list");
+        }}
+        onOpenMessages={() => toast("Opening messages with Daniel Chukwu...")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 6: JOBS LIST (REQUESTS, ACTIVE, COMPLETED, DECLINED)
   // ══════════════════════════════════════════════════════════════
   if (currentView === "jobs-list") {
     return (
@@ -183,13 +236,14 @@ export function ArtisanHomeView({
           setSelectedJob(job);
           setCurrentView("send-quote");
         }}
+        onManageJob={() => setCurrentView("active-job-detail")}
         onBackToDashboard={() => setCurrentView("dashboard")}
       />
     );
   }
 
   // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 5: ONBOARDING / BECOME AN ARTISAN (STEPS 1-5 & FAILED STATE)
+  // SUBVIEW 7: ONBOARDING / BECOME AN ARTISAN (STEPS 1-5 & FAILED STATE)
   // ══════════════════════════════════════════════════════════════
   if (currentView === "verification") {
     return (
@@ -199,6 +253,30 @@ export function ArtisanHomeView({
           setVerificationState("in_review");
           setCurrentView("dashboard");
         }}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 8: EARNINGS & ESCROW DASHBOARD (09 · Earnings & withdrawals)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "earnings") {
+    return (
+      <ArtisanEarningsView
+        onWithdrawToBank={() => setCurrentView("withdraw")}
+        onBackToDashboard={() => setCurrentView("dashboard")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 9: WITHDRAW FLOW (Amount, Bank, Processing, Sent, Failed, Add Account)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "withdraw") {
+    return (
+      <ArtisanWithdrawFlowView
+        onBackToEarnings={() => setCurrentView("earnings")}
+        onBackToHome={() => setCurrentView("dashboard")}
       />
     );
   }
@@ -454,7 +532,7 @@ export function ArtisanHomeView({
           </div>
           <button
             type="button"
-            onClick={() => toast("Opening earnings ledger...")}
+            onClick={() => setCurrentView("earnings")}
             className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left pt-1"
           >
             Earnings →
@@ -473,7 +551,7 @@ export function ArtisanHomeView({
           </div>
           <button
             type="button"
-            onClick={() => toast("Opening escrow ledger...")}
+            onClick={() => setCurrentView("earnings")}
             className="text-[11px] font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left pt-1"
           >
             View more →
@@ -489,7 +567,7 @@ export function ArtisanHomeView({
           </h2>
           <button
             type="button"
-            onClick={() => setCurrentView("find-jobs")}
+            onClick={() => setCurrentView("active-job-detail")}
             className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
           >
             Manage
@@ -498,7 +576,10 @@ export function ArtisanHomeView({
 
         {isVerified ? (
           /* Active Job Card */
-          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div
+            onClick={() => setCurrentView("active-job-detail")}
+            className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-neutral-300 transition-all"
+          >
             <div className="space-y-1.5">
               <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
                 Bathroom Plumbing Repair
@@ -791,7 +872,7 @@ export function ArtisanHomeView({
             </h2>
             <button
               type="button"
-              onClick={() => toast("Opening full earnings ledger...")}
+              onClick={() => setCurrentView("earnings")}
               className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
             >
               All earnings

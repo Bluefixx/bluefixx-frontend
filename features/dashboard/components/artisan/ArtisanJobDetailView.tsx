@@ -32,9 +32,13 @@ export interface JobDetailData {
 interface ArtisanJobDetailViewProps {
   job?: JobDetailData;
   isVerified?: boolean;
+  isQuoteSent?: boolean;
+  isDeclined?: boolean;
   onBack: () => void;
   onContinueVerification?: () => void;
   onSendQuote?: () => void;
+  onViewQuote?: () => void;
+  onBackToFindJobs?: () => void;
   onAskQuestion?: () => void;
 }
 
@@ -70,9 +74,13 @@ const defaultJobData: JobDetailData = {
 export function ArtisanJobDetailView({
   job = defaultJobData,
   isVerified = false,
+  isQuoteSent = false,
+  isDeclined = false,
   onBack,
   onContinueVerification,
   onSendQuote,
+  onViewQuote,
+  onBackToFindJobs,
   onAskQuestion,
 }: ArtisanJobDetailViewProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
@@ -119,6 +127,20 @@ export function ArtisanJobDetailView({
           )}
         </div>
       </div>
+
+      {/* DECLINED JOB BANNER (Screenshot 2 Right) */}
+      {isDeclined && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-[#EBF1F7]/70 border border-[#CBDCE9] flex items-start gap-3">
+          <svg className="w-5 h-5 text-[#001B40] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <p className="font-sans text-xs sm:text-sm text-[#001B40] leading-relaxed">
+            You declined this job. It has been removed from your recommendations; the customer is not told who declined.
+          </p>
+        </div>
+      )}
 
       {/* 2-Column Content Layout (8 cols left / 4 cols right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -283,7 +305,23 @@ export function ArtisanJobDetailView({
 
           {/* Card 2: Quoting Action Box */}
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4">
-            {!isVerified ? (
+            {isDeclined ? (
+              <button
+                type="button"
+                onClick={onBackToFindJobs || onBack}
+                className="w-full py-2.5 rounded-xl border border-neutral-300 text-xs sm:text-sm font-bold text-[#001B40] hover:bg-neutral-50 transition-colors"
+              >
+                Back to Find Jobs
+              </button>
+            ) : isQuoteSent ? (
+              <button
+                type="button"
+                onClick={onViewQuote || onSendQuote}
+                className="w-full py-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white font-sans font-bold text-xs sm:text-sm shadow-xs cursor-pointer text-center transition-all"
+              >
+                View Your Quote
+              </button>
+            ) : !isVerified ? (
               <>
                 {/* Amber Locked Callout */}
                 <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 space-y-2">
@@ -322,26 +360,28 @@ export function ArtisanJobDetailView({
               </button>
             )}
 
-            {/* Secondary Actions */}
-            <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={onAskQuestion || (() => toast("Opening message composer with Daniel C..."))}
-                className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
-              >
-                Ask Question
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  toast("Job offer declined.");
-                  onBack();
-                }}
-                className="w-full py-2 text-neutral-400 hover:text-neutral-700 font-sans font-medium text-xs text-center transition-colors cursor-pointer"
-              >
-                Decline
-              </button>
-            </div>
+            {/* Secondary Actions (hidden if declined or quote sent) */}
+            {!isDeclined && !isQuoteSent && (
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={onAskQuestion || (() => toast("Opening message composer with Daniel C..."))}
+                  className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
+                >
+                  Ask Question
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast("Job offer declined.");
+                    onBack();
+                  }}
+                  className="w-full py-2 text-neutral-400 hover:text-neutral-700 font-sans font-medium text-xs text-center transition-colors cursor-pointer"
+                >
+                  Decline
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Card 3: Additional questions */}

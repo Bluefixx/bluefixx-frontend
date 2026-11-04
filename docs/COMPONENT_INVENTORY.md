@@ -714,3 +714,45 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Acceptance Tip Banner**: Advice on clear quote descriptions boosting acceptance by 40%.
 - **Used In**: `ArtisanHomeView` (`view === "send-quote"`, or when clicking "Send Quote" in `ArtisanJobDetailView`)
 
+### `ArtisanQuoteSentView`
+- **File**: `features/dashboard/components/artisan/ArtisanQuoteSentView.tsx`
+- **Purpose**: Sent quote review and withdrawal hub matching Figma *Artisan Web · Quote sent*, *Quote sent variant*, *Withdraw confirmation*, and *Withdrawn success*:
+  - **Specification Breakdown**: Customer name, Job title, Submitted time, Quote amount, Estimated completion, and Warranty period.
+  - **Status Card**: Paper plane status badge (`Quote sent`, `₦45,000`, `Status: Awaiting Customer`) with View Job and Withdraw Quote actions.
+  - **Withdraw Confirmation Dialog**: Modal with "Withdraw Quote" and "Keep Quote" actions.
+  - **Withdrawn Success View**: Information banner confirming quote removal with "Find more jobs" navigation.
+- **Used In**: `ArtisanHomeView` (`view === "quote-sent"`)
+
+### `ArtisanActiveJobDetailView`
+- **File**: `features/dashboard/components/artisan/ArtisanActiveJobDetailView.tsx`
+- **Purpose**: Active job execution hub matching Figma *Artisan Web · Active-job detail*, *Additional cost disabled/ready*, *Completion checklist checked*, *Awaiting customer confirmation*, and *Job completed: payment released*:
+  - **Escrow Guarantee Banner**: Highlights secured ₦60,000 escrow deposit and net ₦55,242 payout.
+  - **Job Specifications**: Detailed breakdown of issue, service type, schedule, budget, and urgency.
+  - **Interactive Work Updates Feed**: In-app progress composer (`+ Add photo`, `Post update`) with chronological timeline updates.
+  - **Dynamic Right Action Panel**:
+    - *Default Mode*: Customer summary card with map pin, approved quote summary (₦35,000 labour + ₦25,000 materials), `Mark Completed`, `Messages`, and `Extra Cost` triggers.
+    - *Request Additional Cost Mode*: Input for reason, additional labour, and materials with automatic total computation and enabled/disabled submit logic.
+    - *Completion Checklist Mode*: 3-item mandatory verification checklist (Work completed, Final record, Customer notified) with proof photo attachments.
+    - *Awaiting Confirmation Mode*: Amber status banner with 48h automatic payout release timeline and customer reminder notes.
+    - *Completed & Payment Released Mode*: Green celebratory banner, 7-day warranty notice, full itemized fee deductions breakdown (Labour ₦35,000, Materials ₦25,000, Platform fee -₦4,200, Insurance -₦600 = Net ₦55,242), `Rate Customer`, and `Find more jobs` CTAs.
+- **Used In**: `ArtisanHomeView` (`view === "active-job-detail"`)
+
+### `ArtisanEarningsView`
+- **File**: `features/dashboard/components/artisan/ArtisanEarningsView.tsx`
+- **Purpose**: Full-featured earnings and balance analytics dashboard matching Figma *09 · Earnings & withdrawals (Artisan Web · Earnings dashboard)*:
+  - **Hero Balance Card**: High-contrast dark blue card with Withdrawable balance (`₦168,000`), primary "Withdraw to bank" CTA, In escrow (`₦46,500`), Paid out this month (`₦412,000`), and Apprentice earnings (`₦212,000`).
+  - **Standing & Weekly Performance**: "Your standing" badge with monthly revenue and BlueFixx Rewards, paired with a daily bar chart showing 7-day volume.
+  - **Itemized Transaction Ledger**: Chronological history of job payouts with category icons, customer names, dates, and amounts (e.g., Shower line replacement +₦85,000, Kitchen sink installation +₦62,000, Bathroom re-piping +₦48,000).
+  - **Fee Policy Notice**: Platform fee (7%) and optional insurance (1%) terms reminder card.
+- **Used In**: `ArtisanHomeView` (`view === "earnings"`, or via "Earnings →" / "All earnings" buttons)
+
+### `ArtisanWithdrawFlowView`
+- **File**: `features/dashboard/components/artisan/ArtisanWithdrawFlowView.tsx`
+- **Purpose**: Complete 5-state withdrawal and account management flow matching Figma *Artisan Web · Withdraw*, *Withdrawal processing*, *Withdrawal sent*, *Withdrawal failed*, and *Add withdrawal account*:
+  - **Withdraw Request Form**: Amount input with quick-select pills (₦5k, ₦10k, ₦20k, all), bank dropdown, account number, verified name badge (`JOHN OBIORA`), name matching restriction notice, and fee breakdown card (₦0 withdrawal fee).
+  - **Processing State**: Animated spinner with transfer details table and 5-minute SLA notice.
+  - **Success / Sent State**: Celebratory green badge, reference code (`BFX-WD-49180`), itemized bank breakdown, and navigation back to Home or Earnings.
+  - **Failed State**: Alert badge, name mismatch diagnosis comparing registered profile name with bank account holder, support escalation CTA, and fallback account selection.
+  - **Add Withdrawal Account View**: Bank directory selector, 10-digit NUBAN input, name resolution verification badge, and regulatory name matching guide.
+- **Used In**: `ArtisanHomeView` (`view === "withdraw"`, or via "Withdraw to bank" in `ArtisanEarningsView`)
+

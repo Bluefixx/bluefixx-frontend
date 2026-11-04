@@ -9,12 +9,14 @@ export type JobsListTab = "requests" | "active" | "completed" | "declined";
 interface ArtisanJobsListViewProps {
   initialTab?: JobsListTab;
   onSelectRequest?: (job: JobDetailData) => void;
+  onManageJob?: (jobId: string) => void;
   onBackToDashboard?: () => void;
 }
 
 export function ArtisanJobsListView({
   initialTab = "requests",
   onSelectRequest,
+  onManageJob,
   onBackToDashboard,
 }: ArtisanJobsListViewProps) {
   const [activeTab, setActiveTab] = useState<JobsListTab>(initialTab);
@@ -339,7 +341,10 @@ export function ArtisanJobsListView({
 
                 <button
                   type="button"
-                  onClick={() => toast.success(`Managing job: ${job.title}`)}
+                  onClick={() => {
+                    if (onManageJob) onManageJob(job.id);
+                    else toast.success(`Managing job: ${job.title}`);
+                  }}
                   className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto"
                 >
                   Manage job

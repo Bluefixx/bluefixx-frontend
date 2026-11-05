@@ -112,13 +112,26 @@ Built the complete, pixel-perfect Artisan Web experience based on the 5 Figma de
     - Step 4 (Review & Summary): Program overview card with skills taught tags, details ledger (Trade, Duration, Location, Start date, Capacity, Fee, Payment terms, Questions count), and `Publish` CTA.
     - Published State: Green checkmark card with program summary, `View my apprenticeship`, and `Back to Dashboard` navigation.
 
-16. **`ArtisanApprenticeshipsHubView.tsx` (`Active programmes`, `Applications overview`, `New applicants`, and empty state)**:
+16. **`ArtisanApprenticeshipsHubView.tsx` (`Active programmes`, `Applications overview`, `New applicants`, `Declined list`, and empty state)**:
     - Active Programmes Tab: Live cards (Welding & Metal Fabrication, Plumbing Basics) displaying duration, open slots, weekly operating schedule, applicant counts, and `Manage` trigger.
     - Applications Overview Tab: Grouped apprenticeship listings with `2 new`, `1 new`, and `Filled` status badges, paired with `View applications` actions.
-    - New Applicants Drilldown: 4-subtab pipeline (`New`, `Reviewing`, `Accepted`, `Declined`) with detailed applicant cards (Chinedu Agu, Ifeanyi Ugwu), background notes, and one-click `View`, `Decline`, and `Accept` actions.
+    - New Applicants Pipeline: 4-subtab pipeline (`New`, `Reviewing`, `Accepted`, `Declined`) with detailed applicant cards (Chidera Okwu, Ifeanyi Ugwu), background notes, and one-click `View`, `Decline`, and `Accept` actions.
+    - Declined List Tab: Single-row compact summary cards matching Figma *Artisan Web · Declined list* with red `Declined` tag.
     - Empty State: Graduation cap empty state card with `Create apprenticeship` primary trigger.
 
-17. **`ArtisanProfileView.tsx` (`Artisan Web · Master artisan profile`)**:
+17. **`ArtisanApplicantDetailView.tsx` (`Submitted applicant detail, Accept/Decline dialogs, Accepted/Declined states`)**:
+    - Application Questionnaire Responses: Detailed answers for motivation, experience, weekly schedule commitment, employment status, and portfolio file links.
+    - Portfolio & Recommendation: Two-column work photo gallery and master artisan endorsement card (*Uncle Obi Okwu · Fabricator, Nsukka*).
+    - Applicant Summary Card: Profile summary (Chidera Okwu, age 21, Abakpa Enugu East), applied date, and status badge.
+    - Interactive Decision Dialogs & Success Screens:
+      - Accept Confirmation Dialog (*Accept Chidera? They will be asked to pay ₦150,000...*).
+      - Accepted Success Screen with green checkmark and *Talent can now continue to payment* message.
+      - Accepted Applicant Awaiting Payment View with green countdown banner (*They have 3 days (due 24 Aug) to pay ₦150,000 to activate their place*).
+      - Decline Confirmation Dialog (*Decline this application*).
+      - Declined Success Screen with red 'X' and *Their place is put back so other applicants can apply*.
+      - Declined Applicant View with notice banner and *View My Apprenticeships* CTA.
+
+18. **`ArtisanProfileView.tsx` (`Artisan Web · Master artisan profile`)**:
     - Hero Master Card: Business name (`Obiora Welding & Fabrication`), artisan name (`John Obiora`), address, verified badges (`Already verified`, `Master Artisan verified`), and 4-metric grid (`126 Jobs`, `4.8 Rating`, `7 Posts`, `4 Talent`).
     - Services & Portfolio: Offered trade chips and dual photo preview gallery.
     - Reviews Section: Average rating `★ 4.8 (121)` with customer review quotes.

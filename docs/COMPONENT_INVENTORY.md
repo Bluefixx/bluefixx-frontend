@@ -781,12 +781,27 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `ArtisanApprenticeshipsHubView`
 - **File**: `features/dashboard/components/artisan/ArtisanApprenticeshipsHubView.tsx`
-- **Purpose**: Comprehensive apprenticeship management hub matching Figma *Artisan Web · Active programmes*, *Applications overview*, *New applicants*, and *No apprenticeship created yet (empty state)*:
+- **Purpose**: Comprehensive apprenticeship management hub matching Figma *Artisan Web · Active programmes*, *Applications overview*, *New applicants*, *Declined list*, and *Empty applications*:
   - **Active Programmes Tab**: Live cards (Welding & Metal Fabrication, Plumbing Basics) displaying duration, open slots, weekly operating schedule, applicant counts, and `Manage` trigger.
   - **Applications Overview Tab**: Grouped apprenticeship listings with `2 new`, `1 new`, and `Filled` status badges, paired with `View applications` actions.
-  - **New Applicants Drilldown**: 4-subtab pipeline (`New`, `Reviewing`, `Accepted`, `Declined`) with detailed applicant cards (Chinedu Agu, Ifeanyi Ugwu), background notes, and one-click `View`, `Decline`, and `Accept` actions.
-  - **Empty State**: Graduation cap empty state card with `Create apprenticeship` primary trigger.
+  - **New Applicants Pipeline**: 4-subtab pipeline (`New`, `Reviewing`, `Accepted`, `Declined`) with detailed applicant cards (Chidera Okwu, Ifeanyi Ugwu), background notes, and one-click `View`, `Decline`, and `Accept` actions.
+  - **Declined List Tab**: Single-row compact summary cards matching Figma *Artisan Web · Declined list* with red `Declined` tag.
+  - **Empty Applications State**: Folder/inbox empty card with *No apprenticeship applications* and `Create new apprenticeship` CTA.
 - **Used In**: `ArtisanHomeView` (`view === "apprenticeships-hub"`, `view === "training-programmes"`, or via Training card "Manage")
+
+### `ArtisanApplicantDetailView`
+- **File**: `features/dashboard/components/artisan/ArtisanApplicantDetailView.tsx`
+- **Purpose**: Detailed apprenticeship application review workbench matching Figma *Artisan Web · Submitted applicant detail*, *Accept confirmation dialog*, *Accepted success*, *Decline confirmation dialog*, *Declined success*, *Accepted applicant awaiting payment*, and *Declined applicant*:
+  - **Question Answers Ledger**: In-depth answers covering motivation, prior trade experience, workshop availability, current employment status, and portfolio attachments.
+  - **Portfolio & Recommendation**: Dual photo preview gallery and master artisan endorsement card (*Uncle Obi Okwu · Fabricator, Nsukka*).
+  - **Applicant Summary & Terms**: Profile card with age, location, and application timestamp; Programme card with fee (`₦150,000`), payment terms (`Paid in full`), and places left indicator.
+  - **Interactive Lifecycle Transitions**:
+    - *Submitted*: `Accept Applicant`, `Message`, and `Decline` actions.
+    - *Accept Modal & Accepted Success*: Confirmation dialog and green checkmark celebration card (*Apprenticeship accepted · Talent can now continue to payment*).
+    - *Accepted Awaiting Payment*: Green top banner with 3-day payment deadline countdown (due 24 Aug) and `View talent profile` CTA.
+    - *Decline Modal & Declined Success*: Confirmation dialog and red 'X' card (*Application declined · Slot put back for other applicants*).
+    - *Declined State*: Red notice banner and `View My Apprenticeships` button.
+- **Used In**: `ArtisanApprenticeshipsHubView` (triggered when clicking `View` on any applicant)
 
 ### `ArtisanProfileView`
 - **File**: `features/dashboard/components/artisan/ArtisanProfileView.tsx`

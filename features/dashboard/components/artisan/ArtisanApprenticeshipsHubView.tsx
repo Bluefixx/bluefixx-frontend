@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { ArtisanApplicantDetailView, ApplicantStatus } from "./ArtisanApplicantDetailView";
 
 type ApprenticeshipTab = "active" | "applications" | "completed";
 type ApplicationSubTab = "new" | "reviewing" | "accepted" | "declined";
@@ -24,16 +25,30 @@ export function ArtisanApprenticeshipsHubView({
   const [isEmpty, setIsEmpty] = useState(initialEmpty);
   const [selectedProgrammeForApplicants, setSelectedProgrammeForApplicants] = useState<string | null>(null);
   const [applicantSubTab, setApplicantSubTab] = useState<ApplicationSubTab>("new");
+  const [selectedApplicant, setSelectedApplicant] = useState<{
+    id: string;
+    name: string;
+    status: ApplicantStatus;
+  } | null>(null);
 
-  // Sample Applicants
+  // Sample Applicants Matching Figma Screens
   const [applicants, setApplicants] = useState([
+    {
+      id: "app-chidera",
+      name: "Chidera Okwu",
+      location: "Abakpa Enugu East · Age 21",
+      appliedDate: "18 Aug 2026, 10:12",
+      experience: "Two years helping in my uncle's workshop in Nsukka",
+      status: "new" as ApplicationSubTab,
+      avatar: "👨🏾",
+    },
     {
       id: "app-1",
       name: "Chinedu Agu",
       location: "Abakpa Nike, Enugu",
       appliedDate: "3 Aug 2026",
       experience: "No formal experience. Finished secondary school in 2025.",
-      status: "new" as ApplicationSubTab,
+      status: "declined" as ApplicationSubTab,
       avatar: "👨🏾",
     },
     {
@@ -60,6 +75,21 @@ export function ArtisanApprenticeshipsHubView({
     );
     toast(`${name} application declined.`);
   };
+
+  // ═══════════════════════════════════════════════════════════
+  // VIEW: APPLICANT DETAIL WORKBENCH (Screenshots 2, 3, 4, 5)
+  // ═══════════════════════════════════════════════════════════
+  if (selectedApplicant) {
+    return (
+      <ArtisanApplicantDetailView
+        applicantId={selectedApplicant.id}
+        applicantName={selectedApplicant.name}
+        initialStatus={selectedApplicant.status}
+        onBack={() => setSelectedApplicant(null)}
+        onBackToDashboard={onBackToDashboard}
+      />
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════
   // VIEW: NEW APPLICANTS DRILLDOWN (Screenshot 5 Right)
@@ -133,12 +163,70 @@ export function ArtisanApprenticeshipsHubView({
           })}
         </div>
 
-        {/* Applicant Cards Grid */}
+        {/* Applicant Cards Grid or Empty State */}
         {filteredApplicants.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-3xl border border-neutral-200 text-xs text-neutral-400">
-            No applicants in {applicantSubTab} state.
+          /* EMPTY STATE: NO APPRENTICESHIP APPLICATIONS (Screenshot 1 Right) */
+          <div className="bg-white rounded-3xl p-10 sm:p-14 border border-neutral-200/80 shadow-xs text-center space-y-4 max-w-md mx-auto">
+            <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-heading font-extrabold text-lg text-[#0F1115]">
+                No apprenticeship applications
+              </h3>
+              <p className="font-sans text-xs text-neutral-500 leading-relaxed">
+                Applications will appear here as talent applies for this opportunity.
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onCreateNew}
+                className="px-6 py-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                Create new apprenticeship
+              </button>
+            </div>
+          </div>
+        ) : applicantSubTab === "declined" ? (
+          /* DECLINED LIST: COMPACT STATUS ROWS (Screenshot 1 Left) */
+          <div className="space-y-3">
+            {filteredApplicants.map((applicant) => (
+              <div
+                key={applicant.id}
+                onClick={() =>
+                  setSelectedApplicant({
+                    id: applicant.id,
+                    name: applicant.name,
+                    status: "declined",
+                  })
+                }
+                className="bg-white rounded-2xl p-4 sm:p-5 border border-neutral-200/80 shadow-2xs flex items-center justify-between gap-4 cursor-pointer hover:border-neutral-300 transition-all"
+              >
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-full bg-neutral-100 flex items-center justify-center text-xl shrink-0">
+                    {applicant.avatar}
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-extrabold text-xs sm:text-sm text-[#0F1115]">
+                      {applicant.name}
+                    </h3>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">
+                      Welding & Metal Fabrication · Applied {applicant.appliedDate}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
+                  Declined
+                </span>
+              </div>
+            ))}
           </div>
         ) : (
+          /* ACTIVE / NEW APPLICANTS CARDS (Screenshot 5 Right) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {filteredApplicants.map((applicant) => (
               <div
@@ -176,7 +264,18 @@ export function ArtisanApprenticeshipsHubView({
                 <div className="flex items-center gap-2.5 pt-2">
                   <button
                     type="button"
-                    onClick={() => toast(`Opening full application details for ${applicant.name}...`)}
+                    onClick={() =>
+                      setSelectedApplicant({
+                        id: applicant.id,
+                        name: applicant.name,
+                        status:
+                          applicant.status === "accepted"
+                            ? "accepted"
+                            : applicant.status === "declined"
+                            ? "declined"
+                            : "submitted",
+                      })
+                    }
                     className="flex-1 py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-neutral-700 transition-colors cursor-pointer"
                   >
                     View

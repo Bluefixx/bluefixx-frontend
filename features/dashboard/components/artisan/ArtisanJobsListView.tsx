@@ -11,6 +11,7 @@ interface ArtisanJobsListViewProps {
   onSelectRequest?: (job: JobDetailData) => void;
   onManageJob?: (jobId: string) => void;
   onBackToDashboard?: () => void;
+  onRateCustomer?: (customer: { name: string; jobTitle: string; date: string }) => void;
 }
 
 export function ArtisanJobsListView({
@@ -18,6 +19,7 @@ export function ArtisanJobsListView({
   onSelectRequest,
   onManageJob,
   onBackToDashboard,
+  onRateCustomer,
 }: ArtisanJobsListViewProps) {
   const [activeTab, setActiveTab] = useState<JobsListTab>(initialTab);
 
@@ -124,13 +126,31 @@ export function ArtisanJobsListView({
 
   const completedJobsData = [
     {
-      id: "comp-1",
-      title: "Lighting installation",
-      customerName: "Kelechi Nwosu",
-      date: "10 Aug",
-      tag: "Insured",
-      badge: "Completed",
-      payout: "₦25,740 · paid out",
+      id: "comp-gen-1",
+      title: "Generator repair",
+      customerName: "Daniel C.",
+      date: "Today",
+      payout: "₦60,000 paid out",
+      reviewPending: true,
+      rating: null,
+    },
+    {
+      id: "comp-bath-2",
+      title: "Bathroom re-piping",
+      customerName: "Chizorom O.",
+      date: "11 Aug",
+      payout: "₦48,000 paid out",
+      reviewPending: false,
+      rating: 5,
+    },
+    {
+      id: "comp-shower-3",
+      title: "Shower line replacement",
+      customerName: "Amayi M.",
+      date: "4 Aug",
+      payout: "₦85,000 paid out",
+      reviewPending: false,
+      rating: 5,
     },
   ];
 
@@ -356,32 +376,66 @@ export function ArtisanJobsListView({
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-          TAB 3: COMPLETED JOBS (Screenshot 4 Left)
+          TAB 3: COMPLETED JOBS (Figma Reviews Board)
           ═══════════════════════════════════════════════════════════ */}
       {activeTab === "completed" && (
         <div className="space-y-4">
+          <div className="px-1">
+            <h2 className="text-base sm:text-lg font-heading font-bold text-[#0F1115]">
+              Completed jobs
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-500 mt-0.5">
+              Rate your customers you have finished jobs with.
+            </p>
+          </div>
+
           {completedJobsData.map((job) => (
             <div
               key={job.id}
-              className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all flex items-center justify-between gap-4"
+              className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
-                    {job.title}
-                  </h3>
-                </div>
+                <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
+                  {job.title} · {job.customerName}
+                </h3>
                 <p className="font-sans text-xs text-neutral-400 font-medium">
-                  {job.customerName} · {job.date} · {job.tag}
-                </p>
-                <p className="font-sans font-bold text-sm sm:text-base text-[#001B40] pt-1">
-                  {job.payout}
+                  Completed {job.date} · {job.payout}
                 </p>
               </div>
 
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
-                {job.badge}
-              </span>
+              <div className="flex items-center gap-3 shrink-0">
+                {job.reviewPending ? (
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      Review pending
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onRateCustomer) {
+                          onRateCustomer({
+                            name: job.customerName,
+                            jobTitle: job.title,
+                            date: job.date,
+                          });
+                        } else {
+                          toast.success(`Opening review for ${job.customerName}`);
+                        }
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+                    >
+                      Rate Customer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600">
+                    <div className="flex text-amber-400">
+                      {"★".repeat(job.rating || 5)}
+                    </div>
+                    <span>Reviewed</span>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>

@@ -18,6 +18,8 @@ export interface User {
   createdAt: string;
 }
 
+export type OtpChannel = "SMS" | "EMAIL";
+
 // ── 1. Register ──────────────────────────────────────────────
 export interface RegisterRequest {
   fullName: string;
@@ -25,11 +27,14 @@ export interface RegisterRequest {
   email: string;
   password: string;
   acceptedTerms: boolean;
+  channel?: OtpChannel;
 }
 
 export interface RegisterResponse {
   message: string;
   challengeId: string;
+  channel?: OtpChannel;
+  destination?: string;
 }
 
 // ── 2. Verify Phone ──────────────────────────────────────────
@@ -51,6 +56,8 @@ export interface ResendOtpRequest {
 export interface ResendOtpResponse {
   message: string;
   challengeId: string;
+  channel?: OtpChannel;
+  destination?: string;
 }
 
 // ── 4. Login ─────────────────────────────────────────────────

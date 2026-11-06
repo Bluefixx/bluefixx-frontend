@@ -55,6 +55,12 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   const [verificationCode, setVerificationCode] = useState(
     DEFAULT_AUTH_STATE.verificationCode
   );
+  const [otpChannel, setOtpChannel] = useState<"SMS" | "EMAIL">(
+    DEFAULT_AUTH_STATE.otpChannel
+  );
+  const [otpDestination, setOtpDestination] = useState<string>(
+    DEFAULT_AUTH_STATE.otpDestination
+  );
   const [otpSent, setOtpSent] = useState(DEFAULT_AUTH_STATE.otpSent);
   const [selectedLanguageId, setSelectedLanguageId] = useState(
     DEFAULT_AUTH_STATE.selectedLanguageId
@@ -77,6 +83,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setRegistrationStep(1);
     setVerificationPhone("");
     setVerificationCode("");
+    setOtpChannel("EMAIL");
+    setOtpDestination("");
     setOtpSent(false);
     setChallengeId(null);
   }, []);
@@ -164,6 +172,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       registrationStep,
       verificationPhone,
       verificationCode,
+      otpChannel,
+      otpDestination,
       otpSent,
       selectedLanguageId,
       introCompleted,
@@ -179,6 +189,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       setRegistrationStep,
       setVerificationPhone,
       setVerificationCode,
+      setOtpChannel,
+      setOtpDestination,
       setOtpSent,
       setSelectedLanguageId,
       setIntroCompleted,

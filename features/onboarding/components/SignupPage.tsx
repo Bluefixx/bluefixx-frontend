@@ -25,6 +25,10 @@ export default function SignupPage() {
     setVerificationCode,
     challengeId,
     setChallengeId,
+    otpChannel,
+    setOtpChannel,
+    otpDestination,
+    setOtpDestination,
     login,
     setUser,
     setActiveRole,
@@ -45,6 +49,7 @@ export default function SignupPage() {
 
   // ── Step 2 Form State ─────────────────────────────────────────
   const [phoneForVerify, setPhoneForVerify] = useState(verificationPhone || phone || "");
+  const [selectedChannel, setSelectedChannel] = useState<"EMAIL" | "SMS">(otpChannel || "EMAIL");
 
   // ── Step 3 Form State (OTP Digits) ────────────────────────────
   const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
@@ -187,7 +192,7 @@ export default function SignupPage() {
     ]
   );
 
-  // ── Step 2 Handler: Send SMS Code ─────────────────────────────
+  // ── Step 2 Handler: Send Code (SMS or Email) ─────────────────────
   const handleStep2SendCode = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -200,23 +205,49 @@ export default function SignupPage() {
       setIsLoading(true);
       try {
         const payloadPhone = toE164(phoneForVerify.trim(), countryCode);
+        const targetEmail = registrationData.email || email;
         const res = await registerApi({
           fullName: registrationData.fullName || fullName,
           phone: payloadPhone,
-          email: registrationData.email || email,
+          email: targetEmail,
           password: registrationData.password || password,
           acceptedTerms: true,
+          channel: selectedChannel,
         });
 
         if (res.challengeId) {
           setChallengeId(res.challengeId);
         }
+        if (res.channel) {
+          setOtpChannel(res.channel);
+        } else {
+          setOtpChannel(selectedChannel);
+        }
+        if (res.destination) {
+          setOtpDestination(res.destination);
+        } else {
+          setOtpDestination(selectedChannel === "EMAIL" ? targetEmail : payloadPhone);
+        }
+
         setVerificationPhone(payloadPhone);
         setRegistrationStep(3);
-        toast.success(res.message || `Verification code sent to ${payloadPhone}`);
+        const destinationText = res.destination || (selectedChannel === "EMAIL" ? targetEmail : payloadPhone);
+        toast.success(res.message || `Verification code sent to ${destinationText}`);
       } catch (err: unknown) {
         if (err instanceof ApiError) {
-          toast.error(err.message || "Failed to send verification code.");
+          if (err.code === "SMS_UNAVAILABLE") {
+            toast.error("SMS service is currently unavailable. Switched to Email verification.", { duration: 5000 });
+            setSelectedChannel("EMAIL");
+          } else if (err.code === "EMAIL_UNAVAILABLE") {
+            toast.error("Email delivery failed. Try receiving code via SMS instead.");
+            setSelectedChannel("SMS");
+          } else if (err.code === "OTP_COOLDOWN") {
+            toast.error("A code was sent recently. Please wait 60 seconds before requesting a new one.");
+          } else if (err.code === "OTP_RATE_LIMIT") {
+            toast.error("Too many code requests. Please wait an hour before trying again.");
+          } else {
+            toast.error(err.message || "Failed to send verification code.");
+          }
         } else {
           toast.error("Network error. Please try again.");
         }
@@ -226,12 +257,16 @@ export default function SignupPage() {
     },
     [
       phoneForVerify,
+      countryCode,
+      selectedChannel,
       registrationData,
       fullName,
       email,
       password,
       setIsLoading,
       setChallengeId,
+      setOtpChannel,
+      setOtpDestination,
       setVerificationPhone,
       setRegistrationStep,
     ]
@@ -338,7 +373,7 @@ export default function SignupPage() {
 
   const handleResendOtp = useCallback(async () => {
     if (!challengeId) {
-      toast.error("Please re-enter your phone number.");
+      toast.error("Session expired. Please request a new verification code.");
       setRegistrationStep(2);
       return;
     }
@@ -347,14 +382,29 @@ export default function SignupPage() {
     try {
       const res = await resendOtpApi({ challengeId });
       setChallengeId(res.challengeId);
-      toast.success(res.message || `New code sent to ${verificationPhone || phoneForVerify}`);
+      if (res.channel) setOtpChannel(res.channel);
+      if (res.destination) setOtpDestination(res.destination);
+
+      const destinationText =
+        res.destination ||
+        otpDestination ||
+        (otpChannel === "EMAIL"
+          ? registrationData.email || email
+          : verificationPhone || phoneForVerify);
+      toast.success(res.message || `New code sent to ${destinationText}`);
       setOtpDigits(["", "", "", "", "", ""]);
       setOtpError(false);
       digitInputRefs.current[0]?.focus();
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.code === "OTP_COOLDOWN") {
-          toast.error("Please wait a moment before requesting another code.");
+          toast.error("Please wait 60 seconds before requesting another code.");
+        } else if (err.code === "OTP_RATE_LIMIT") {
+          toast.error("Rate limit reached. Please wait an hour before requesting another code.");
+        } else if (err.code === "SMS_UNAVAILABLE") {
+          toast.error("SMS service is currently unavailable. Please go back and select Email verification.");
+        } else if (err.code === "EMAIL_UNAVAILABLE") {
+          toast.error("Email service is temporarily unavailable.");
         } else {
           toast.error(err.message || "Could not resend code. Please try again.");
         }
@@ -364,7 +414,20 @@ export default function SignupPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [challengeId, verificationPhone, phoneForVerify, setIsLoading, setChallengeId, setRegistrationStep]);
+  }, [
+    challengeId,
+    otpDestination,
+    otpChannel,
+    registrationData,
+    email,
+    verificationPhone,
+    phoneForVerify,
+    setIsLoading,
+    setChallengeId,
+    setOtpChannel,
+    setOtpDestination,
+    setRegistrationStep,
+  ]);
 
   // ── Step 4 Handlers: Profile Photo ────────────────────────────
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -691,9 +754,10 @@ export default function SignupPage() {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // RENDER STEP 2: PHONE VERIFICATION (ENTER NUMBER)
+  // RENDER STEP 2: ACCOUNT VERIFICATION (SMS OR EMAIL CHANNEL)
   // ══════════════════════════════════════════════════════════════
   if (registrationStep === 2) {
+    const targetEmail = registrationData.email || email;
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
         <div className="hidden lg:block lg:w-1/2 min-h-screen">
@@ -701,7 +765,7 @@ export default function SignupPage() {
             image="/images/talents.png"
             imageAlt="Service artisan with tools"
             headline="A simple check keeps every marketplace account safer."
-            description="Phone verification helps customers and professionals know they are dealing with real people."
+            description="Verification helps customers, artisans and apprentices know they are dealing with real people."
             showFooterTags={true}
           />
         </div>
@@ -710,10 +774,10 @@ export default function SignupPage() {
           <SupportHeader />
 
           <div className="w-full flex items-center justify-center my-auto py-2 sm:py-6">
-            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[460px] flex flex-col">
               <div className="flex items-center justify-between mb-1">
                 <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
-                  PHONE VERIFICATION
+                  ACCOUNT VERIFICATION
                 </span>
                 <StepperDots currentStep={2} />
               </div>
@@ -723,25 +787,119 @@ export default function SignupPage() {
               </h3>
 
               <p className="font-sans text-xs sm:text-sm text-neutral-600 mt-1.5 mb-5 leading-relaxed">
-                Enter your phone number. We&apos;ll send a one-time verification code by SMS.
+                Choose how you would like to receive your 6-digit verification code.
               </p>
 
               <BackButton onClick={() => setRegistrationStep(1)} />
 
-              <form onSubmit={handleStep2SendCode} className="space-y-5">
-                <PhoneInput
-                  value={phoneForVerify}
-                  onChange={setPhoneForVerify}
-                  countryCode={countryCode}
-                  onCountryCodeChange={setCountryCode}
-                  placeholder="803 245 0182"
-                  label="Phone number"
-                />
+              <form onSubmit={handleStep2SendCode} className="space-y-4">
+                {/* Channel Selector */}
+                <div className="space-y-2.5">
+                  <label className="font-sans font-medium text-xs text-neutral-800">
+                    Verification Method
+                  </label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Email Option */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedChannel("EMAIL")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                        selectedChannel === "EMAIL"
+                          ? "border-[#001B40] bg-blue-50/40 ring-1 ring-[#001B40]"
+                          : "border-neutral-200 bg-white hover:border-neutral-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="w-8 h-8 rounded-xl bg-blue-100/70 text-[#001B40] flex items-center justify-center">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect width="20" height="16" x="2" y="4" rx="2" />
+                            <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                          </svg>
+                        </div>
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            selectedChannel === "EMAIL"
+                              ? "border-[#001B40] bg-[#001B40]"
+                              : "border-neutral-300"
+                          }`}
+                        >
+                          {selectedChannel === "EMAIL" && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="font-heading font-bold text-xs sm:text-sm text-[#0F1115]">
+                          Email address
+                        </div>
+                        <div className="text-[11px] text-neutral-500 truncate max-w-[170px] mt-0.5">
+                          {targetEmail || "Your email inbox"}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* SMS Option */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedChannel("SMS")}
+                      className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                        selectedChannel === "SMS"
+                          ? "border-[#001B40] bg-blue-50/40 ring-1 ring-[#001B40]"
+                          : "border-neutral-200 bg-white hover:border-neutral-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="w-8 h-8 rounded-xl bg-blue-100/70 text-[#001B40] flex items-center justify-center">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </svg>
+                        </div>
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            selectedChannel === "SMS"
+                              ? "border-[#001B40] bg-[#001B40]"
+                              : "border-neutral-300"
+                          }`}
+                        >
+                          {selectedChannel === "SMS" && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="font-heading font-bold text-xs sm:text-sm text-[#0F1115]">
+                          SMS message
+                        </div>
+                        <div className="text-[11px] text-neutral-500 truncate max-w-[170px] mt-0.5">
+                          Text to mobile phone
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Phone input (Always required for database profile) */}
+                <div className="pt-1">
+                  <PhoneInput
+                    value={phoneForVerify}
+                    onChange={setPhoneForVerify}
+                    countryCode={countryCode}
+                    onCountryCodeChange={setCountryCode}
+                    placeholder="803 245 0182"
+                    label="Mobile phone number"
+                  />
+                  <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                    Phone number is required for account security and job communications.
+                  </p>
+                </div>
 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-12 rounded-xl bg-[#001B40] hover:bg-[#052F5F] active:scale-[0.99] text-white font-sans font-semibold text-xs sm:text-sm transition-all shadow-sm cursor-pointer select-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-12 rounded-xl bg-[#001B40] hover:bg-[#052F5F] active:scale-[0.99] text-white font-sans font-semibold text-xs sm:text-sm transition-all shadow-sm cursor-pointer select-none disabled:opacity-60 disabled:cursor-not-allowed mt-2"
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -751,14 +909,18 @@ export default function SignupPage() {
                       </svg>
                       Sending code...
                     </span>
+                  ) : selectedChannel === "EMAIL" ? (
+                    "Send verification code via Email"
                   ) : (
-                    "Send verification code"
+                    "Send verification code via SMS"
                   )}
                 </button>
               </form>
 
-              <p className="font-sans text-[11px] text-neutral-400 text-center leading-relaxed mt-5">
-                Standard SMS rates may apply. We&apos;ll only use this number for account security and service updates.
+              <p className="font-sans text-[11px] text-neutral-400 text-center leading-relaxed mt-4">
+                {selectedChannel === "EMAIL"
+                  ? "We'll send a 6-digit code to your inbox. Check your spam folder if it doesn't appear immediately."
+                  : "Standard SMS operator rates may apply. SMS requires mobile network coverage."}
               </p>
             </div>
           </div>
@@ -773,6 +935,13 @@ export default function SignupPage() {
   // RENDER STEP 3: VERIFICATION CODE ENTRY (6-DIGIT OTP)
   // ══════════════════════════════════════════════════════════════
   if (registrationStep === 3) {
+    const isEmail = otpChannel === "EMAIL";
+    const targetDestination =
+      otpDestination ||
+      (isEmail
+        ? registrationData.email || email
+        : verificationPhone || "+234 803 245 0182");
+
     return (
       <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
         <div className="hidden lg:block lg:w-1/2 min-h-screen">
@@ -794,7 +963,7 @@ export default function SignupPage() {
 
               <div className="flex items-center justify-between mb-1">
                 <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
-                  PHONE VERIFICATION
+                  {isEmail ? "EMAIL VERIFICATION" : "PHONE VERIFICATION"}
                 </span>
                 <StepperDots currentStep={3} />
               </div>
@@ -803,8 +972,12 @@ export default function SignupPage() {
                 Verify your account
               </h3>
 
-              <p className="font-sans text-xs sm:text-sm text-neutral-600 mt-1 mb-5">
-                Enter the 6-digit code sent to {verificationPhone || "+234 803 245 0182"}.
+              <p className="font-sans text-xs sm:text-sm text-neutral-600 mt-1 mb-5 leading-relaxed">
+                Enter the 6-digit code sent to{" "}
+                <strong className="font-semibold text-neutral-900">
+                  {targetDestination}
+                </strong>{" "}
+                via {isEmail ? "email" : "SMS"}.
               </p>
 
               <form onSubmit={handleVerifyOtp} className="space-y-4">
@@ -845,14 +1018,25 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                {/* Change phone number link */}
-                <div className="pt-1">
+                {/* Switch Channel / Edit Contact Option */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedChannel(isEmail ? "SMS" : "EMAIL");
+                      setRegistrationStep(2);
+                    }}
+                    className="font-semibold text-[#074292] hover:underline cursor-pointer"
+                  >
+                    {isEmail ? "Send via SMS instead" : "Send via Email instead"}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setRegistrationStep(2)}
-                    className="text-xs font-semibold text-[#001B40] hover:underline cursor-pointer"
+                    className="text-neutral-500 hover:text-neutral-800 hover:underline cursor-pointer"
                   >
-                    Change phone number
+                    Change contact details
                   </button>
                 </div>
 
@@ -886,6 +1070,12 @@ export default function SignupPage() {
                     Resend code
                   </button>
                 </div>
+
+                {isEmail && (
+                  <p className="text-[11px] text-neutral-400 text-center leading-relaxed pt-1">
+                    Please check your spam or junk folder if the email doesn&apos;t arrive within a few seconds.
+                  </p>
+                )}
               </form>
             </div>
           </div>

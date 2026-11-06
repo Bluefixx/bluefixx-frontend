@@ -68,6 +68,10 @@ export interface AuthState {
   verificationPhone: string;
   /** Phone verification: the OTP code entered */
   verificationCode: string;
+  /** Delivery channel for OTP: SMS or EMAIL */
+  otpChannel: "SMS" | "EMAIL";
+  /** Masked destination where OTP was dispatched (e.g. +234***78 or a***@example.com) */
+  otpDestination: string;
   /** Whether OTP has been sent */
   otpSent: boolean;
   /** Selected language preference */
@@ -93,6 +97,10 @@ export interface AuthActions {
   setVerificationPhone: (phone: string) => void;
   /** Set the OTP verification code */
   setVerificationCode: (code: string) => void;
+  /** Set OTP delivery channel */
+  setOtpChannel: (channel: "SMS" | "EMAIL") => void;
+  /** Set masked OTP destination */
+  setOtpDestination: (destination: string) => void;
   /** Mark OTP as sent */
   setOtpSent: (sent: boolean) => void;
   /** Set challenge ID returned by auth endpoints */
@@ -146,6 +154,8 @@ export const DEFAULT_AUTH_STATE: AuthState = {
   registrationStep: 1,
   verificationPhone: "",
   verificationCode: "",
+  otpChannel: "EMAIL",
+  otpDestination: "",
   otpSent: false,
   selectedLanguageId: "en",
   introCompleted: false,

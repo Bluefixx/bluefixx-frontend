@@ -812,3 +812,118 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Side Actions**: Active apprenticeship opportunities widget (`Manage →`), service area coverage list, and profile navigation menu (Earnings, Talent, Notifications, Support, Logout).
 - **Used In**: `app/(dashboard)/profile/page.tsx` (when `activeRole === "artisan"`) & `ArtisanHomeView` (`view === "profile"`)
 
+### `ArtisanApprenticeProgressView`
+- **File**: `features/dashboard/components/artisan/ArtisanApprenticeProgressView.tsx`
+- **Purpose**: Apprentice tracking, milestone management, and graduation workbench matching Figma *13 · Apprenticeship: training progress (Artisan Web · Active apprentice progress, Progress recommendation variant, Complete training confirmation, Confirm apprenticeship completion, and Apprenticeship completed)*:
+  - **Apprentice Hero Card**: Talent card for Daniel Eze (`Welding & Metal Fabrication Apprenticeship`), trade badge (`In Training: Advanced Welding`), and progress bar (`85% of the programme complete`).
+  - **3 Stat Metrics**: Attendance (`92%`), Milestone Payments (`2/3`), and Workshop Sessions Completed (`48`).
+  - **Interactive Training Timeline**: Modular syllabus checklist with interactive completion checkboxes (Orientation, Workshop Safety, Basic Tools, Welding Fundamentals, Advanced Welding, Final Practical, Completion).
+  - **Programme Details Card**: Training fee (`₦150,000`), Payment structure (`Paid in full`), Next milestone payout (`₦50,000`), and Upcoming scheduled session (`Thursday 28 August · 8:00am`).
+  - **Dual Action Button Variants**: Default operational controls (`Mark as Completed`, `Message`, `Write Recommendation`) and recommended state variant (`Recommend Daniel`, `Back to apprentices`).
+  - **Confirmation Modals**: Simple modal (*Has this apprentice completed training?*) and comprehensive payout confirmation modal (*Confirm apprenticeship completion?* with 92% attendance, 48 active days, and ₦50,000 final payout release note).
+  - **Graduation Celebration View**: High-contrast graduation card (*Daniel Eze has graduated · His certificate is now on his BlueFixx profile, and your final payout of ₦50,000 has been released*) with `View certificate` and `Back to my apprenticeships` navigation.
+- **Used In**: `ArtisanHomeView` (`view === "apprentice-progress"`, or via Training progress bar in Home dashboard, or `Talent -> Active apprentices`)
+
+### `ArtisanPersonalDetailsView`
+- **File**: `features/dashboard/components/artisan/ArtisanPersonalDetailsView.tsx`
+- **Purpose**: Artisan profile and personal information management matching Figma *14 · Settings & account (Artisan Web · Edit profile)*:
+  - **Profile Photo Uploader**: Avatar display with camera overlay badge and PNG/JPG upload requirements helper text.
+  - **Personal Details Form**: First name, Last name, Phone number, Email address, Physical residential/workshop address, and Emergency contact input fields.
+  - **Actions**: Clean `Cancel` and `Save changes` actions with success toast and state persistence.
+- **Used In**: `ArtisanHomeView` (`view === "personal-details"`) & `app/(dashboard)/settings/page.tsx` (when `tab === "personal-details"` or `tab === "account"`)
+
+### `ArtisanCreatePinView`
+- **File**: `features/dashboard/components/artisan/ArtisanCreatePinView.tsx`
+- **Purpose**: Dedicated transaction security PIN configuration matching Figma *14 · Settings & account (Artisan Web · Create PIN)*:
+  - **Security Header & Notice**: Lock shield badge, "Transaction Pin" title, and notice explaining that the PIN authorizes withdrawals and changes to sensitive account details.
+  - **Interactive 4-Digit Box Display**: 4 input boxes with auto-advance and backspace navigation for hardware/device keyboard entry without on-screen keypad.
+  - **Submission**: `Create PIN` action button with verification confirmation.
+- **Used In**: `ArtisanHomeView` (`view === "create-pin"`) & `app/(dashboard)/settings/page.tsx` (when `tab === "pin"`)
+
+### `ArtisanReferralView`
+- **File**: `features/dashboard/components/artisan/ArtisanReferralView.tsx`
+- **Purpose**: Artisan referral and viral growth program matching Figma *Artisan Web · Referral*:
+  - **Navigation Header**: Direct `< Profile` return link and `Invite & earn` page title.
+  - **Dual Hero Feature Cards**:
+    - *Invite Card*: Dark blue brand card (`Earn ₦5,000 when they complete their first job`), unique referral code pill (`BLUE-JOHN`), and dual `Share code` and `Copy link` trigger buttons with clipboard copy feedback.
+    - *Promo Card*: High-contrast yellow promotional card (`Double Referral Week`, 5 days left banner, and doubled reward highlight).
+  - **4 Stat Metrics Grid**: `₦25,000 Earned`, `12 Invited`, `7 Joined`, and `5 Activated`.
+  - **5-Step Referral Progress Timeline**: Visual sequential timeline tracking conversion from `1 Joined`, `2 Completed verification`, `3 Won first job`, `4 Completed first job`, to `5 Reward paid ₦5,000`.
+  - **Referral Activity Ledger & Filters**: 4 filter tabs (`All (7)`, `In progress (2)`, `Reward earned (3)`, `Not qualified (2)`) and detailed cards for Daniel James, Chiamaka Okator, Fatima Yusuf, Peter Adelowo, phone invite, Sam O., and Solomon Davies.
+- **Used In**: `ArtisanHomeView` (`view === "referral"`) & `app/(dashboard)/settings/page.tsx` (when `tab === "referral"`)
+
+### `ArtisanSettingsOverviewView`
+- **File**: `features/dashboard/components/artisan/ArtisanSettingsOverviewView.tsx`
+- **Purpose**: Artisan settings and profile hub matching Figma *Artisan Web · Settings*, *Delete account dialog*, and *Log out dialog*:
+  - **Profile Summary**: Avatar, artisan name (`John Obiora`), address (`Independence Layout, Enugu`), and `Edit` action.
+  - **Verification Section**: Identity verification (`Verified`) and Competence verification (`2 of 4`).
+  - **Account Section**: Personal details, Security & Transaction PIN, Notifications, and Language (`English (Nigeria)`).
+  - **Payments Section**: Bluefixx Wallet (`₦168,000`), Payout account (`GTBank •••• 6789`), and Transaction history.
+  - **Safety Section**: Safety Center, Job insurance (`Active · Protected on all active jobs`), Emergency contacts (`Ada Obiora`), and Report an incident.
+  - **Support Section**: Help center, Contact support (`0700 258 3349 · 24/7`), and Report a problem.
+  - **Referral Section**: Invite & earn (`₦25,000 earned so far`).
+  - **Log Out Dialog Modal**: Dialog confirming log out with phone number and OTP reminder.
+  - **Delete Account Dialog Modal**: Destructive dialog warning that jobs, reviews, and certificates will be removed, reminding to withdraw the ₦168,000 balance first.
+- **Used In**: `ArtisanHomeView` (`view === "settings-overview"`) & `app/(dashboard)/settings/page.tsx` (when `activeRole === "artisan"`)
+
+### `ArtisanLanguageSettingsView`
+- **File**: `features/dashboard/components/artisan/ArtisanLanguageSettingsView.tsx`
+- **Purpose**: Regional and native language preferences matching Figma *Artisan Web · Language*:
+  - **Language Directory**: Radio selector with English (`English`), Igbo (`Asụsụ Igbo`), Hausa (`Harshen Hausa`), Yoruba (`Èdè Yorùbá`), and Nigerian Pidgin (`Pidgin`).
+  - **Submission**: `Save language` button with toast feedback.
+- **Used In**: `ArtisanHomeView` (`view === "language"`) & `app/(dashboard)/settings/page.tsx` (when `tab === "language"`)
+
+### `ArtisanSafetyCenterView`
+- **File**: `features/dashboard/components/artisan/ArtisanSafetyCenterView.tsx`
+- **Purpose**: Comprehensive on-job artisan safety hub matching Figma *Artisan Web · Safety support*, *Artisan Web · Safety report*, and *Artisan Web · Report submitted*:
+  - **Emergency Action**: Red `Call police 112` trigger for immediate danger.
+  - **Live Journey & Location Sharing**: Toggleable real-time GPS journey sharing with BlueFixx Safety Team.
+  - **Support Hotline**: Direct connection to 24/7 live job support (`0700 258 3349`).
+  - **Active Job Route & Map**: Simulated live journey map between artisan location and customer destination (`Bathroom Plumbing Repair · Daniel C. · 14 Okpara Avenue, Independence Layout`).
+  - **Safety Issue Report Modal**: 6 incident categories (`I feel unsafe at the customer's home`, `Aggressive or abusive customer`, `Asked to do unsafe or illegal work`, `Injury on site`, `Someone else is on site`, `Other safety concern`), optional details textarea, and submission.
+  - **Report Submitted Success Screen**: Confirmation card with 15-minute response SLA.
+- **Used In**: `ArtisanHomeView` (`view === "safety-center"`) & `app/(dashboard)/settings/page.tsx` (when `tab === "safety"` or `tab === "support"`)
+
+### `ArtisanReportProblemView`
+- **File**: `features/dashboard/components/artisan/ArtisanReportProblemView.tsx`
+- **Purpose**: Dispute submission and tracking workbench matching Figma *Artisan Web · Report a problem* and *Artisan Web · Dispute detail*:
+  - **Problem Reporting Form**: Multi-select tags (`Customer unreachable`, `Job scope changed`, `Additional cost refused`, `Damage claim against me`, `Safety concern`, `Payment issue`, `Other`), detailed description textarea, photo and video evidence uploaders.
+  - **Escrow Guarantee Banner**: Highlights that the ₦45,000 payout is protected in safe escrow while dispute is active.
+  - **Dispute Detail View**: Amber `Disputed` badge, job specifications table (`BFX-PAY-123842`, `₦45,000 in dispute`, reason, customer evidence), BlueFixx Support message card from Amaka, 4-step dispute timeline (`Customer opened dispute` → `Under review` → `Waiting for response` → `Resolved`), and `Message customer` / `Contact Support` actions.
+- **Used In**: `ArtisanHomeView` (`view === "report-problem"`) & `app/(dashboard)/settings/page.tsx` (when `tab === "report-problem"`)
+
+### `ArtisanRateCustomerView`
+- **File**: `features/dashboard/components/artisan/ArtisanRateCustomerView.tsx`
+- **Purpose**: Completed job customer feedback and rating flow matching Figma *Reviews (Artisan Web · Completed jobs: review pending, Rate your customer, and Rating submitted)*:
+  - **Interactive 5-Star Rating**: Tap/hover star selector with dynamic feedback labels (`Good with 4/5 stars`).
+  - **Feedback Chips**: Multi-select positive attribute tags (`Punctual`, `Clear brief`, `Easy to find`, `Safe area`, `Help on site`).
+  - **Review Notes**: Optional textarea for detailed review notes.
+  - **Rating Submitted Success View**: Celebratory card with `Find jobs` and `Back to completed jobs` navigation.
+- **Used In**: `ArtisanHomeView` (`view === "rate-customer"`) & `ArtisanJobsListView` (triggered from Completed tab `Rate Customer` button)
+
+### `ArtisanNotificationsView`
+- **File**: `features/dashboard/components/artisan/ArtisanNotificationsView.tsx`
+- **Purpose**: Full-page notifications center and notification feed matching Figma *16 · Notifications (Artisan Web · Notifications, Notifications panel, and Notifications: all caught up)*:
+  - **Filter System**: Tabs for `All` and `Unread`, accompanied by `Mark all as read` and `Clear` triggers.
+  - **Grouped Chronological Feed**: `Today` and `Earlier` sections with distinct type icons (Job, Payment, Message, Apprenticeship, Review, Verification).
+  - **Interactive Action Routing**: Clicking any notification navigates directly to the associated workspace (`find-jobs`, `earnings`, `messages`, `apprenticeships-hub`, `rate-customer`, `verification`).
+  - **All Caught Up Zero State**: Clean empty state card with bell icon, descriptive text, and a sample reset trigger.
+- **Used In**: `ArtisanHomeView` (`view === "notifications"`) & `app/(dashboard)/notifications/page.tsx` (when `activeRole === "artisan"`)
+
+### `ArtisanNotificationSettingsView`
+- **File**: `features/dashboard/components/artisan/ArtisanNotificationSettingsView.tsx`
+- **Purpose**: Notification channels and alert preferences matrix matching Figma *Artisan Web · Notification settings*:
+  - **Matrix Preferences Table**: 3 channels (`Push`, `Email`, `SMS`) across 6 categories:
+    - *New jobs* (Matching trade & radius)
+    - *Quotes & bookings* (Accepted quotes, schedule updates)
+    - *Payments & payouts* (Escrow, withdrawals)
+    - *Apprenticeship* (Applicants and progress)
+    - *Messages* (Customer & applicant chats)
+    - *Promotions & referrals* (Offers and rewards)
+  - **Interactive Toggle Switches**: Smooth toggle switches for each channel with state tracking.
+  - **Actions**: `Cancel` and `Save preferences` with toast feedback.
+- **Used In**: `ArtisanHomeView` (`view === "notification-settings"`) & `app/(dashboard)/settings/page.tsx` (when `activeRole === "artisan"` and `tab === "notifications"`)
+
+
+
+

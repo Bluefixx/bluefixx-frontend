@@ -9,6 +9,7 @@ interface ArtisanProfileViewProps {
   onNavigateToEarnings?: () => void;
   onNavigateToTalent?: () => void;
   onNavigateToNotifications?: () => void;
+  onNavigateToSettings?: () => void;
 }
 
 export function ArtisanProfileView({
@@ -16,6 +17,7 @@ export function ArtisanProfileView({
   onNavigateToEarnings,
   onNavigateToTalent,
   onNavigateToNotifications,
+  onNavigateToSettings,
 }: ArtisanProfileViewProps) {
   const services = [
     "Welding & fabrication",
@@ -277,6 +279,14 @@ export function ArtisanProfileView({
               className="w-full px-4 py-3 flex items-center justify-between text-xs sm:text-sm font-semibold text-neutral-700 hover:bg-neutral-50 rounded-xl transition-colors cursor-pointer"
             >
               <span>Notifications</span>
+              <span className="text-neutral-400">›</span>
+            </button>
+            <button
+              type="button"
+              onClick={onNavigateToSettings}
+              className="w-full px-4 py-3 flex items-center justify-between text-xs sm:text-sm font-semibold text-neutral-700 hover:bg-neutral-50 rounded-xl transition-colors cursor-pointer"
+            >
+              <span>Settings</span>
               <span className="text-neutral-400">›</span>
             </button>
             <button

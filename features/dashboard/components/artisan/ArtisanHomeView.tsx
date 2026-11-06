@@ -19,6 +19,17 @@ import { ArtisanMessagesView } from "./ArtisanMessagesView";
 import { ArtisanCreateApprenticeshipView } from "./ArtisanCreateApprenticeshipView";
 import { ArtisanApprenticeshipsHubView } from "./ArtisanApprenticeshipsHubView";
 import { ArtisanProfileView } from "./ArtisanProfileView";
+import { ArtisanApprenticeProgressView } from "./ArtisanApprenticeProgressView";
+import { ArtisanPersonalDetailsView } from "./ArtisanPersonalDetailsView";
+import { ArtisanCreatePinView } from "./ArtisanCreatePinView";
+import { ArtisanReferralView } from "./ArtisanReferralView";
+import { ArtisanSettingsOverviewView } from "./ArtisanSettingsOverviewView";
+import { ArtisanLanguageSettingsView } from "./ArtisanLanguageSettingsView";
+import { ArtisanSafetyCenterView } from "./ArtisanSafetyCenterView";
+import { ArtisanReportProblemView } from "./ArtisanReportProblemView";
+import { ArtisanRateCustomerView } from "./ArtisanRateCustomerView";
+import { ArtisanNotificationsView } from "./ArtisanNotificationsView";
+import { ArtisanNotificationSettingsView } from "./ArtisanNotificationSettingsView";
 
 export type ArtisanVerificationState =
   | "verified"
@@ -42,9 +53,33 @@ export function ArtisanHomeView({
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view");
 
-  // Subviews: 'dashboard' | 'find-jobs' | 'job-detail' | 'verification' | 'jobs-list' | 'send-quote' | 'quote-sent' | 'active-job-detail' | 'earnings' | 'withdraw' | 'messages' | 'create-apprenticeship' | 'apprenticeships-hub' | 'profile'
+  // Subviews
   const [currentView, setCurrentView] = useState<
-    "dashboard" | "find-jobs" | "job-detail" | "verification" | "jobs-list" | "send-quote" | "quote-sent" | "active-job-detail" | "earnings" | "withdraw" | "messages" | "create-apprenticeship" | "apprenticeships-hub" | "profile"
+    | "dashboard"
+    | "find-jobs"
+    | "job-detail"
+    | "verification"
+    | "jobs-list"
+    | "send-quote"
+    | "quote-sent"
+    | "active-job-detail"
+    | "earnings"
+    | "withdraw"
+    | "messages"
+    | "create-apprenticeship"
+    | "apprenticeships-hub"
+    | "profile"
+    | "apprentice-progress"
+    | "personal-details"
+    | "create-pin"
+    | "referral"
+    | "settings-overview"
+    | "language"
+    | "safety-center"
+    | "report-problem"
+    | "rate-customer"
+    | "notifications"
+    | "notification-settings"
   >(
     urlView === "find-jobs"
       ? "find-jobs"
@@ -64,10 +99,38 @@ export function ArtisanHomeView({
       ? "create-apprenticeship"
       : urlView === "training-programmes" || urlView === "apprenticeships" || urlView === "apprentice-applications"
       ? "apprenticeships-hub"
+      : urlView === "active-apprentices" || urlView === "apprentice-progress"
+      ? "apprentice-progress"
+      : urlView === "personal-details" || urlView === "edit-profile"
+      ? "personal-details"
+      : urlView === "create-pin" || urlView === "pin"
+      ? "create-pin"
+      : urlView === "referral" || urlView === "invite"
+      ? "referral"
+      : urlView === "settings" || urlView === "settings-overview"
+      ? "settings-overview"
+      : urlView === "language"
+      ? "language"
+      : urlView === "safety" || urlView === "safety-center"
+      ? "safety-center"
+      : urlView === "report-problem" || urlView === "dispute"
+      ? "report-problem"
+      : urlView === "rate-customer"
+      ? "rate-customer"
+      : urlView === "notifications"
+      ? "notifications"
+      : urlView === "notification-settings"
+      ? "notification-settings"
       : urlView === "profile"
       ? "profile"
       : "dashboard"
   );
+
+  const [customerToRate, setCustomerToRate] = useState({
+    name: "Daniel C.",
+    jobTitle: "Generator repair",
+    date: "Today",
+  });
 
   const [isQuoteSent, setIsQuoteSent] = useState(false);
 
@@ -122,6 +185,14 @@ export function ArtisanHomeView({
       setCurrentView("create-apprenticeship");
     } else if (urlView === "training-programmes" || urlView === "apprenticeships" || urlView === "apprentice-applications") {
       setCurrentView("apprenticeships-hub");
+    } else if (urlView === "active-apprentices" || urlView === "apprentice-progress") {
+      setCurrentView("apprentice-progress");
+    } else if (urlView === "personal-details" || urlView === "edit-profile") {
+      setCurrentView("personal-details");
+    } else if (urlView === "create-pin" || urlView === "pin") {
+      setCurrentView("create-pin");
+    } else if (urlView === "referral" || urlView === "invite") {
+      setCurrentView("referral");
     } else if (urlView === "profile") {
       setCurrentView("profile");
     } else if (!urlView) {
@@ -258,6 +329,10 @@ export function ArtisanHomeView({
         }}
         onManageJob={() => setCurrentView("active-job-detail")}
         onBackToDashboard={() => setCurrentView("dashboard")}
+        onRateCustomer={(customer) => {
+          setCustomerToRate(customer);
+          setCurrentView("rate-customer");
+        }}
       />
     );
   }
@@ -348,6 +423,166 @@ export function ArtisanHomeView({
         onNavigateToEarnings={() => setCurrentView("earnings")}
         onNavigateToTalent={() => setCurrentView("apprenticeships-hub")}
         onNavigateToNotifications={() => toast("Opening notifications...")}
+        onNavigateToSettings={() => setCurrentView("settings-overview")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 14: ACTIVE APPRENTICE PROGRESS & GRADUATION (Screenshot 1, 2, 3)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "apprentice-progress") {
+    return (
+      <ArtisanApprenticeProgressView
+        onBack={() => setCurrentView("apprenticeships-hub")}
+        onBackToDashboard={() => setCurrentView("dashboard")}
+        onOpenMessage={() => setCurrentView("messages")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 15: PERSONAL DETAILS (Screenshot 4 Left)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "personal-details") {
+    return (
+      <ArtisanPersonalDetailsView
+        onBackToProfile={() => setCurrentView("profile")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 16: TRANSACTION PIN CREATOR (Screenshot 4 Right)
+  // ═══════════════════════════════════════════════════════════
+  if (currentView === "create-pin") {
+    return (
+      <ArtisanCreatePinView
+        onBack={() => setCurrentView("profile")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 17: INVITE & EARN / REFERRAL (Screenshot 5)
+  // ═══════════════════════════════════════════════════════════
+  if (currentView === "referral") {
+    return (
+      <ArtisanReferralView
+        onBackToProfile={() => setCurrentView("profile")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 18: SETTINGS OVERVIEW (Artisan Web · Settings)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "settings-overview") {
+    return (
+      <ArtisanSettingsOverviewView
+        onBack={() => setCurrentView("profile")}
+        onNavigate={(view) => {
+          if (view === "personal-details") setCurrentView("personal-details");
+          else if (view === "create-pin") setCurrentView("create-pin");
+          else if (view === "notifications") setCurrentView("notification-settings");
+          else if (view === "language") setCurrentView("language");
+          else if (view === "safety-center") setCurrentView("safety-center");
+          else if (view === "report-problem") setCurrentView("report-problem");
+          else if (view === "referral") setCurrentView("referral");
+          else if (view === "earnings") setCurrentView("earnings");
+          else if (view === "withdraw") setCurrentView("withdraw");
+          else if (view === "verification") setCurrentView("verification");
+          else toast(`Navigating to ${view}...`);
+        }}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 19: LANGUAGE SETTINGS (Artisan Web · Language)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "language") {
+    return (
+      <ArtisanLanguageSettingsView
+        onBack={() => setCurrentView("settings-overview")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 20: SAFETY CENTER & LIVE JOURNEY (Artisan Web · Safety support)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "safety-center") {
+    return (
+      <ArtisanSafetyCenterView
+        onBack={() => setCurrentView("settings-overview")}
+        onContactSupport={() => toast("Calling BlueFixx Support at 0700 258 3349...")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 21: REPORT A PROBLEM & DISPUTES (Artisan Web · Report a problem)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "report-problem") {
+    return (
+      <ArtisanReportProblemView
+        onBack={() => setCurrentView("settings-overview")}
+        onContactSupport={() => toast("Calling Dispute Support at 0700 258 3349...")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 22: RATE CUSTOMER (Artisan Web · Rate your customer)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "rate-customer") {
+    return (
+      <ArtisanRateCustomerView
+        customerName={customerToRate.name}
+        jobTitle={customerToRate.jobTitle}
+        jobDate={customerToRate.date}
+        onBack={() => {
+          setJobsListTab("completed");
+          setCurrentView("jobs-list");
+        }}
+        onDone={() => {
+          setJobsListTab("completed");
+          setCurrentView("jobs-list");
+        }}
+        onFindJobs={() => setCurrentView("find-jobs")}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 23: NOTIFICATIONS FULL VIEW (Artisan Web · Notifications)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "notifications") {
+    return (
+      <ArtisanNotificationsView
+        onBack={() => setCurrentView("dashboard")}
+        onNavigate={(view) => {
+          if (view === "find-jobs") setCurrentView("find-jobs");
+          else if (view === "earnings") setCurrentView("earnings");
+          else if (view === "messages") setCurrentView("messages");
+          else if (view === "apprenticeships-hub") setCurrentView("apprenticeships-hub");
+          else if (view === "rate-customer") setCurrentView("rate-customer");
+          else if (view === "verification") setCurrentView("verification");
+          else setCurrentView("dashboard");
+        }}
+      />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SUBVIEW 24: NOTIFICATION SETTINGS (Artisan Web · Notification settings)
+  // ══════════════════════════════════════════════════════════════
+  if (currentView === "notification-settings") {
+    return (
+      <ArtisanNotificationSettingsView
+        onBack={() => setCurrentView("settings-overview")}
+        onSave={() => setCurrentView("settings-overview")}
       />
     );
   }
@@ -914,13 +1149,17 @@ export function ArtisanHomeView({
               </div>
 
               {/* Daniel bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] text-neutral-500 font-medium">
-                  <span>Daniel</span>
-                  <span>65%</span>
+              <div
+                onClick={() => setCurrentView("apprentice-progress")}
+                className="space-y-1 cursor-pointer group"
+                title="View Daniel Eze's progress"
+              >
+                <div className="flex justify-between text-[11px] text-neutral-500 font-medium group-hover:text-[#001B40]">
+                  <span className="group-hover:underline font-bold">Daniel Eze</span>
+                  <span>85%</span>
                 </div>
                 <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#001B40] h-full rounded-full w-[65%]" />
+                  <div className="bg-[#001B40] h-full rounded-full w-[85%]" />
                 </div>
               </div>
 

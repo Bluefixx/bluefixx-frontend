@@ -2,11 +2,25 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/stores/auth-store";
 import { useNotifications, NotificationItem } from "@/lib/stores/notifications-store";
+import { ArtisanNotificationsView } from "@/features/dashboard/components/artisan/ArtisanNotificationsView";
 
 export default function NotificationsPage() {
+  const { activeRole } = useAuth();
+  const router = useRouter();
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
+
+  if (activeRole === "artisan") {
+    return (
+      <ArtisanNotificationsView
+        onBack={() => router.back()}
+        onNavigate={(view) => router.push(`/dashboard?view=${view}`)}
+      />
+    );
+  }
 
   const filteredNotifications =
     activeFilter === "unread"

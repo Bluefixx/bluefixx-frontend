@@ -11,6 +11,14 @@ import { NotificationsSettingsView } from "@/features/dashboard/components/setti
 import { InviteAndEarnView } from "@/features/dashboard/components/settings/InviteAndEarnView";
 import { SafetySupportView } from "@/features/dashboard/components/settings/SafetySupportView";
 import { ReportProblemView } from "@/features/dashboard/components/settings/ReportProblemView";
+import { ArtisanSettingsOverviewView } from "@/features/dashboard/components/artisan/ArtisanSettingsOverviewView";
+import { ArtisanPersonalDetailsView } from "@/features/dashboard/components/artisan/ArtisanPersonalDetailsView";
+import { ArtisanCreatePinView } from "@/features/dashboard/components/artisan/ArtisanCreatePinView";
+import { ArtisanLanguageSettingsView } from "@/features/dashboard/components/artisan/ArtisanLanguageSettingsView";
+import { ArtisanSafetyCenterView } from "@/features/dashboard/components/artisan/ArtisanSafetyCenterView";
+import { ArtisanReportProblemView } from "@/features/dashboard/components/artisan/ArtisanReportProblemView";
+import { ArtisanReferralView } from "@/features/dashboard/components/artisan/ArtisanReferralView";
+import { ArtisanNotificationSettingsView } from "@/features/dashboard/components/artisan/ArtisanNotificationSettingsView";
 
 interface UserSettingsData {
   fullName: string;
@@ -33,14 +41,15 @@ type SettingsTab =
 
 function SettingsPageContent() {
   const searchParams = useSearchParams();
-  const { user, locationName } = useAuth();
+  const { user, locationName, activeRole } = useAuth();
+  const isArtisan = activeRole === "artisan";
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("overview");
   const [userData, setUserData] = useState<UserSettingsData>({
-    fullName: user?.fullName || "Daniel Eze",
-    email: user?.email || "danieleze@gmail.com",
-    phone: user?.phone || "+234 803 212 1788",
-    location: locationName || "Enugu, Nigeria",
+    fullName: user?.fullName || (isArtisan ? "John Obiora" : "Daniel Eze"),
+    email: user?.email || (isArtisan ? "john.obiora@gmail.com" : "danieleze@gmail.com"),
+    phone: user?.phone || "+234 803 555 0142",
+    location: locationName || "Independence Layout, Enugu",
     avatarUrl: "/images/david.jpg",
   });
 
@@ -65,8 +74,15 @@ function SettingsPageContent() {
     }
   }, [searchParams]);
 
-  // View: Personal Details (Screenshot 3 Right)
+  // View: Personal Details
   if (activeTab === "personal-details") {
+    if (isArtisan) {
+      return (
+        <ArtisanPersonalDetailsView
+          onBackToProfile={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <PersonalDetailsView
         onBack={() => setActiveTab("overview")}
@@ -76,8 +92,15 @@ function SettingsPageContent() {
     );
   }
 
-  // View: Language (Screenshot 4 Left)
+  // View: Language
   if (activeTab === "language") {
+    if (isArtisan) {
+      return (
+        <ArtisanLanguageSettingsView
+          onBack={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <LanguageSettingsView
         onBack={() => setActiveTab("overview")}
@@ -85,8 +108,15 @@ function SettingsPageContent() {
     );
   }
 
-  // View: Transaction PIN (Screenshots 4 Right, 5 Left, 5 Right)
+  // View: Transaction PIN
   if (activeTab === "pin") {
+    if (isArtisan) {
+      return (
+        <ArtisanCreatePinView
+          onBack={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <TransactionPinView
         onBack={() => setActiveTab("overview")}
@@ -97,6 +127,13 @@ function SettingsPageContent() {
 
   // View: Notifications
   if (activeTab === "notifications") {
+    if (isArtisan) {
+      return (
+        <ArtisanNotificationSettingsView
+          onBack={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <NotificationsSettingsView
         onBack={() => setActiveTab("overview")}
@@ -104,8 +141,15 @@ function SettingsPageContent() {
     );
   }
 
-  // View: Safety & Support (Screenshots 3 Left, 3 Right, 4 Left)
+  // View: Safety & Support
   if (activeTab === "safety" || activeTab === "support") {
+    if (isArtisan) {
+      return (
+        <ArtisanSafetyCenterView
+          onBack={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <SafetySupportView
         onBack={() => setActiveTab("overview")}
@@ -113,8 +157,15 @@ function SettingsPageContent() {
     );
   }
 
-  // View: Report a Problem & Dispute Tracker (Screenshots 4 Right, 5 Left)
+  // View: Report a Problem & Dispute Tracker
   if (activeTab === "report-problem") {
+    if (isArtisan) {
+      return (
+        <ArtisanReportProblemView
+          onBack={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <ReportProblemView
         onBack={() => setActiveTab("overview")}
@@ -122,8 +173,15 @@ function SettingsPageContent() {
     );
   }
 
-  // View: Invite & Earn / Referral Program (Screenshot 1 Left)
+  // View: Invite & Earn / Referral Program
   if (activeTab === "referral") {
+    if (isArtisan) {
+      return (
+        <ArtisanReferralView
+          onBackToProfile={() => setActiveTab("overview")}
+        />
+      );
+    }
     return (
       <InviteAndEarnView
         onBack={() => setActiveTab("overview")}
@@ -131,7 +189,33 @@ function SettingsPageContent() {
     );
   }
 
-  // Default View: Settings Overview (Screenshot 3 Left)
+  // Default View: Settings Overview
+  if (isArtisan) {
+    return (
+      <ArtisanSettingsOverviewView
+        onBack={() => window.history.back()}
+        onNavigate={(tab) => {
+          if (
+            tab === "personal-details" ||
+            tab === "pin" ||
+            tab === "notifications" ||
+            tab === "language" ||
+            tab === "support" ||
+            tab === "safety" ||
+            tab === "report-problem" ||
+            tab === "referral"
+          ) {
+            setActiveTab(tab as SettingsTab);
+          } else if (tab === "safety-center") {
+            setActiveTab("safety");
+          } else if (tab === "earnings" || tab === "withdraw" || tab === "verification") {
+            window.location.href = `/dashboard?view=${tab}`;
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <SettingsOverviewView
       onNavigate={(tab) => setActiveTab(tab)}

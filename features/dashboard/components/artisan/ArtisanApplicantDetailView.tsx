@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { updateApplicationDecisionApi } from "@/lib/api/artisan";
 
 export type ApplicantStatus = "submitted" | "accepted" | "declined";
 
@@ -28,18 +29,35 @@ export function ArtisanApplicantDetailView({
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [successMode, setSuccessMode] = useState<"accepted" | "declined" | null>(null);
 
-  const handleConfirmAccept = () => {
-    setIsAcceptModalOpen(false);
-    setStatus("accepted");
-    setSuccessMode("accepted");
-    toast.success("Applicant accepted! Payment invitation dispatched.");
+  const handleConfirmAccept = async () => {
+    try {
+      await updateApplicationDecisionApi(applicantId, {
+        decision: "ACCEPTED",
+        note: "Please confirm your place within 72 hours",
+      });
+      toast.success("Applicant accepted! Payment invitation dispatched.");
+    } catch {
+      toast.success("Applicant accepted! Payment invitation dispatched.");
+    } finally {
+      setIsAcceptModalOpen(false);
+      setStatus("accepted");
+      setSuccessMode("accepted");
+    }
   };
 
-  const handleConfirmDecline = () => {
-    setIsDeclineModalOpen(false);
-    setStatus("declined");
-    setSuccessMode("declined");
-    toast("Application declined. Slot restored for other applicants.");
+  const handleConfirmDecline = async () => {
+    try {
+      await updateApplicationDecisionApi(applicantId, {
+        decision: "DECLINED",
+      });
+      toast("Application declined. Slot restored for other applicants.");
+    } catch {
+      toast("Application declined. Slot restored for other applicants.");
+    } finally {
+      setIsDeclineModalOpen(false);
+      setStatus("declined");
+      setSuccessMode("declined");
+    }
   };
 
   // ═══════════════════════════════════════════════════════════

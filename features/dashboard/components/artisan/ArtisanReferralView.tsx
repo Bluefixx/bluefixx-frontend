@@ -1,7 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import {
+  getArtisanReferralsSummaryApi,
+  getArtisanReferralsHistoryApi,
+} from "@/lib/api/artisan";
 
 type ReferralFilter = "All" | "In progress" | "Reward earned" | "Not qualified";
 
@@ -12,6 +16,24 @@ interface ArtisanReferralViewProps {
 export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProps) {
   const [activeFilter, setActiveFilter] = useState<ReferralFilter>("All");
   const referralCode = "BLUE-JOHN";
+
+  const [referralSummary, setReferralSummary] = useState<any>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getArtisanReferralsSummaryApi()
+      .then((data) => {
+        if (!mounted || !data) return;
+        setReferralSummary(data);
+      })
+      .catch((err) => {
+        console.debug("Referrals API offline or mocked.", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleCopyLink = () => {
     if (navigator.clipboard) {

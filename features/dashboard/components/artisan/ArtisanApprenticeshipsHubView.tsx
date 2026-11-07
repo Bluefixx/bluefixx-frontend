@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { ArtisanApplicantDetailView, ApplicantStatus } from "./ArtisanApplicantDetailView";
+import {
+  getArtisanTrainingProgramsApi,
+  getArtisanApplicationsApi,
+  getArtisanEnrollmentsApi,
+} from "@/lib/api/artisan";
 
 type ApprenticeshipTab = "active" | "applications" | "completed";
 type ApplicationSubTab = "new" | "reviewing" | "accepted" | "declined";
@@ -61,6 +66,49 @@ export function ArtisanApprenticeshipsHubView({
       avatar: "👨🏿",
     },
   ]);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setIsLoading(true);
+
+    if (activeTab === "applications") {
+      const statusMapping: Record<ApplicationSubTab, "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "DECLINED"> = {
+        new: "SUBMITTED",
+        reviewing: "UNDER_REVIEW",
+        accepted: "ACCEPTED",
+        declined: "DECLINED",
+      };
+      getArtisanApplicationsApi({ status: statusMapping[applicantSubTab] })
+        .then((res) => {
+          if (!mounted || !res || !Array.isArray(res.items)) return;
+          console.debug(`Loaded ${res.items.length} applications`);
+        })
+        .catch((err) => {
+          console.debug("Applications API offline or mocked.", err);
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+    } else {
+      getArtisanEnrollmentsApi()
+        .then((items) => {
+          if (!mounted || !Array.isArray(items)) return;
+          console.debug(`Loaded ${items.length} apprentice enrollments`);
+        })
+        .catch((err) => {
+          console.debug("Enrollments API offline or mocked.", err);
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab, applicantSubTab]);
 
   const handleAcceptApplicant = (id: string, name: string) => {
     setApplicants((prev) =>

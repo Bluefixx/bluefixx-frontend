@@ -15,3 +15,4 @@ export * from "./referrals";
 export * from "./support";
 export * from "./location";
 export * from "./talent";
+export * from "./artisan";

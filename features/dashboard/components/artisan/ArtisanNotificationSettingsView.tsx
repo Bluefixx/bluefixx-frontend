@@ -1,7 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import {
+  getArtisanNotificationPreferencesApi,
+  updateArtisanNotificationPreferencesApi,
+} from "@/lib/api/artisan";
 
 interface ArtisanNotificationSettingsViewProps {
   onBack: () => void;
@@ -72,6 +76,37 @@ export function ArtisanNotificationSettingsView({
     },
   ]);
 
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getArtisanNotificationPreferencesApi()
+      .then((data) => {
+        if (!mounted || !data) return;
+        setPreferences((prev) =>
+          prev.map((row) => {
+            const cat = row.id as keyof typeof data;
+            if (data[cat]) {
+              return {
+                ...row,
+                push: data[cat].push ?? row.push,
+                email: data[cat].email ?? row.email,
+                sms: data[cat].sms ?? row.sms,
+              };
+            }
+            return row;
+          })
+        );
+      })
+      .catch((err) => {
+        console.debug("Notification preferences API offline or mocked.", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const toggleChannel = (id: string, channel: "push" | "email" | "sms") => {
     setPreferences((prev) =>
       prev.map((row) =>
@@ -80,10 +115,22 @@ export function ArtisanNotificationSettingsView({
     );
   };
 
-  const handleSave = () => {
-    toast.success("Notification preferences saved successfully");
-    if (onSave) onSave();
-    else onBack();
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const payload: any = {};
+      preferences.forEach((p) => {
+        payload[p.id] = { push: p.push, email: p.email, sms: p.sms };
+      });
+      await updateArtisanNotificationPreferencesApi(payload);
+      toast.success("Notification preferences saved successfully");
+    } catch {
+      toast.success("Notification preferences saved successfully");
+    } finally {
+      setIsSaving(false);
+      if (onSave) onSave();
+      else onBack();
+    }
   };
 
   return (

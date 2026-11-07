@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { JobDetailData } from "./ArtisanJobDetailView";
+import { getArtisanRequestsApi, getArtisanBookingsApi } from "@/lib/api/artisan";
+import { formatNaira } from "@/lib/utils/currency";
 
 export type JobsListTab = "requests" | "active" | "completed" | "declined";
 
@@ -165,6 +167,43 @@ export function ArtisanJobsListView({
       payout: "₦28,000 · paid out",
     },
   ];
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setIsLoading(true);
+
+    if (activeTab === "requests" || activeTab === "declined") {
+      getArtisanRequestsApi(activeTab === "declined" ? "declined" : "incoming")
+        .then((res) => {
+          if (!mounted || !res || !Array.isArray(res.items)) return;
+          console.debug(`Loaded ${res.items.length} ${activeTab} items`);
+        })
+        .catch((err) => {
+          console.debug(`Requests API offline for tab ${activeTab}.`, err);
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+    } else {
+      getArtisanBookingsApi(activeTab === "completed" ? "completed" : "active")
+        .then((items) => {
+          if (!mounted || !Array.isArray(items)) return;
+          console.debug(`Loaded ${items.length} ${activeTab} bookings`);
+        })
+        .catch((err) => {
+          console.debug(`Bookings API offline for tab ${activeTab}.`, err);
+        })
+        .finally(() => {
+          if (mounted) setIsLoading(false);
+        });
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 select-none animate-in fade-in duration-200">

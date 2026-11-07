@@ -30,6 +30,8 @@ import { ArtisanReportProblemView } from "./ArtisanReportProblemView";
 import { ArtisanRateCustomerView } from "./ArtisanRateCustomerView";
 import { ArtisanNotificationsView } from "./ArtisanNotificationsView";
 import { ArtisanNotificationSettingsView } from "./ArtisanNotificationSettingsView";
+import { getArtisanDashboardApi, updateArtisanAvailabilityApi } from "@/lib/api/artisan";
+import { ArtisanDashboardResponse } from "@/types/artisan";
 
 export type ArtisanVerificationState =
   | "verified"
@@ -152,6 +154,39 @@ export function ArtisanHomeView({
 
   // Availability toggle
   const [isAvailable, setIsAvailable] = useState(true);
+  const [dashboardData, setDashboardData] = useState<ArtisanDashboardResponse | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+
+  // Fetch live artisan dashboard metrics from backend
+  useEffect(() => {
+    let mounted = true;
+    setIsLoadingDashboard(true);
+    getArtisanDashboardApi()
+      .then((res) => {
+        if (!mounted || !res) return;
+        setDashboardData(res);
+        if (res.profile) {
+          setIsAvailable(res.profile.available ?? true);
+          if (res.profile.approval === "APPROVED") {
+            setVerificationState("verified");
+          } else if (res.profile.approval === "PENDING") {
+            setVerificationState("in_review");
+          } else if (res.profile.approval === "DRAFT" || res.profile.approval === "REJECTED") {
+            setVerificationState("not_verified");
+          }
+        }
+      })
+      .catch((err) => {
+        console.debug("Artisan dashboard API offline or mocked.", err);
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingDashboard(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Selected job for detail view
   const [selectedJob, setSelectedJob] = useState<JobDetailData | null>(null);
@@ -200,14 +235,21 @@ export function ArtisanHomeView({
     }
   }, [urlView]);
 
-  const toggleAvailability = () => {
-    setIsAvailable(!isAvailable);
-    toast.success(
-      !isAvailable
-        ? "🟢 You are now marked as available for new job requests."
-        : "⚪ You are now paused/busy. New job requests are silenced.",
-      { icon: !isAvailable ? "✅" : "⏸️" }
-    );
+  const toggleAvailability = async () => {
+    const nextVal = !isAvailable;
+    setIsAvailable(nextVal);
+    try {
+      await updateArtisanAvailabilityApi({ available: nextVal });
+      toast.success(
+        nextVal
+          ? "🟢 You are now marked as available for new job requests."
+          : "⚪ You are now paused/busy. New job requests are silenced.",
+        { icon: nextVal ? "✅" : "⏸️" }
+      );
+    } catch (err: any) {
+      setIsAvailable(!nextVal); // rollback
+      toast.error(err?.message || "Could not update availability state.");
+    }
   };
 
   const isVerified = verificationState === "verified" || verificationState === "just_verified";

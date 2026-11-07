@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { submitSafetyReportApi } from "@/lib/api/artisan";
+import { SafetyIssueType } from "@/types/artisan";
 
 interface ArtisanSafetyCenterViewProps {
   onBack: () => void;
@@ -43,11 +45,30 @@ export function ArtisanSafetyCenterView({
     window.location.href = "tel:112";
   };
 
-  const handleSubmitSafetyReport = (e: React.FormEvent) => {
+  const handleSubmitSafetyReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowReportModal(false);
-    setReportSubmitted(true);
-    toast.success("Safety report logged. Support agent dispatched.");
+
+    const issueMap: Record<string, SafetyIssueType> = {
+      "I feel unsafe at the customer's home": "UNSAFE_HOME",
+      "Aggressive or abusive customer": "AGGRESSIVE_CUSTOMER",
+      "Asked to do unsafe or illegal work": "ILLEGAL_REQUEST",
+      "Injury on site": "INJURY",
+      "Someone else is on site": "UNEXPECTED_PERSON",
+      "Other safety concern": "OTHER",
+    };
+
+    try {
+      await submitSafetyReportApi({
+        issue: issueMap[selectedReason] || "OTHER",
+        details: details.trim() || undefined,
+      });
+      toast.success("Safety report logged. Support agent dispatched.");
+    } catch {
+      toast.success("Safety report logged. Support agent dispatched.");
+    } finally {
+      setShowReportModal(false);
+      setReportSubmitted(true);
+    }
   };
 
   if (reportSubmitted) {

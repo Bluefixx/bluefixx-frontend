@@ -7,6 +7,27 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 1. Completed Work
+- [x] **Artisan API Endpoints Integration (`lib/api/artisan.ts` & `types/artisan.ts`)**:
+  - Implemented typed domain contracts in `types/artisan.ts` matching the BlueFixx Artisan API specification:
+    - Dashboard & Availability: `ArtisanDashboardResponse`, `ArtisanAvailabilityPayload`, `ArtisanAvailabilityResponse`, `ArtisanCapabilities`
+    - Onboarding & Identity: `ArtisanOnboardingDraft`, `ArtisanOnboardingResponse`, `ArtisanIdentityPayload`, `ArtisanPricedServiceItem`
+    - Jobs, Requests & Quotes: `ArtisanJobFilterParams`, `ArtisanJobsFeedResponse`, `ArtisanJobDetail`, `CreateOfferPayload`, `OfferPreviewResponse`, `ArtisanOfferSummary`, `ArtisanOffersListResponse`
+    - Bookings & 48h Completion: `ArtisanBookingDetail`, `ArtisanBookingStatusPayload`, `ArtisanBookingWorkUpdate`, `CreateBookingWorkUpdatePayload`, `ProposeAdditionPayload`, `SubmitCompletionPayload`, `SubmitCompletionResponse`
+    - Earnings & Withdrawals: `ArtisanEarningsSummary`, `RequestWithdrawalPayload`, `RequestWithdrawalResponse`
+    - Apprenticeships & Pipeline: `CreateTrainingProgramPayload`, `PublishTrainingProgramPayload`, `TrainingProgramDetail`, `ArtisanApplicationItem`, `UpdateApplicationDecisionPayload`, `ArtisanApprenticeEnrollmentItem`
+    - Feedback, Safety & Preferences: `CreateCustomerReviewPayload`, `CreateSafetyReportPayload`, `ArtisanDisputeItem`, `ArtisanDisputeDetail`, `NotificationPreferences`, `UpdateNotificationPreferencesPayload`
+  - Created modular `lib/api/artisan.ts` providing typed client API functions with retry-safe `Idempotency-Key` headers for financial actions.
+  - Created currency helper `lib/utils/currency.ts` (`koboToNaira`, `nairaToKobo`, `formatNaira`) and idempotency helper `lib/utils/idempotency.ts`.
+  - Wired live endpoints into the complete Artisan UI suite (`features/dashboard/components/artisan/`):
+    - `ArtisanHomeView.tsx`: Integrated `getArtisanDashboardApi()` and `updateArtisanAvailabilityApi()`.
+    - `ArtisanOnboardingFlow.tsx`: Integrated `getArtisanOnboardingApi()`, `patchArtisanOnboardingApi()`, `submitArtisanIdentityApi()`, and `submitArtisanOnboardingApi()`.
+    - `ArtisanFindJobsView.tsx`: Integrated `getArtisanJobsApi()` with search, trade filtering, and urgency sorting.
+    - `ArtisanJobDetailView.tsx`: Integrated `createJobConversationApi()` and `declineJobApi()`.
+    - `ArtisanQuoteFormView.tsx` & `ArtisanQuoteSentView.tsx`: Integrated `submitArtisanOfferApi()` and `withdrawArtisanOfferApi()`.
+    - `ArtisanActiveJobDetailView.tsx`: Integrated `getBookingUpdatesApi()`, `postBookingUpdateApi()`, `proposeBookingAdditionApi()`, and `submitBookingCompletionApi()`.
+    - `ArtisanEarningsView.tsx` & `ArtisanWithdrawFlowView.tsx`: Integrated `getArtisanEarningsApi()` and `requestArtisanWithdrawalApi()`.
+    - `ArtisanCreateApprenticeshipView.tsx`, `ArtisanApprenticeshipsHubView.tsx`, `ArtisanApplicantDetailView.tsx`, `ArtisanApprenticeProgressView.tsx`: Integrated `publishTrainingProgramApi()`, `getArtisanApplicationsApi()`, `updateApplicationDecisionApi()`, `updateApprenticeProgressApi()`, `submitApprenticeRecommendationApi()`, and `completeApprenticeTrainingApi()`.
+    - `ArtisanRateCustomerView.tsx`, `ArtisanSafetyCenterView.tsx`, `ArtisanReportProblemView.tsx`, `ArtisanNotificationSettingsView.tsx`: Integrated `submitCustomerReviewApi()`, `submitSafetyReportApi()`, `respondToDisputeApi()`, and `updateArtisanNotificationPreferencesApi()`.
 - [x] **Talent API Endpoints Integration (`lib/api/talent.ts` & `types/talent.ts`)**:
   - Implemented typed domain contracts matching the BlueFixx Talent OpenAPI specification:
     - `TalentProgram`, `TalentProgramDetail`, `TalentArtisan`, `TalentHomeSummary`

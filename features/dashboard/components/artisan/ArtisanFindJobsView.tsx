@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { JobDetailData } from "./ArtisanJobDetailView";
 import { ArtisanFiltersModal, FilterOptions } from "./ArtisanFiltersModal";
+import { getArtisanJobsApi } from "@/lib/api/artisan";
+import { formatNaira } from "@/lib/utils/currency";
 
 interface ArtisanFindJobsViewProps {
   isVerified?: boolean;
@@ -33,6 +35,69 @@ export function ArtisanFindJobsView({
     urgency: "Any urgency",
     date: "Any date",
   });
+  const [remoteJobs, setRemoteJobs] = useState<JobDetailData[] | null>(null);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+
+  // Fetch jobs from backend API based on active filter and query
+  useEffect(() => {
+    let mounted = true;
+    setIsLoadingJobs(true);
+
+    const sortMapping: Record<string, "recommended" | "nearest" | "newest" | "urgent" | "highest-budget"> = {
+      "My trade": "recommended",
+      Nearby: "nearest",
+      Newest: "newest",
+      Urgent: "urgent",
+      "Highest budget": "highest-budget",
+    };
+
+    getArtisanJobsApi({
+      q: searchQuery.trim() || undefined,
+      sort: sortMapping[activeFilter] || "recommended",
+      myTrades: activeFilter === "My trade",
+      urgency: activeFilter === "Urgent" ? "EMERGENCY" : undefined,
+    })
+      .then((res) => {
+        if (!mounted || !res || !Array.isArray(res.items) || res.items.length === 0) return;
+        const mapped: JobDetailData[] = res.items.map((it, idx) => ({
+          id: it.id,
+          code: `BFX-${it.id.slice(0, 5).toUpperCase()}`,
+          title: it.title,
+          category: it.trade?.name || it.service?.name || "Plumbing",
+          subCategory: it.service?.name || "Repair",
+          postedTime: it.createdAt ? new Date(it.createdAt).toLocaleDateString() : "recently",
+          isUrgent: it.urgency === "EMERGENCY" || it.urgency === "WITHIN_TWO_DAYS",
+          status: "Receiving Quotes",
+          description: it.description,
+          service: `${it.trade?.name || "Trade"} · ${it.service?.name || "Service"}`,
+          date: it.preferredStart ? new Date(it.preferredStart).toLocaleDateString() : "Flexible",
+          time: "Morning · 9am - 1pm",
+          budget: it.budgetMaximum
+            ? `${formatNaira(it.budgetMinimum || 0, true)} - ${formatNaira(it.budgetMaximum, true)}`
+            : "Flexible",
+          urgency: it.urgency || "Standard",
+          customerName: it.customer?.displayName || "Customer",
+          customerLocation: it.area?.city ? `${it.area.city}, Nigeria` : "Enugu, Nigeria",
+          distance: it.distanceKm ? `${it.distanceKm.toFixed(1)} km away` : "Nearby",
+          driveTime: "10 min from base",
+          photoUrl: it.media?.[0]?.url || "",
+          photoCaption: "",
+          audioDuration: "",
+          questions: [],
+        }));
+        setRemoteJobs(mapped);
+      })
+      .catch((err) => {
+        console.debug("Jobs feed API offline, using local fixtures.", err);
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingJobs(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeFilter, searchQuery]);
 
   const filterChips = [
     "My trade",
@@ -185,6 +250,10 @@ export function ArtisanFindJobsView({
   // Dynamic filter logic
   const displayedJobs = (() => {
     if (forceEmptyState) return [];
+
+    if (remoteJobs && remoteJobs.length > 0) {
+      return remoteJobs;
+    }
 
     let list = [...jobsList];
 

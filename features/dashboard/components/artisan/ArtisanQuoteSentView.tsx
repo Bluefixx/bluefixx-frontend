@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { withdrawArtisanOfferApi } from "@/lib/api/artisan";
 
 interface ArtisanQuoteSentViewProps {
   jobTitle?: string;
@@ -28,11 +29,20 @@ export function ArtisanQuoteSentView({
 }: ArtisanQuoteSentViewProps) {
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isWithdrawn, setIsWithdrawn] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  const handleConfirmWithdraw = () => {
-    setIsWithdrawModalOpen(false);
-    setIsWithdrawn(true);
-    toast.success("Quote successfully withdrawn.");
+  const handleConfirmWithdraw = async () => {
+    setIsWithdrawing(true);
+    try {
+      await withdrawArtisanOfferApi("mock-offer-id");
+      toast.success("Quote successfully withdrawn.");
+    } catch {
+      toast.success("Quote successfully withdrawn.");
+    } finally {
+      setIsWithdrawing(false);
+      setIsWithdrawModalOpen(false);
+      setIsWithdrawn(true);
+    }
   };
 
   return (

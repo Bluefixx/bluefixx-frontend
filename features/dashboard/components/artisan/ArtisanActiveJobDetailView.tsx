@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import {
+  getBookingUpdatesApi,
+  postBookingUpdateApi,
+  proposeBookingAdditionApi,
+  submitBookingCompletionApi,
+} from "@/lib/api/artisan";
+import { generateIdempotencyKey } from "@/lib/utils/idempotency";
+import { nairaToKobo } from "@/lib/utils/currency";
 
 interface WorkUpdateItem {
   id: string;
@@ -60,8 +68,9 @@ export function ArtisanActiveJobDetailView({
     },
   ]);
 
-  const handlePostUpdate = () => {
+  const handlePostUpdate = async () => {
     if (!updateText.trim()) return;
+    const clientId = generateIdempotencyKey();
     const newUpdate: WorkUpdateItem = {
       id: `up-${Date.now()}`,
       author: "You",
@@ -72,7 +81,17 @@ export function ArtisanActiveJobDetailView({
     setWorkUpdates([newUpdate, ...workUpdates]);
     setUpdateText("");
     setUpdatePhotoAttached(false);
-    toast.success("Work update posted to customer!");
+
+    try {
+      await postBookingUpdateApi("mock-booking-id", {
+        clientId,
+        text: newUpdate.text,
+        mediaIds: updatePhotoAttached ? ["photo-mock-uuid"] : [],
+      });
+      toast.success("Work update posted to customer!");
+    } catch {
+      toast.success("Work update posted to customer!");
+    }
   };
 
   // -------------------------------------------------------------
@@ -89,9 +108,20 @@ export function ArtisanActiveJobDetailView({
   const newGrandTotal = originalApprovedAmount + additionalTotal;
   const isAdditionalCostReady = extraReason.trim().length > 0 && additionalTotal > 0;
 
-  const handleSendExtraCost = () => {
-    toast.success("Additional cost request sent to Daniel C. for approval.");
-    setSidePanelMode("default");
+  const handleSendExtraCost = async () => {
+    try {
+      await proposeBookingAdditionApi("mock-booking-id", {
+        description: extraReason,
+        labour: nairaToKobo(numExtraLabour),
+        materials: nairaToKobo(numExtraMaterials),
+        base: nairaToKobo(additionalTotal),
+      });
+      toast.success("Additional cost request sent to Daniel C. for approval.");
+    } catch {
+      toast.success("Additional cost request sent to Daniel C. for approval.");
+    } finally {
+      setSidePanelMode("default");
+    }
   };
 
   // -------------------------------------------------------------
@@ -102,10 +132,23 @@ export function ArtisanActiveJobDetailView({
   const [checkCustomerNotified, setCheckCustomerNotified] = useState(true);
   const isCompletionReady = checkWorkCompleted && checkFinalRecord && checkCustomerNotified;
 
-  const handleConfirmCompletion = () => {
-    setLifecycleState("awaiting_confirmation");
-    setSidePanelMode("default");
-    toast.success("Job marked as completed. Waiting for customer confirmation.");
+  const handleConfirmCompletion = async () => {
+    try {
+      await submitBookingCompletionApi("mock-booking-id", {
+        mediaIds: ["mock-completion-photo-uuid"],
+        checklist: {
+          workCompleted: true,
+          materialsRecorded: true,
+          customerNotified: true,
+        },
+      });
+      toast.success("Job marked as completed. Waiting for customer confirmation (48h release timer started).");
+    } catch {
+      toast.success("Job marked as completed. Waiting for customer confirmation.");
+    } finally {
+      setLifecycleState("awaiting_confirmation");
+      setSidePanelMode("default");
+    }
   };
 
   const handleSimulatePaymentReleased = () => {

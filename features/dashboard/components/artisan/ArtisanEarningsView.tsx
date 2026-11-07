@@ -1,7 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import { getArtisanEarningsApi } from "@/lib/api/artisan";
+import { formatNaira } from "@/lib/utils/currency";
+import { ArtisanEarningsSummary } from "@/types/artisan";
 
 interface ArtisanEarningsViewProps {
   onWithdrawToBank: () => void;
@@ -17,6 +20,28 @@ export function ArtisanEarningsView({
   initialHasEarnings = true,
 }: ArtisanEarningsViewProps) {
   const [hasEarnings, setHasEarnings] = useState(initialHasEarnings);
+  const [earningsData, setEarningsData] = useState<ArtisanEarningsSummary | null>(null);
+  const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setIsLoadingEarnings(true);
+    getArtisanEarningsApi()
+      .then((res) => {
+        if (!mounted || !res) return;
+        setEarningsData(res);
+      })
+      .catch((err) => {
+        console.debug("Artisan earnings API offline or mocked.", err);
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingEarnings(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const transactions = [
     {
       id: "tx-1",

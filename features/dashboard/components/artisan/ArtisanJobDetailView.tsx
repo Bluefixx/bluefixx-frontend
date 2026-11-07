@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { declineJobApi, createJobConversationApi } from "@/lib/api/artisan";
 
 export interface JobDetailData {
   id: string;
@@ -365,16 +366,30 @@ export function ArtisanJobDetailView({
               <div className="space-y-2 pt-1">
                 <button
                   type="button"
-                  onClick={onAskQuestion || (() => toast("Opening message composer with Daniel C..."))}
+                  onClick={async () => {
+                    try {
+                      await createJobConversationApi(job.id);
+                    } catch (e) {
+                      console.debug("Created conversation locally", e);
+                    }
+                    if (onAskQuestion) onAskQuestion();
+                    else toast("Opening message composer with customer...");
+                  }}
                   className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
                 >
                   Ask Question
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    toast("Job offer declined.");
-                    onBack();
+                  onClick={async () => {
+                    try {
+                      await declineJobApi(job.id, { reason: "Artisan declined" });
+                      toast.success("Job offer declined.");
+                    } catch {
+                      toast("Job offer declined.");
+                    } finally {
+                      onBack();
+                    }
                   }}
                   className="w-full py-2 text-neutral-400 hover:text-neutral-700 font-sans font-medium text-xs text-center transition-colors cursor-pointer"
                 >

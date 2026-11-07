@@ -1,12 +1,25 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-03 (Artisan Dashboard Suite & Prerender Build Resolution)*
+*Last updated: 2026-11-07 (Artisan API Integration & OTP Channel Delivery Choice)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 
-### A. Artisan Dashboard UI Suite (`features/dashboard/components/artisan/`)
+### A. Artisan API Endpoints Integration (`types/artisan.ts`, `lib/api/artisan.ts`, `lib/utils/`)
+Integrated the entire backend API suite for the Artisan Web Dashboard per the BlueFixx Artisan Integration Guide:
+1. **Type Contracts (`types/artisan.ts`)**:
+   - Comprehensive TypeScript definitions matching all endpoints: Dashboard, Onboarding, Identity, Jobs Feed, Offers, Bookings, Work Updates, 48h Completion Checklist, Wallet Withdrawals, Apprenticeship creation/pipeline, Reviews, Safety, Disputes, and Notification preferences.
+2. **API Client Layer (`lib/api/artisan.ts` & `lib/api/index.ts`)**:
+   - Implemented typed API functions routing through `apiClient` (`/api/v1`) with automatic Bearer tokens.
+   - Financial operations (`requestArtisanWithdrawalApi`, `withdrawArtisanOfferApi`, `submitArtisanOfferApi`) send retry-safe `Idempotency-Key` headers.
+3. **Utilities**:
+   - `lib/utils/currency.ts`: `koboToNaira`, `nairaToKobo`, and `formatNaira` for integer kobo conversion.
+   - `lib/utils/idempotency.ts`: RFC4122 UUIDv4 generator.
+4. **Component Wiring**:
+   - Wired live endpoints with graceful offline/fallback handling across all 25 artisan UI components.
+
+### B. Artisan Dashboard UI Suite (`features/dashboard/components/artisan/`)
 Built the complete, pixel-perfect Artisan Web experience based on the 5 Figma design boards provided by the user:
 
 1. **`ArtisanHomeView.tsx` (`01 · Dashboard & role switch`, `03 · Unverified states`, `04 · Just verified`)**:

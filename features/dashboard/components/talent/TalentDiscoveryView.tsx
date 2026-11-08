@@ -155,7 +155,7 @@ export function TalentDiscoveryView({
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
-      {/* Top Header*/}
+      {/*Top Header*/}
       <div>
         <button
           type="button"
@@ -201,8 +201,8 @@ export function TalentDiscoveryView({
             type="button"
             onClick={() => setSelectedTrade(trade)}
             className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${selectedTrade === trade
-                ? "bg-[#001B40] text-white shadow-xs"
-                : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+              ? "bg-[#001B40] text-white shadow-xs"
+              : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
               }`}
           >
             {trade}

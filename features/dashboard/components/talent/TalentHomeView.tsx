@@ -61,7 +61,7 @@ interface TalentHomeViewProps {
   onOpenRoleSwitcher?: () => void;
 }
 
-export function TalentHomeView({
+function TalentHomeViewContent({
   onSwitchToCustomer,
   onOpenRoleSwitcher,
 }: TalentHomeViewProps) {
@@ -732,3 +732,19 @@ export function TalentHomeView({
     </div>
   );
 }
+
+export function TalentHomeView(props: TalentHomeViewProps) {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto py-12 px-4 text-center text-xs text-neutral-400 font-sans">
+          Loading talent dashboard...
+        </div>
+      }
+    >
+      <TalentHomeViewContent {...props} />
+    </React.Suspense>
+  );
+}
+
+export default TalentHomeView;

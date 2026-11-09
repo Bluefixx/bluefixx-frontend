@@ -45,7 +45,7 @@ interface ArtisanHomeViewProps {
   initialVerificationState?: ArtisanVerificationState;
 }
 
-export function ArtisanHomeView({
+function ArtisanHomeViewContent({
   onSwitchToCustomer,
   onOpenRoleSwitcher,
   initialVerificationState = "verified",
@@ -1309,5 +1309,20 @@ export function ArtisanHomeView({
     </div>
   );
 }
+
+export function ArtisanHomeView(props: ArtisanHomeViewProps) {
+  return (
+    <React.Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto py-12 px-4 text-center text-xs text-neutral-400 font-sans">
+          Loading artisan dashboard...
+        </div>
+      }
+    >
+      <ArtisanHomeViewContent {...props} />
+    </React.Suspense>
+  );
+}
+
 export default ArtisanHomeView;
 

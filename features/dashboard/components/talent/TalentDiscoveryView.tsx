@@ -155,7 +155,7 @@ export function TalentDiscoveryView({
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
-      {/*Top Header*/}
+      {/* Top Header*/}
       <div>
         <button
           type="button"

@@ -14,16 +14,32 @@ export function ArtisanPersonalDetailsView({
   onBackToProfile,
   onSuccess,
 }: ArtisanPersonalDetailsViewProps) {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
 
-  const [firstName, setFirstName] = useState("John");
-  const [lastName, setLastName] = useState("Obiora");
-  const [phoneNumber, setPhoneNumber] = useState("+234 803 245 0182");
+  const [firstName, setFirstName] = useState(
+    user?.fullName ? user.fullName.split(" ")[0] : "John"
+  );
+  const [lastName, setLastName] = useState(
+    user?.fullName && user.fullName.includes(" ")
+      ? user.fullName.split(" ").slice(1).join(" ")
+      : "Obiora"
+  );
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone || "+234 803 245 0182");
   const [emailAddress, setEmailAddress] = useState(user?.email || "john.obiora@bluefixx.com");
-  const [address, setAddress] = useState("14 Ogui Road, Independence Layout, Enugu");
+  const [address, setAddress] = useState(user?.streetAddress || "14 Ogui Road, Independence Layout, Enugu");
   const [emergencyContact, setEmergencyContact] = useState("+234 802 119 4430");
 
   const handleSave = () => {
+    const combinedName = `${firstName} ${lastName}`.trim();
+    if (user) {
+      setUser({
+        ...user,
+        fullName: combinedName || user.fullName,
+        email: emailAddress || user.email,
+        phone: phoneNumber || user.phone,
+        streetAddress: address,
+      });
+    }
     toast.success("Personal details updated successfully!");
     if (onSuccess) onSuccess();
     else onBackToProfile();

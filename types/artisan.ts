@@ -118,6 +118,12 @@ export interface ArtisanDashboardResponse {
   trainingApplicationsCount?: number;
   activeApprenticesCount?: number;
   unreadNotificationsCount?: number;
+  recentEarnings?: Array<{
+    id: string;
+    description: string;
+    date: string;
+    amount: number | string;
+  }>;
 }
 
 export interface ArtisanAvailabilityPayload {

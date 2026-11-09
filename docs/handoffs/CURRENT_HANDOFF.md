@@ -1,12 +1,97 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-07 (Artisan API Integration & OTP Channel Delivery Choice)*
+*Last updated: 2026-11-09 (Customer Dashboard Dynamic Integration & Persistence on Refresh)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 
-### A. Artisan API Endpoints Integration (`types/artisan.ts`, `lib/api/artisan.ts`, `lib/utils/`)
+### A. Customer Dashboard Dynamic Data & Persistence Fixes
+1. **Header Notifications & Bell Dot (`DashboardHeader.tsx` & `NotificationsDropdown.tsx`)**:
+   - Notifications bell pip is now strictly dynamic (`unreadCount > 0`). When there are unread notifications, the bell button transitions to `border-amber-300 bg-amber-50/50 text-amber-600` with the amber pip. When all are read, the bell returns to neutral with zero pip.
+   - `getNotificationsApi()` updates `setNotifications` even with an empty array `[]` so empty inboxes correctly clear unread count.
+   - Added a polished empty state in `NotificationsDropdown.tsx` ("No notifications yet. You're all caught up with your updates.").
+   - `app/(dashboard)/notifications/page.tsx` now loads live notifications dynamically on mount and hydrates unread status.
+
+2. **Dashboard Home Categories (`features/dashboard/components/CustomerHomeView.tsx`)**:
+   - Replaced non-existent `/catalog` call with canonical `getServicesApi()` (`GET /services` - API #22).
+   - Dynamically mapped real trade categories into `displayCategories` (real category names, live service counts, and dynamic navigation links `/explore?category=${cat.id}`).
+
+3. **Browse Services View (`features/dashboard/components/BrowseServicesView.tsx`)**:
+   - Replaced static `CATEGORIES` constant loops with `apiCategories` from `getServicesApi()`.
+   - Header summary dynamically computes `${allServices.length} services · ${apiCategories.length} categories`.
+   - Category selector dropdown and left sidebar pills dynamically render from live trade categories and reflect accurate counts.
+   - Grouped services are dynamically bucketed under their matching live category IDs.
+
+4. **Messages Page (`app/(dashboard)/messages/page.tsx`)**:
+   - Connected `getConversationsApi()` (`GET /conversations` - API #41) on mount.
+   - Dynamically populates conversation list with real peer name, avatar, snippet, timestamp, and unread badges.
+   - When selecting a conversation, fetches message history via `getQuoteMessagesApi(quoteId)` (`GET /quotes/{id}/messages` - API #38) and marks as read via `markQuoteMessagesReadApi(quoteId)` (`POST /quotes/{id}/read` - API #40).
+   - Dispatches outgoing messages via `sendQuoteMessageApi(quoteId, { text, clientId, mediaIds })` (`POST /quotes/{id}/messages` - API #39).
+   - Always provides a persistent 24/7 Bluefixx Support channel.
+
+5. **Reviews Page (`app/(dashboard)/reviews/page.tsx`)**:
+   - Fetches completed customer bookings via `getBookingsApi({ tab: "completed", view: "customer" })` (`GET /bookings` - API #44) and submitted reviews via `getReviewsApi()` (`GET /reviews` - API #57).
+   - Eliminates hardcoded dummy bookings; displays real completed bookings with pending/reviewed status, star ratings, and dates.
+   - Added clean empty state ("No completed bookings to review") when user has no completed jobs.
+   - Submits reviews to the backend via `submitReviewApi(bookingId, { stars, text, mediaIds })` (`POST /bookings/{id}/review` - API #56).
+
+6. **Wallet Page (`app/(dashboard)/wallet/page.tsx`)**:
+   - Fetches live wallet balance and held escrow amount via `getWalletApi()` (`GET /wallet` - API #94).
+   - Fetches transaction activity via `getWalletTransactionsApi()` (`GET /wallet/transactions` - API #95).
+   - Dynamically renders available balance and live held funds (`₦{heldBalance.toLocaleString()} held for jobs in progress`).
+   - If transactions are empty, renders a clean zero-state table row instead of dummy transactions.
+
+7. **Account Settings Wallet Balance (`features/dashboard/components/settings/SettingsOverviewView.tsx`)**:
+   - Fixed hardcoded fallback `₦{(walletBalance || 85000).toLocaleString()}` to `₦{(walletBalance ?? 0).toLocaleString()}`.
+   - Added on-mount hydration via `getWalletApi()` in `SettingsOverviewView.tsx`.
+
+8. **Page Refresh Data Loss Resolution**:
+   - Root cause 1: `DEFAULT_AUTH_STATE.walletBalance` was initialized to `85000`; changed to `0`.
+   - Root cause 2: `AuthProvider.tsx` now caches `user`, `activeRole`, `walletBalance`, and `locationName` in `localStorage` so reload never causes flash of default dummy state.
+   - Root cause 3: Token persisted in both `sessionStorage` and `localStorage` (`bluefixx_access_token`) via `lib/api/client.ts`.
+   - Root cause 4: Removed non-existent endpoint calls (`/catalog`) that were 404ing on refresh and forcing fallback to mock arrays.
+
+### B. Dynamic Data Across Artisan & Talent Dashboards
+1. **Dynamic Greetings & User Hydration**:
+   - Replaced all hardcoded greetings (`Good morning`) across Customer, Artisan, and Talent dashboards with client-side, time-aware greetings (`Good morning`, `Good afternoon`, `Good evening` based on `new Date().getHours()`).
+   - Profile hydration on mount in `AuthProvider.tsx` calling `getAccountProfileApi()` to set real user name, email, phone, avatar, and verification status.
+   - Fallbacks now dynamically derive first names (`user?.fullName ? user.fullName.split(" ")[0] : ...`).
+2. **Artisan Dashboard Dynamic Integration (`features/dashboard/components/artisan/ArtisanHomeView.tsx`)**:
+   - Removed the view state simulator dropdown (`<select>`) from the home view. Verification status is now derived strictly from `dashboardData?.profile?.approval` and live capabilities.
+   - Bound the 5 summary metric cards directly to `dashboardData`:
+     - New requests: `dashboardData?.requests?.length ?? 0`
+     - Active jobs: `dashboardData?.activeJobs?.length ?? 0`
+     - Rating: calculated from `ratingTotal / ratingCount` with `"New"` / `"4.8"` fallback
+     - Withdrawable balance: formatted via `formatNaira(dashboardData.earnings.available, true)`
+     - Held in escrow: formatted via `formatNaira(dashboardData.earnings.escrow, true)`
+   - Active jobs section dynamically maps `dashboardData.activeJobs` with clean zero-state fallback.
+   - Recent earnings section dynamically maps `dashboardData.recentEarnings`.
+3. **Customer Dashboard Dynamic Fixes & POST/PATCH Integrations (`features/dashboard/components/CustomerHomeView.tsx`, `JobPostingsView.tsx`, `BookingsPage`, `BrowseServicesView.tsx`, `InviteAndEarnView.tsx`)**:
+   - Location-aware coordinates for nearby artisan discovery (Lagos, Abuja, Enugu) with 100km radius search.
+   - Removed all mock fallback arrays (`CATEGORIES`, `SERVICES`, `INITIAL_POSTED_JOBS`, `TRUSTED_ARTISANS`, mock referrals) across the dashboard.
+   - Fixed `JobPostingsView.tsx` to initialize empty and fetch live posts via `getJobsApi()`.
+   - Fixed `BookingsPage` (`app/(dashboard)/bookings/page.tsx`): dynamic tab badges, mapped active bookings, and mapped completed bookings with warranty/receipt/review actions.
+   - Fixed `InviteAndEarnView.tsx`: dynamic code, link, earned/pending stats from `getReferralSummaryApi()`, claim action wired to `claimReferralRewardApi()`, and referral history mapped dynamically.
+   - Verified and plugged all key POST and PATCH endpoints:
+     - `POST /jobs` via `createJobApi` in `PostJobWizard.tsx` (supports budget, urgency, start/end dates, answers, and idempotency keys).
+     - `PATCH /account` via `updateAccountProfileApi` in `PersonalDetailsView.tsx` (aligns with backend schema `fullName`, `photoId`, `emergencyName`, `emergencyPhone`, `language`).
+     - `POST /bookings/{id}/review` via `submitReviewApi` in `RateArtisanView.tsx` and `reviews/page.tsx`.
+     - `POST /quotes/{id}/messages` via `sendQuoteMessageApi` in `app/(dashboard)/messages/page.tsx`.
+   - Corrected hardcoded held escrow fallback from `120000` to `0` or actual calculated held balance.
+   - Bound greeting to dynamic client-side time-of-day greeting.
+4. **Talent Dashboard Dynamic Fixes (`features/dashboard/components/talent/TalentHomeView.tsx`)**:
+   - Dynamic time-of-day greeting.
+   - Added clean empty state for when a user has no active apprenticeship enrollments instead of displaying static mock values.
+5. **Artisan Reviews Suite (`app/(dashboard)/reviews/page.tsx`)**:
+   - Connected role-aware reviews view: when `activeRole === "artisan"`, displays Completed Jobs review pending list (`Generator repair · Daniel C.`, etc.) and transitions into `ArtisanRateCustomerView` with matching feedback chips (`Punctual`, `Paid on time`, `Respectful`, `Good tea`, `Clear problem`) and submission confirmation.
+6. **Settings & Profile Routes Navigation Fix**:
+   - Header dropdown navigates to `/profile` and `/settings` instead of 404 `/dashboard/profile` or `/dashboard/settings`.
+   - Settings views (`ArtisanSettingsOverviewView.tsx` & `ArtisanPersonalDetailsView.tsx`) now bind to live `useAuth()` data (name, phone, location, wallet balance) and support editing.
+   - Removed testing debug buttons ("Reset sample notifications") from `ArtisanNotificationsView.tsx`.
+7. **Build & Typecheck Validation**:
+   - Wrapped search-param dependent routes and subviews in `<React.Suspense>`.
+   - Passed strict type checks (`npx tsc --noEmit` exited with code 0).
 Integrated the entire backend API suite for the Artisan Web Dashboard per the BlueFixx Artisan Integration Guide:
 1. **Type Contracts (`types/artisan.ts`)**:
    - Comprehensive TypeScript definitions matching all endpoints: Dashboard, Onboarding, Identity, Jobs Feed, Offers, Bookings, Work Updates, 48h Completion Checklist, Wallet Withdrawals, Apprenticeship creation/pipeline, Reviews, Safety, Disputes, and Notification preferences.

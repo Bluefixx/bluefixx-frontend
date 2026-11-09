@@ -21,7 +21,24 @@ export async function getAccountProfileApi(): Promise<AccountProfile> {
 export async function updateAccountProfileApi(
   payload: UpdateAccountRequest
 ): Promise<AccountProfile> {
-  return apiClient.patch<AccountProfile>("/account", payload);
+  const body: Record<string, unknown> = {
+    ...(payload.fullName ? { fullName: payload.fullName } : {}),
+    ...(payload.photoId || payload.avatarId
+      ? { photoId: payload.photoId || payload.avatarId }
+      : {}),
+    language: payload.language || "en",
+    ...(payload.emergencyName
+      ? { emergencyName: payload.emergencyName }
+      : payload.emergencyContact?.name
+      ? { emergencyName: payload.emergencyContact.name }
+      : {}),
+    ...(payload.emergencyPhone
+      ? { emergencyPhone: payload.emergencyPhone }
+      : payload.emergencyContact?.phone
+      ? { emergencyPhone: payload.emergencyContact.phone }
+      : {}),
+  };
+  return apiClient.patch<AccountProfile>("/account", body);
 }
 
 /**

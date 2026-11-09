@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { getWalletApi, getWalletTransactionsApi } from "@/lib/api/wallet";
 import { FundWalletView } from "@/features/dashboard/components/FundWalletView";
 import { WithdrawWalletView } from "@/features/dashboard/components/WithdrawWalletView";
 
@@ -24,8 +25,9 @@ interface WalletTransaction {
 }
 
 export default function WalletPage() {
-  const { walletBalance } = useAuth();
-  const [balance, setBalance] = useState<number>(walletBalance || 85000);
+  const { walletBalance, setWalletBalance } = useAuth();
+  const [balance, setBalance] = useState<number>(walletBalance ?? 0);
+  const [heldBalance, setHeldBalance] = useState<number>(0);
   const [activeView, setActiveView] = useState<"overview" | "fund" | "withdraw">("overview");
   const [selectedTransaction, setSelectedTransaction] = useState<WalletTransaction | null>(null);
   const [activeTab, setActiveTab] = useState<"All" | "Payments" | "Deposits" | "Funding" | "Refunds">("All");
@@ -35,75 +37,70 @@ export default function WalletPage() {
   const [isPaymentMethodsModalOpen, setIsPaymentMethodsModalOpen] = useState(false);
   const [pinDigits, setPinDigits] = useState(["", "", "", ""]);
 
-  const [transactions, setTransactions] = useState<WalletTransaction[]>([
-    {
-      id: "txn-1",
-      title: "Bathroom Plumbing Repair",
-      artisanName: "Emeka Okafor",
-      category: "payment",
-      date: "19 Aug 2026, 16:11",
-      amount: 120000,
-      isCredit: false,
-      status: "Secured",
-      labour: 80000,
-      materials: 40000,
-      reference: "BFX-TXN-4475193",
-      balanceBefore: 205000,
-      balanceAfter: 85000,
-    },
-    {
-      id: "txn-2",
-      title: "Wallet funding - Paystack",
-      category: "funding",
-      date: "19 Aug 2026, 12:00",
-      amount: 150000,
-      isCredit: true,
-      status: "Completed",
-      reference: "PSTK-983104",
-      balanceBefore: 55000,
-      balanceAfter: 205000,
-    },
-    {
-      id: "txn-3",
-      title: "Ceiling fan installation",
-      artisanName: "Sunday Alabi",
-      category: "payment",
-      date: "18 Jul 2026, 11:42",
-      amount: 44000,
-      isCredit: false,
-      status: "Released",
-      labour: 30000,
-      materials: 14000,
-      reference: "BFX-TXN-391802",
-      balanceBefore: 99000,
-      balanceAfter: 55000,
-    },
-    {
-      id: "txn-4",
-      title: "Refund - Generator Servicing",
-      category: "refund",
-      date: "1 Jun 2026, 10:15",
-      amount: 28000,
-      isCredit: true,
-      status: "Returned",
-      reference: "BFX-RFD-10294",
-      balanceBefore: 71000,
-      balanceAfter: 99000,
-    },
-    {
-      id: "txn-5",
-      title: "Deposit - Wardrobe build",
-      artisanName: "Chidi Nnamdi",
-      category: "deposit",
-      date: "30 May 2026, 11:21",
-      amount: 60000,
-      isCredit: false,
-      status: "Completed",
-      reference: "BFX-DEP-88319",
-      balanceBefore: 131000,
-      balanceAfter: 71000,
-    },
-  ]);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    getWalletApi()
+      .then((data) => {
+        if (!mounted || !data) return;
+        const rawAvail = (data as any).availableBalanceKobo ?? data.available;
+        if (rawAvail !== undefined && rawAvail !== null) {
+          const kobo = typeof rawAvail === "string" ? parseInt(rawAvail, 10) : rawAvail;
+          if (!isNaN(kobo)) {
+            const naira = Math.round(kobo / 100);
+            setBalance(naira);
+            setWalletBalance(naira);
+          }
+        }
+        const rawHeld = (data as any).heldBalanceKobo ?? data.bookingHeld;
+        if (rawHeld !== undefined && rawHeld !== null) {
+          const kobo = typeof rawHeld === "string" ? parseInt(rawHeld, 10) : rawHeld;
+          if (!isNaN(kobo)) {
+            setHeldBalance(Math.round(kobo / 100));
+          }
+        }
+      })
+      .catch((err) => {
+        console.debug("Wallet API unavailable:", err);
+      });
+
+    getWalletTransactionsApi()
+      .then((items) => {
+        if (!mounted) return;
+        if (Array.isArray(items) && items.length > 0) {
+          const mapped: WalletTransaction[] = items.map((it: any) => ({
+            id: it.id,
+            title: it.description || it.title || (it.category === "FUNDING" ? "Wallet funding" : "Job payment"),
+            artisanName: it.peerName || it.artisanName,
+            category: (it.category?.toLowerCase() as any) || (it.isCredit ? "funding" : "payment"),
+            date: it.createdAt
+              ? new Date(it.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+              : "Recent",
+            amount: Math.abs(Math.round(Number(it.amountKobo ?? it.amount ?? 0) / 100)),
+            isCredit: Boolean(it.isCredit ?? (Number(it.amountKobo ?? it.amount ?? 0) > 0)),
+            status: it.status || "Completed",
+            labour: it.labourKobo ? Math.round(Number(it.labourKobo) / 100) : undefined,
+            materials: it.materialsKobo ? Math.round(Number(it.materialsKobo) / 100) : undefined,
+            reference: it.reference || it.id,
+            balanceBefore: Math.round(Number(it.balanceBeforeKobo ?? 0) / 100),
+            balanceAfter: Math.round(Number(it.balanceAfterKobo ?? 0) / 100),
+          }));
+          setTransactions(mapped);
+        }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.debug("Transactions API offline:", err);
+        setIsLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [setWalletBalance]);
 
   const filteredTransactions = transactions.filter((txn) => {
     if (activeTab === "All") return true;
@@ -416,7 +413,7 @@ export default function WalletPage() {
               ₦{balance.toLocaleString()}
             </div>
             <div className="inline-flex items-center gap-1.5 bg-white/10 text-blue-100 text-xs px-3.5 py-1 rounded-full backdrop-blur-xs font-medium">
-              <span>₦120,000 held for jobs in progress</span>
+              <span>{heldBalance > 0 ? `₦${heldBalance.toLocaleString()} held for jobs in progress` : "No funds currently held"}</span>
             </div>
           </div>
 
@@ -542,62 +539,77 @@ export default function WalletPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {filteredTransactions.map((txn) => (
-                <tr
-                  key={txn.id}
-                  onClick={() => setSelectedTransaction(txn)}
-                  className="hover:bg-neutral-50/80 transition-colors cursor-pointer group"
-                >
-                  <td className="py-3.5 pr-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-neutral-100 group-hover:bg-blue-50 text-neutral-600 group-hover:text-[#001B40] flex items-center justify-center shrink-0 transition-colors">
-                        {txn.isCredit ? (
-                          <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="7" y1="17" x2="17" y2="7" />
-                            <polyline points="7 7 17 7 17 17" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <line x1="7" y1="7" x2="17" y2="17" />
-                            <polyline points="17 7 17 17 7 17" />
-                          </svg>
-                        )}
-                      </div>
-                      <div>
-                        <span className="font-bold text-xs sm:text-sm text-neutral-900 group-hover:text-[#001B40] block">
-                          {txn.title} {txn.artisanName && `· ${txn.artisanName}`}
-                        </span>
-                        <span className="text-[11px] text-neutral-400 block font-mono">
-                          {txn.reference}
-                        </span>
-                      </div>
+              {filteredTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center text-neutral-400">
+                    <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-2 text-neutral-400">
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                        <line x1="1" y1="10" x2="23" y2="10" />
+                      </svg>
                     </div>
-                  </td>
-                  <td className="py-3.5 px-4 text-neutral-500 text-xs whitespace-nowrap">
-                    {txn.date}
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-xs sm:text-sm whitespace-nowrap">
-                    <span className={txn.isCredit ? "text-emerald-600" : "text-neutral-900"}>
-                      {txn.isCredit ? `+₦${txn.amount.toLocaleString()}` : `-₦${txn.amount.toLocaleString()}`}
-                    </span>
-                  </td>
-                  <td className="py-3.5 pl-4 text-right whitespace-nowrap">
-                    <span
-                      className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                        txn.status === "Secured"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : txn.status === "Completed"
-                          ? "bg-blue-50 text-blue-700"
-                          : txn.status === "Released"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-neutral-100 text-neutral-600"
-                      }`}
-                    >
-                      {txn.status}
-                    </span>
+                    <p className="text-xs font-semibold text-neutral-700">No transactions found</p>
+                    <p className="text-[11px] text-neutral-400 mt-0.5">Your payments, deposits, and refunds will appear here.</p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredTransactions.map((txn) => (
+                  <tr
+                    key={txn.id}
+                    onClick={() => setSelectedTransaction(txn)}
+                    className="hover:bg-neutral-50/80 transition-colors cursor-pointer group"
+                  >
+                    <td className="py-3.5 pr-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-neutral-100 group-hover:bg-blue-50 text-neutral-600 group-hover:text-[#001B40] flex items-center justify-center shrink-0 transition-colors">
+                          {txn.isCredit ? (
+                            <svg className="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <line x1="7" y1="17" x2="17" y2="7" />
+                              <polyline points="7 7 17 7 17 17" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-neutral-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <line x1="7" y1="7" x2="17" y2="17" />
+                              <polyline points="17 7 17 17 7 17" />
+                            </svg>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs sm:text-sm text-neutral-900 group-hover:text-[#001B40] block">
+                            {txn.title} {txn.artisanName && `· ${txn.artisanName}`}
+                          </span>
+                          <span className="text-[11px] text-neutral-400 block font-mono">
+                            {txn.reference}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-neutral-500 text-xs whitespace-nowrap">
+                      {txn.date}
+                    </td>
+                    <td className="py-3.5 px-4 font-bold text-xs sm:text-sm whitespace-nowrap">
+                      <span className={txn.isCredit ? "text-emerald-600" : "text-neutral-900"}>
+                        {txn.isCredit ? `+₦${txn.amount.toLocaleString()}` : `-₦${txn.amount.toLocaleString()}`}
+                      </span>
+                    </td>
+                    <td className="py-3.5 pl-4 text-right whitespace-nowrap">
+                      <span
+                        className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                          txn.status === "Secured"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : txn.status === "Completed"
+                            ? "bg-blue-50 text-blue-700"
+                            : txn.status === "Released"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-neutral-100 text-neutral-600"
+                        }`}
+                      >
+                        {txn.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

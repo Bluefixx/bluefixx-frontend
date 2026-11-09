@@ -15,6 +15,8 @@ import {
   getCurrentUserApi,
   refreshApi,
 } from "@/lib/api/auth";
+import { getAccountProfileApi } from "@/lib/api/account";
+import { getWalletApi } from "@/lib/api/wallet";
 import {
   setAccessToken as setClientAccessToken,
   setOnAuthFailure,
@@ -31,16 +33,85 @@ interface AuthProviderProps {
  * Place this in the root layout or the onboarding layout.
  */
 export default function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<AuthUser | null>(DEFAULT_AUTH_STATE.user);
+  const [user, setUserState] = useState<AuthUser | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("bluefixx_user");
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return DEFAULT_AUTH_STATE.user;
+  });
+
   const [accessToken, setAccessTokenState] = useState<string | null>(getAccessToken());
-  const [activeRole, setActiveRole] = useState<"customer" | "artisan" | "apprentice">(
-    DEFAULT_AUTH_STATE.activeRole
-  );
+
+  const [activeRole, setActiveRoleState] = useState<"customer" | "artisan" | "apprentice">(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("bluefixx_active_role");
+      if (cached === "customer" || cached === "artisan" || cached === "apprentice") {
+        return cached;
+      }
+    }
+    return DEFAULT_AUTH_STATE.activeRole;
+  });
+
   const [apprenticeTrainingCompleted, setApprenticeTrainingCompleted] = useState(
     DEFAULT_AUTH_STATE.apprenticeTrainingCompleted
   );
-  const [walletBalance, setWalletBalance] = useState(DEFAULT_AUTH_STATE.walletBalance);
-  const [locationName, setLocationName] = useState(DEFAULT_AUTH_STATE.locationName);
+
+  const [walletBalance, setWalletBalanceState] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("bluefixx_wallet_balance");
+      if (cached !== null) {
+        const val = parseInt(cached, 10);
+        if (!isNaN(val)) return val;
+      }
+    }
+    return DEFAULT_AUTH_STATE.walletBalance;
+  });
+
+  const [locationName, setLocationNameState] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("bluefixx_location_name");
+      if (cached) return cached;
+    }
+    return DEFAULT_AUTH_STATE.locationName;
+  });
+
+  const setUser = useCallback((newUser: React.SetStateAction<AuthUser | null>) => {
+    setUserState((prev) => {
+      const resolved = typeof newUser === "function" ? newUser(prev) : newUser;
+      if (typeof window !== "undefined") {
+        if (resolved) {
+          localStorage.setItem("bluefixx_user", JSON.stringify(resolved));
+        } else {
+          localStorage.removeItem("bluefixx_user");
+        }
+      }
+      return resolved;
+    });
+  }, []);
+
+  const setActiveRole = useCallback((role: "customer" | "artisan" | "apprentice") => {
+    setActiveRoleState(role);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bluefixx_active_role", role);
+    }
+  }, []);
+
+  const setWalletBalance = useCallback((balance: number) => {
+    setWalletBalanceState(balance);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bluefixx_wallet_balance", balance.toString());
+    }
+  }, []);
+
+  const setLocationName = useCallback((loc: string) => {
+    setLocationNameState(loc);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("bluefixx_location_name", loc);
+    }
+  }, []);
   const [isLoading, setIsLoading] = useState(DEFAULT_AUTH_STATE.isLoading);
   const [challengeId, setChallengeId] = useState<string | null>(DEFAULT_AUTH_STATE.challengeId);
   const [registrationData, setRegistrationDataRaw] = useState<Partial<RegistrationData>>(
@@ -106,6 +177,59 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       setAccessToken(null);
     });
   }, [setAccessToken]);
+
+  // Hydrate user profile & wallet on initial app load if authenticated
+  useEffect(() => {
+    let isMounted = true;
+
+    // 1. Profile & Active Role from /account
+    getAccountProfileApi()
+      .then((res) => {
+        if (!isMounted || !res) return;
+        const u = (res as any)?.user || res;
+        if (u && (u.id || u.fullName || u.email)) {
+          setUser((prev) => ({
+            id: u.id || prev?.id || "user-id",
+            fullName: u.fullName || prev?.fullName || "",
+            email: u.email || prev?.email || "",
+            phone: u.phone || prev?.phone || "",
+            avatarUrl: u.avatarUrl || (res as any)?.settings?.photoId || prev?.avatarUrl,
+            isVerified: Boolean(u.phoneVerifiedAt || u.emailVerifiedAt || (res as any)?.settings?.pinConfigured || prev?.isVerified),
+            createdAt: u.createdAt || prev?.createdAt,
+            role: (u.role?.toLowerCase() as any) || prev?.role || "customer",
+            bio: u.bio,
+          }));
+
+          const activeRoleApi = u.activeRole?.toLowerCase();
+          if (activeRoleApi === "customer" || activeRoleApi === "artisan" || activeRoleApi === "apprentice") {
+            setActiveRole(activeRoleApi);
+          }
+        }
+      })
+      .catch((err) => {
+        console.debug("Silent profile hydration failed (offline or unauthenticated).", err);
+      });
+
+    // 2. Wallet balance from /wallet
+    getWalletApi()
+      .then((wallet) => {
+        if (!isMounted || !wallet) return;
+        const rawAvail = (wallet as any).availableBalanceKobo ?? wallet.available;
+        if (rawAvail !== undefined && rawAvail !== null) {
+          const kobo = typeof rawAvail === "string" ? parseInt(rawAvail, 10) : rawAvail;
+          if (!isNaN(kobo)) {
+            setWalletBalance(Math.round(kobo / 100));
+          }
+        }
+      })
+      .catch((err) => {
+        console.debug("Silent wallet balance hydration failed.", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [setUser, setActiveRole, setWalletBalance]);
 
   // Login handler
   const login = useCallback(

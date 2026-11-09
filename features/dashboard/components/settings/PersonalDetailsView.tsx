@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { updateAccountProfileApi, getAccountProfileApi, uploadMediaFile } from "@/lib/api";
+import { useAuth } from "@/lib/stores/auth-store";
 
 interface PersonalDetailsViewProps {
   onBack: () => void;
@@ -28,15 +29,16 @@ export function PersonalDetailsView({
   userData,
   onUpdateUserData,
 }: PersonalDetailsViewProps) {
-  const nameParts = userData.fullName.split(" ");
+  const { user, setUser } = useAuth();
+  const nameParts = (user?.fullName || userData.fullName).split(" ");
   const [firstName, setFirstName] = useState(nameParts[0] || "Daniel");
   const [lastName, setLastName] = useState(nameParts.slice(1).join(" ") || "Eze");
-  const [phone, setPhone] = useState(userData.phone || "+234 803 212 1788");
-  const [email, setEmail] = useState(userData.email || "danieleze@gmail.com");
+  const [phone, setPhone] = useState(user?.phone || userData.phone || "+234 803 212 1788");
+  const [email, setEmail] = useState(user?.email || userData.email || "danieleze@gmail.com");
   const [address, setAddress] = useState(userData.location || "Enugu, Nigeria");
   const [emergencyName, setEmergencyName] = useState("Ada Eze");
   const [emergencyPhone, setEmergencyPhone] = useState("+234 809 221 9049");
-  const [avatarPreview, setAvatarPreview] = useState(userData.avatarUrl || "");
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatarUrl || userData.avatarUrl || "");
   const [avatarMediaId, setAvatarMediaId] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -93,16 +95,23 @@ export function PersonalDetailsView({
     try {
       await updateAccountProfileApi({
         fullName: updatedFullName,
-        email: email.trim(),
-        avatarId: avatarMediaId,
-        emergencyContact: {
-          name: emergencyName.trim(),
-          phone: emergencyPhone.trim(),
-          relationship: "Primary",
-        },
+        photoId: avatarMediaId,
+        emergencyName: emergencyName.trim(),
+        emergencyPhone: emergencyPhone.trim(),
+        language: "en",
       });
     } catch {
       // Graceful fallback
+    }
+
+    if (user) {
+      setUser({
+        ...user,
+        fullName: updatedFullName,
+        email: email.trim(),
+        phone: phone.trim(),
+        avatarUrl: avatarPreview || user.avatarUrl,
+      });
     }
 
     onUpdateUserData({

@@ -1,17 +1,49 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/stores/auth-store";
 import { useNotifications, NotificationItem } from "@/lib/stores/notifications-store";
+import { getNotificationsApi } from "@/lib/api/notifications";
 import { ArtisanNotificationsView } from "@/features/dashboard/components/artisan/ArtisanNotificationsView";
 
 export default function NotificationsPage() {
   const { activeRole } = useAuth();
   const router = useRouter();
-  const { notifications, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, setNotifications, markAsRead, markAllAsRead } = useNotifications();
   const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
+
+  useEffect(() => {
+    let mounted = true;
+    getNotificationsApi()
+      .then((items) => {
+        if (mounted && Array.isArray(items)) {
+          setNotifications(
+            items.map((it: any) => ({
+              id: it.id,
+              title: it.title,
+              description: it.body || it.title,
+              time: it.createdAt
+                ? new Date(it.createdAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Today",
+              dateGroup: "Today",
+              isRead: Boolean(it.read || it.readAt),
+              type: (it.type?.toLowerCase() as any) || "quote",
+              actionUrl: "/notifications",
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [setNotifications]);
 
   if (activeRole === "artisan") {
     return (

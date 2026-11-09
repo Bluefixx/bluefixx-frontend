@@ -266,39 +266,6 @@ export function ArtisanNotificationsView({
             </p>
           </div>
 
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setNotifications([
-                  {
-                    id: "notif-1",
-                    type: "job",
-                    title: "New job near you",
-                    subtitle: "Kitchen Plumbing Repair · 2.5 km away · ₦25,000–₦50,000",
-                    time: "12m",
-                    read: false,
-                    section: "today",
-                    actionView: "find-jobs",
-                  },
-                  {
-                    id: "notif-2",
-                    type: "payment",
-                    title: "Payment released",
-                    subtitle: "₦55,242 is now in your withdrawable balance.",
-                    time: "2h",
-                    read: false,
-                    section: "today",
-                    actionView: "earnings",
-                  },
-                ]);
-                setFilter("all");
-              }}
-              className="text-xs font-semibold text-[#074292] hover:underline cursor-pointer"
-            >
-              Reset sample notifications
-            </button>
-          </div>
         </div>
       ) : (
         <div className="space-y-6">

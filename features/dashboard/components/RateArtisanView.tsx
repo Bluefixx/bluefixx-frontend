@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { submitReviewApi } from "@/lib/api";
 
 interface RateArtisanViewProps {
+  bookingId?: string;
   onBack?: () => void;
   onSubmitSuccess?: () => void;
   artisanName?: string;
@@ -14,6 +15,7 @@ interface RateArtisanViewProps {
 }
 
 export default function RateArtisanView({
+  bookingId = "BFX-BK-20541",
   onBack,
   onSubmitSuccess,
   artisanName = "Emeka Okafor",
@@ -35,7 +37,7 @@ export default function RateArtisanView({
     setIsSubmitting(true);
 
     try {
-      await submitReviewApi("BFX-BK-20541", {
+      await submitReviewApi(bookingId, {
         stars: rating,
         text: publicComment || "Great work completed.",
         wouldRecommend: wouldRecommend === "yes",

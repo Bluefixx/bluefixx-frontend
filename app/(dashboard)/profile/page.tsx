@@ -17,6 +17,7 @@ export default function ProfilePage() {
         onNavigateToEarnings={() => router.push("/dashboard?view=earnings")}
         onNavigateToTalent={() => router.push("/dashboard?view=training-programmes")}
         onNavigateToNotifications={() => router.push("/notifications")}
+        onNavigateToSettings={() => router.push("/settings")}
       />
     );
   }

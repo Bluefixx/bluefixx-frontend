@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { markNotificationReadApi } from "@/lib/api/notifications";
 
 export interface NotificationItem {
   id: string;
@@ -13,70 +14,9 @@ export interface NotificationItem {
   actionUrl?: string;
 }
 
-const initialNotifications: NotificationItem[] = [
-  {
-    id: "notif-1",
-    title: "Emeka Okafor sent a quote",
-    description: "₦38,500 for Bathroom Plumbing Repair. Compare with 2 others.",
-    time: "09:41",
-    dateGroup: "Today",
-    isRead: false,
-    type: "quote",
-    actionUrl: "/bookings?tab=job-posts",
-  },
-  {
-    id: "notif-2",
-    title: "Emeka marked the job complete",
-    description: "Confirm within 48 hours to release payment.",
-    time: "16:12",
-    dateGroup: "Today",
-    isRead: false,
-    type: "job-completed",
-    actionUrl: "/bookings?tab=active",
-  },
-  {
-    id: "notif-3",
-    title: "Your 7-day warranty is active",
-    description: "Covered until 29 Aug. Report any issue from your booking.",
-    time: "12:12",
-    dateGroup: "Today",
-    isRead: false,
-    type: "warranty",
-    actionUrl: "/bookings?tab=completed",
-  },
-  {
-    id: "notif-4",
-    title: "How did Emeka do?",
-    description: "Leave a review for Bathroom Plumbing Repair.",
-    time: "Yesterday",
-    dateGroup: "Earlier",
-    isRead: true,
-    type: "review",
-    actionUrl: "/reviews",
-  },
-  {
-    id: "notif-5",
-    title: "Payment secured in escrow",
-    description: "₦38,500 is held until you confirm the work.",
-    time: "20 Aug",
-    dateGroup: "Earlier",
-    isRead: true,
-    type: "escrow",
-    actionUrl: "/wallet",
-  },
-  {
-    id: "notif-6",
-    title: "Your friend booked their first job",
-    description: "You earned ₦1,000 in referral rewards.",
-    time: "18 Aug",
-    dateGroup: "Earlier",
-    isRead: true,
-    type: "referral",
-    actionUrl: "/settings?tab=referral",
-  },
-];
+const initialNotifications: NotificationItem[] = [];
 
-let notifications: NotificationItem[] = [...initialNotifications];
+let notifications: NotificationItem[] = [];
 const listeners = new Set<() => void>();
 
 function emitChange() {
@@ -102,10 +42,15 @@ export const notificationStore = {
       n.id === id ? { ...n, isRead: true } : n
     );
     emitChange();
+    markNotificationReadApi(id).catch(() => {});
   },
   markAllAsRead() {
+    const unreadIds = notifications.filter((n) => !n.isRead).map((n) => n.id);
     notifications = notifications.map((n) => ({ ...n, isRead: true }));
     emitChange();
+    if (unreadIds.length > 0) {
+      markNotificationReadApi(unreadIds).catch(() => {});
+    }
   },
   clearAll() {
     notifications = [];

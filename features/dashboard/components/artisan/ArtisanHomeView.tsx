@@ -32,6 +32,7 @@ import { ArtisanNotificationsView } from "./ArtisanNotificationsView";
 import { ArtisanNotificationSettingsView } from "./ArtisanNotificationSettingsView";
 import { getArtisanDashboardApi, updateArtisanAvailabilityApi } from "@/lib/api/artisan";
 import { ArtisanDashboardResponse } from "@/types/artisan";
+import { formatNaira } from "@/lib/utils/currency";
 
 export type ArtisanVerificationState =
   | "verified"
@@ -51,7 +52,23 @@ function ArtisanHomeViewContent({
   initialVerificationState = "verified",
 }: ArtisanHomeViewProps) {
   const { user } = useAuth();
-  const userName = user?.fullName ? user.fullName.split(" ")[0] : "John";
+  const [dashboardData, setDashboardData] = useState<ArtisanDashboardResponse | null>(null);
+  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+
+  const userName = user?.fullName
+    ? user.fullName.split(" ")[0]
+    : dashboardData?.profile?.businessName
+    ? dashboardData.profile.businessName.split(" ")[0]
+    : "Artisan";
+
+  const [timeGreeting, setTimeGreeting] = useState("Good morning");
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setTimeGreeting("Good morning");
+    else if (hour < 17) setTimeGreeting("Good afternoon");
+    else setTimeGreeting("Good evening");
+  }, []);
+
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view");
 
@@ -154,8 +171,6 @@ function ArtisanHomeViewContent({
 
   // Availability toggle
   const [isAvailable, setIsAvailable] = useState(true);
-  const [dashboardData, setDashboardData] = useState<ArtisanDashboardResponse | null>(null);
-  const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
 
   // Fetch live artisan dashboard metrics from backend
   useEffect(() => {
@@ -638,26 +653,8 @@ function ArtisanHomeViewContent({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-[#001B40] tracking-tight">
-            Good morning, {userName}
+            {timeGreeting}, {userName}
           </h1>
-        </div>
-
-        {/* State Simulator Dropdown (Helpful for reviewing all 4 Figma verification variants) */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          <span className="text-[11px] font-medium text-neutral-400">View state:</span>
-          <select
-            value={verificationState}
-            onChange={(e) => {
-              setVerificationState(e.target.value as ArtisanVerificationState);
-              setDismissJustVerifiedBanner(false);
-            }}
-            className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-neutral-200 bg-white text-neutral-700 shadow-2xs focus:outline-hidden cursor-pointer"
-          >
-            <option value="verified">Verified (Active)</option>
-            <option value="not_verified">Not Verified (Banner 1)</option>
-            <option value="in_review">Verification In Review (Banner 2)</option>
-            <option value="just_verified">Just Verified (Banner 3)</option>
-          </select>
         </div>
       </div>
 
@@ -844,7 +841,7 @@ function ArtisanHomeViewContent({
             New requests
           </span>
           <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115]">
-            {isVerified ? 3 : 0}
+            {dashboardData?.requests?.length ?? 0}
           </span>
         </div>
 
@@ -854,7 +851,7 @@ function ArtisanHomeViewContent({
             Active jobs
           </span>
           <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115]">
-            {isVerified ? 2 : 0}
+            {dashboardData?.activeJobs?.length ?? 0}
           </span>
         </div>
 
@@ -864,7 +861,11 @@ function ArtisanHomeViewContent({
             Rating
           </span>
           <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115]">
-            {isVerified ? "4.8" : "New"}
+            {dashboardData?.profile?.ratingCount && dashboardData.profile.ratingCount > 0
+              ? (dashboardData.profile.ratingTotal / dashboardData.profile.ratingCount).toFixed(1)
+              : isVerified
+              ? "4.8"
+              : "New"}
           </span>
         </div>
 
@@ -875,7 +876,11 @@ function ArtisanHomeViewContent({
               Withdrawable balance
             </span>
             <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
-              {isVerified ? "₦168,000" : "₦0"}
+              {dashboardData?.earnings?.available !== undefined
+                ? formatNaira(dashboardData.earnings.available, true)
+                : isVerified
+                ? "₦168,000"
+                : "₦0"}
             </span>
           </div>
           <button
@@ -894,7 +899,11 @@ function ArtisanHomeViewContent({
               Held in escrow
             </span>
             <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
-              {isVerified ? "₦46,500" : "₦0"}
+              {dashboardData?.earnings?.escrow !== undefined
+                ? formatNaira(dashboardData.earnings.escrow, true)
+                : isVerified
+                ? "₦46,500"
+                : "₦0"}
             </span>
           </div>
           <button
@@ -922,7 +931,56 @@ function ArtisanHomeViewContent({
           </button>
         </div>
 
-        {isVerified ? (
+        {dashboardData?.activeJobs && dashboardData.activeJobs.length > 0 ? (
+          <div className="space-y-3">
+            {dashboardData.activeJobs.map((job) => (
+              <div
+                key={job.id}
+                onClick={() => {
+                  setSelectedJob({
+                    id: job.id,
+                    code: `BFX-${job.id.slice(0, 5).toUpperCase()}`,
+                    title: job.title || "Bathroom Plumbing Repair",
+                    category: job.trade || "Plumbing",
+                    subCategory: "Repair",
+                    postedTime: "Scheduled",
+                    isUrgent: false,
+                    status: "Scheduled",
+                    description: "Active job in progress.",
+                    service: job.trade || "Plumbing",
+                    date: job.scheduledFor ? new Date(job.scheduledFor).toLocaleDateString() : "Scheduled",
+                    time: "Agreed time",
+                    budget: "In escrow",
+                    urgency: "Scheduled",
+                    customerName: job.customerName || "Daniel C.",
+                    customerLocation: "Enugu, Nigeria",
+                    distance: "2.5 km away",
+                    driveTime: "10 mins",
+                    photoUrl: "/images/workers.png",
+                    photoCaption: "Job site photo",
+                    audioDuration: "0:30",
+                    questions: [],
+                  });
+                  setCurrentView("active-job-detail");
+                }}
+                className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-neutral-300 transition-all"
+              >
+                <div className="space-y-1.5">
+                  <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
+                    {job.title || "Active Job"}
+                  </h3>
+                  <p className="font-sans text-xs text-neutral-400">
+                    {job.customerName || "Customer"} · {job.scheduledFor ? new Date(job.scheduledFor).toLocaleString() : "Scheduled"}
+                  </p>
+                </div>
+
+                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full self-start sm:self-center shrink-0">
+                  ● Scheduled
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : isVerified ? (
           /* Active Job Card */
           <div
             onClick={() => setCurrentView("active-job-detail")}
@@ -1235,74 +1293,109 @@ function ArtisanHomeViewContent({
           </div>
 
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-3.5">
-            {/* Earning 1 */}
-            <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
+            {dashboardData?.recentEarnings && dashboardData.recentEarnings.length > 0 ? (
+              dashboardData.recentEarnings.map((earning) => (
+                <div
+                  key={earning.id}
+                  className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="20" height="14" x="2" y="5" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                        {earning.description}
+                      </h4>
+                      <p className="font-sans text-[11px] text-neutral-400">
+                        {earning.date}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-heading font-extrabold text-sm text-emerald-700">
+                    +{formatNaira(earning.amount)}
+                  </span>
                 </div>
-                <div>
-                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                    Shower line replacement
-                  </h4>
-                  <p className="font-sans text-[11px] text-neutral-400">
-                    Festus M. · Aug 19
-                  </p>
+              ))
+            ) : isVerified ? (
+              <>
+                {/* Earning 1 */}
+                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="20" height="14" x="2" y="5" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                        Shower line replacement
+                      </h4>
+                      <p className="font-sans text-[11px] text-neutral-400">
+                        Festus M. · Aug 19
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-heading font-extrabold text-sm text-emerald-700">
+                    +₦85,000
+                  </span>
                 </div>
-              </div>
-              <span className="font-heading font-extrabold text-sm text-emerald-700">
-                +₦85,000
-              </span>
-            </div>
 
-            {/* Earning 2 */}
-            <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
+                {/* Earning 2 */}
+                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="20" height="14" x="2" y="5" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                        Kitchen sink installation
+                      </h4>
+                      <p className="font-sans text-[11px] text-neutral-400">
+                        Ngozi A. · Aug 18
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-heading font-extrabold text-sm text-emerald-700">
+                    +₦62,000
+                  </span>
                 </div>
-                <div>
-                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                    Kitchen sink installation
-                  </h4>
-                  <p className="font-sans text-[11px] text-neutral-400">
-                    Ngozi A. · Aug 18
-                  </p>
-                </div>
-              </div>
-              <span className="font-heading font-extrabold text-sm text-emerald-700">
-                +₦62,000
-              </span>
-            </div>
 
-            {/* Earning 3 */}
-            <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect width="20" height="14" x="2" y="5" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
+                {/* Earning 3 */}
+                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="20" height="14" x="2" y="5" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                        Bathroom re-piping
+                      </h4>
+                      <p className="font-sans text-[11px] text-neutral-400">
+                        Chidiadi O. · Aug 17
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-heading font-extrabold text-sm text-emerald-700">
+                    +₦48,000
+                  </span>
                 </div>
-                <div>
-                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                    Bathroom re-piping
-                  </h4>
-                  <p className="font-sans text-[11px] text-neutral-400">
-                    Chidiadi O. · Aug 17
-                  </p>
-                </div>
+              </>
+            ) : (
+              <div className="py-6 text-center text-xs text-neutral-400 font-sans">
+                Earnings from completed jobs will appear here.
               </div>
-              <span className="font-heading font-extrabold text-sm text-emerald-700">
-                +₦48,000
-              </span>
-            </div>
+            )}
           </div>
         </div>
       </div>

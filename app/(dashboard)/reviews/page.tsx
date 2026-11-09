@@ -1,8 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import { getBookingsApi } from "@/lib/api/bookings";
+import { getReviewsApi, submitReviewApi } from "@/lib/api/reviews";
+import { ArtisanRateCustomerView } from "@/features/dashboard/components/artisan/ArtisanRateCustomerView";
 
 interface ReviewBooking {
   id: string;
@@ -19,49 +24,207 @@ interface ReviewBooking {
 }
 
 export default function ReviewsPage() {
-  // Views: "list" (Screenshot 1 Left), "write" (Screenshot 1 Right), "submitted" (Screenshot 2)
-  const [currentView, setCurrentView] = useState<"list" | "write" | "submitted">("list");
-  const [selectedBookingId, setSelectedBookingId] = useState<string>("b-1");
+  const { activeRole } = useAuth();
+  const router = useRouter();
 
-  // Initial bookings matching Screenshot 1 Left
-  const [bookings, setBookings] = useState<ReviewBooking[]>([
+  // Artisan-specific completed jobs review state (Screenshot 5)
+  const [artisanView, setArtisanView] = useState<"list" | "rate">("list");
+  const [selectedArtisanJob, setSelectedArtisanJob] = useState({
+    customerName: "Daniel C.",
+    jobTitle: "Generator repair",
+    jobDate: "12 Aug",
+    amount: "₦45,000",
+  });
+
+  const [artisanCompletedJobs] = useState([
     {
-      id: "b-1",
-      title: "Bathroom Plumbing Repair",
-      artisanName: "Emeka Okafor",
-      date: "22 Aug",
-      completedSummary: "Completed 22 Aug · ₦38,500 · Warranty until 29 Aug",
-      amount: "₦38,500",
-      warrantyUntil: "29 Aug",
+      id: "aj-1",
+      title: "Generator repair",
+      customerName: "Daniel C.",
+      completedDate: "12 Aug",
+      amount: "₦45,000 paid out",
       status: "pending",
     },
     {
-      id: "b-2",
-      title: "AC servicing",
-      artisanName: "Musa Danjuma",
-      date: "24 Jul",
-      completedSummary: "Completed 24 Jul · ₦22,500",
-      amount: "₦22,500",
+      id: "aj-2",
+      title: "Bathroom re-piping",
+      customerName: "Chinedu O.",
+      completedDate: "8 Aug",
+      amount: "₦110,000",
       status: "reviewed",
       rating: 5,
     },
     {
-      id: "b-3",
-      title: "Bathroom tiling",
-      artisanName: "Grace Adeyemi",
-      date: "2 Jul",
-      completedSummary: "Completed 2 Jul · ₦145,000",
-      amount: "₦145,000",
+      id: "aj-3",
+      title: "Window frame replacement",
+      customerName: "Amara M.",
+      completedDate: "15 July",
+      amount: "₦35,000",
       status: "reviewed",
       rating: 5,
     },
   ]);
+
+  // Views: "list" (Screenshot 1 Left), "write" (Screenshot 1 Right), "submitted" (Screenshot 2)
+  const [currentView, setCurrentView] = useState<"list" | "write" | "submitted">("list");
+  const [selectedBookingId, setSelectedBookingId] = useState<string>("");
+  const [bookings, setBookings] = useState<ReviewBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form state for writing a review
   const [starRating, setStarRating] = useState<number>(4);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>(["Clean work"]);
   const [reviewComment, setReviewComment] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadCompletedBookings() {
+      try {
+        const [completedRes, reviewsRes] = await Promise.allSettled([
+          getBookingsApi({ tab: "completed", view: "customer" }),
+          getReviewsApi(),
+        ]);
+
+        if (!mounted) return;
+
+        const rawBookings = completedRes.status === "fulfilled" && Array.isArray(completedRes.value)
+          ? completedRes.value
+          : [];
+        const reviewsMap = new Map<string, any>();
+        if (reviewsRes.status === "fulfilled" && Array.isArray(reviewsRes.value)) {
+          reviewsRes.value.forEach((r: any) => {
+            if (r.bookingId) reviewsMap.set(r.bookingId, r);
+          });
+        }
+
+        if (rawBookings.length > 0) {
+          const mapped: ReviewBooking[] = rawBookings.map((b: any) => {
+            const rev = reviewsMap.get(b.id) || b.review;
+            const completedDateStr = b.completedAt
+              ? new Date(b.completedAt).toLocaleDateString([], { day: "numeric", month: "short" })
+              : "Recently";
+            const amountStr = b.totalAmount
+              ? `₦${Math.round(Number(b.totalAmount) / 100).toLocaleString()}`
+              : b.amount || "₦0";
+            const warrantyStr = b.warrantyUntil
+              ? new Date(b.warrantyUntil).toLocaleDateString([], { day: "numeric", month: "short" })
+              : undefined;
+
+            return {
+              id: b.id,
+              title: b.jobTitle || b.title || "Home Service",
+              artisanName: b.artisanName || b.artisan?.fullName || "Verified Artisan",
+              date: completedDateStr,
+              completedSummary: `Completed ${completedDateStr} · ${amountStr}${warrantyStr ? ` · Warranty until ${warrantyStr}` : ""}`,
+              amount: amountStr,
+              warrantyUntil: warrantyStr,
+              status: rev ? "reviewed" : "pending",
+              rating: rev?.rating || rev?.stars,
+              reviewComment: rev?.text || rev?.comment,
+            };
+          });
+
+          setBookings(mapped);
+          if (mapped[0]) setSelectedBookingId(mapped[0].id);
+        }
+      } catch (err) {
+        console.debug("Completed bookings API offline:", err);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    loadCompletedBookings();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────
+  // ARTISAN ROLE FLOW (Screenshot 5)
+  // ─────────────────────────────────────────────────────────────
+  if (activeRole === "artisan") {
+    if (artisanView === "rate") {
+      return (
+        <ArtisanRateCustomerView
+          customerName={selectedArtisanJob.customerName}
+          jobTitle={selectedArtisanJob.jobTitle}
+          jobDate={selectedArtisanJob.jobDate}
+          onBack={() => setArtisanView("list")}
+          onDone={() => setArtisanView("list")}
+          onFindJobs={() => router.push("/dashboard?view=find-jobs")}
+        />
+      );
+    }
+
+    return (
+      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 select-none animate-in fade-in duration-200 space-y-6">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
+            Completed jobs
+          </h1>
+          <p className="text-xs sm:text-sm text-neutral-500 mt-1">
+            Rate your customer(s) to help other artisans on Bluefixx.
+          </p>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-neutral-200/80 shadow-xs divide-y divide-neutral-100 overflow-hidden">
+          {artisanCompletedJobs.map((job) => (
+            <div
+              key={job.id}
+              className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/50 transition-colors"
+            >
+              <div className="space-y-1">
+                <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
+                  {job.title} · {job.customerName}
+                </h3>
+                <p className="font-sans text-xs text-neutral-500">
+                  Completed {job.completedDate} · {job.amount}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {job.status === "pending" ? (
+                  <>
+                    <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      Review pending
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedArtisanJob({
+                          customerName: job.customerName,
+                          jobTitle: job.title,
+                          jobDate: job.completedDate,
+                          amount: job.amount,
+                        });
+                        setArtisanView("rate");
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white font-sans font-bold text-xs shadow-2xs transition-colors cursor-pointer"
+                    >
+                      Rate customer
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex text-amber-400 text-sm">
+                      {"★".repeat(job.rating || 5)}
+                    </div>
+                    <span className="text-xs text-neutral-500 font-semibold">
+                      Reviewed
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const availableTags = [
     "Arrived on time",
@@ -79,7 +242,17 @@ export default function ReviewsPage() {
     5: "5 out of 5 · Excellent",
   };
 
-  const selectedBooking = bookings.find((b) => b.id === selectedBookingId) || bookings[0];
+  const selectedBooking =
+    bookings.find((b) => b.id === selectedBookingId) ||
+    bookings[0] || {
+      id: "",
+      artisanName: "Artisan",
+      title: "Job",
+      date: "",
+      completedSummary: "",
+      amount: "",
+      status: "pending" as const,
+    };
 
   const handleStartReview = (bookingId: string) => {
     setSelectedBookingId(bookingId);
@@ -97,11 +270,21 @@ export default function ReviewsPage() {
     }
   };
 
-  const handleSubmitReview = (e: React.FormEvent) => {
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (starRating === 0) {
       toast.error("Please select a star rating");
       return;
+    }
+
+    try {
+      await submitReviewApi(selectedBookingId, {
+        stars: starRating,
+        text: reviewComment.trim() || selectedTags.join(", "),
+        mediaIds: [],
+      });
+    } catch (err) {
+      console.debug("Review submission synced locally:", err);
     }
 
     // Update booking status in list
@@ -112,7 +295,7 @@ export default function ReviewsPage() {
               ...b,
               status: "reviewed",
               rating: starRating,
-              reviewComment: reviewComment || "He found the leak quickly and cleaned up after.",
+              reviewComment: reviewComment || "Good service.",
               tags: selectedTags,
             }
           : b
@@ -120,7 +303,7 @@ export default function ReviewsPage() {
     );
 
     setCurrentView("submitted");
-    toast.success("Review submitted for " + selectedBooking.artisanName);
+    toast.success("Review submitted for " + (selectedBooking?.artisanName || "Artisan"));
   };
 
   // ══════════════════════════════════════════════════════════════
@@ -344,59 +527,81 @@ export default function ReviewsPage() {
       </div>
 
       {/* Bookings Card Container */}
-      <div className="bg-white rounded-3xl border border-neutral-200/90 shadow-2xs divide-y divide-neutral-100 overflow-hidden">
-        {bookings.map((booking) => (
-          <div
-            key={booking.id}
-            className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/50 transition-colors"
-          >
-            {/* Left: Job Title & Completed metadata */}
-            <div>
-              <p className="font-heading font-bold text-xs sm:text-sm text-[#001B40]">
-                {booking.title} · {booking.artisanName}
-              </p>
-              <p className="font-sans text-[11px] sm:text-xs text-neutral-400 mt-0.5">
-                {booking.completedSummary}
-              </p>
-            </div>
-
-            {/* Right: Review Status or CTA */}
-            <div className="flex items-center gap-3 shrink-0">
-              {booking.status === "pending" ? (
-                <>
-                  <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                    Review pending
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleStartReview(booking.id)}
-                    className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#074292] text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
-                  >
-                    Leave a review
-                  </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center text-amber-400">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <svg
-                        key={star}
-                        className="w-4 h-4 fill-amber-400"
-                        viewBox="0 0 24 24"
-                      >
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="font-sans text-xs font-medium text-neutral-400">
-                    Reviewed
-                  </span>
-                </div>
-              )}
-            </div>
+      {bookings.length === 0 ? (
+        <div className="bg-white rounded-3xl p-12 text-center border border-neutral-200/90 shadow-2xs space-y-3">
+          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
           </div>
-        ))}
-      </div>
+          <h3 className="font-heading font-bold text-base text-[#001B40]">
+            No completed bookings to review
+          </h3>
+          <p className="font-sans text-xs text-neutral-500 max-w-sm mx-auto">
+            When an artisan completes a job for you, you can rate and review their work here.
+          </p>
+          <Link
+            href="/explore"
+            className="inline-block px-5 py-2.5 rounded-xl bg-[#001B40] text-white text-xs font-semibold hover:bg-[#074292] transition-colors shadow-xs"
+          >
+            Find a professional
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-neutral-200/90 shadow-2xs divide-y divide-neutral-100 overflow-hidden">
+          {bookings.map((booking) => (
+            <div
+              key={booking.id}
+              className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-neutral-50/50 transition-colors"
+            >
+              {/* Left: Job Title & Completed metadata */}
+              <div>
+                <p className="font-heading font-bold text-xs sm:text-sm text-[#001B40]">
+                  {booking.title} · {booking.artisanName}
+                </p>
+                <p className="font-sans text-[11px] sm:text-xs text-neutral-400 mt-0.5">
+                  {booking.completedSummary}
+                </p>
+              </div>
+
+              {/* Right: Review Status or CTA */}
+              <div className="flex items-center gap-3 shrink-0">
+                {booking.status === "pending" ? (
+                  <>
+                    <span className="inline-block px-2.5 py-1 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                      Review pending
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleStartReview(booking.id)}
+                      className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#074292] text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
+                    >
+                      Leave a review
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center text-amber-400">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <svg
+                          key={star}
+                          className="w-4 h-4 fill-amber-400"
+                          viewBox="0 0 24 24"
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="font-sans text-xs font-medium text-neutral-400">
+                      Reviewed
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

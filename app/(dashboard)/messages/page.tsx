@@ -6,8 +6,15 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { sendQuoteMessageApi, getQuoteMessagesApi, getConversationsApi, uploadMediaFile } from "@/lib/api";
+import {
+  sendQuoteMessageApi,
+  getQuoteMessagesApi,
+  getConversationsApi,
+  markQuoteMessagesReadApi,
+  uploadMediaFile,
+} from "@/lib/api";
 import { ArtisanMessagesView } from "@/features/dashboard/components/artisan/ArtisanMessagesView";
+import { Conversation } from "@/types/customer";
 
 interface ChatMessage {
   id: string;
@@ -21,15 +28,20 @@ interface ChatMessage {
 }
 
 function MessagesPageContent() {
-  const { activeRole } = useAuth();
+  const { user, activeRole } = useAuth();
   const searchParams = useSearchParams();
-  const initialConversation = searchParams.get("conversation") === "support" ? "support" : "emeka";
+  const initialConversation = searchParams.get("conversation") === "support" ? "support" : "support";
 
   if (activeRole === "artisan") {
     return <ArtisanMessagesView />;
   }
 
-  const [activeConversation, setActiveConversation] = useState<"emeka" | "support">(initialConversation);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversation, setActiveConversation] = useState<string>(initialConversation);
+  const [activePeerName, setActivePeerName] = useState<string>("Bluefixx Support");
+  const [activePeerRole, setActivePeerRole] = useState<string>("24/7 Safety & Assistance");
+  const [activePeerAvatar, setActivePeerAvatar] = useState<string>("/images/david.jpg");
+  const [activeBookingTitle, setActiveBookingTitle] = useState<string>("Safety & Support Desk");
   const [isOptionsModalOpen, setIsOptionsModalOpen] = useState(false);
   const [inputText, setInputText] = useState("");
 
@@ -45,35 +57,77 @@ function MessagesPageContent() {
   const recordTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const currentAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
+  // Fetch real conversations from API
   useEffect(() => {
-    const conv = searchParams.get("conversation");
-    if (conv === "support") {
-      setActiveConversation("support");
-    } else if (conv === "emeka") {
-      setActiveConversation("emeka");
-    }
+    let mounted = true;
+    getConversationsApi()
+      .then((items) => {
+        if (!mounted || !Array.isArray(items)) return;
+        setConversations(items);
+        const convParam = searchParams.get("conversation") || searchParams.get("quoteId");
+        if (convParam === "support") {
+          setActiveConversation("support");
+          setActivePeerName("Bluefixx Support");
+          setActivePeerRole("24/7 Safety & Assistance");
+          setActiveBookingTitle("Safety & Support Desk");
+        } else if (convParam && items.some((c) => c.quoteId === convParam)) {
+          const match = items.find((c) => c.quoteId === convParam)!;
+          setActiveConversation(match.quoteId);
+          setActivePeerName(match.peer?.fullName || "Verified Artisan");
+          setActivePeerRole(match.status || "Quote Discussion");
+          setActivePeerAvatar(match.peer?.photoUrl || "/images/david.jpg");
+          setActiveBookingTitle(`Quote #${match.quoteId.slice(0, 8)} · Negotiation`);
+        } else if (items.length > 0) {
+          const first = items[0];
+          setActiveConversation(first.quoteId);
+          setActivePeerName(first.peer?.fullName || "Verified Artisan");
+          setActivePeerRole(first.status || "Quote Discussion");
+          setActivePeerAvatar(first.peer?.photoUrl || "/images/david.jpg");
+          setActiveBookingTitle(`Quote #${first.quoteId.slice(0, 8)} · Negotiation`);
+        }
+      })
+      .catch((err) => {
+        console.debug("Conversations endpoint offline:", err);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, [searchParams]);
 
-  // Load message history from API if available
+  // Load message history from API for the active quote if available
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
   useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const msgs = await getQuoteMessagesApi("quote-emeka-1");
-        if (msgs && msgs.length > 0) {
-          const mapped: ChatMessage[] = msgs.map((m) => ({
-            id: m.id,
-            sender: "artisan",
-            text: m.text,
-            time: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          }));
-          setEmekaMessages((prev) => [...prev, ...mapped]);
-        }
-      } catch {
-        // Fallback silently
-      }
+    let mounted = true;
+    if (activeConversation !== "support") {
+      getQuoteMessagesApi(activeConversation)
+        .then((msgs) => {
+          if (!mounted) return;
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            const mapped: ChatMessage[] = msgs.map((m: any) => ({
+              id: m.id,
+              sender: m.authorId === user?.id || m.senderId === user?.id ? "customer" : "artisan",
+              text: m.text,
+              time: m.createdAt
+                ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                : "Today",
+            }));
+            setChatMessages(mapped);
+            markQuoteMessagesReadApi(activeConversation).catch(() => {});
+          } else {
+            setChatMessages([]);
+          }
+        })
+        .catch(() => {
+          if (mounted) setChatMessages([]);
+        });
     }
-    fetchHistory();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeConversation, user?.id]);
 
   // Clean up recording timer on unmount
   useEffect(() => {
@@ -86,86 +140,49 @@ function MessagesPageContent() {
     };
   }, []);
 
-  // Messages for Emeka
-  const [emekaMessages, setEmekaMessages] = useState<ChatMessage[]>([
-    {
-      id: "m1",
-      sender: "customer",
-      image: "/images/path1.png",
-      text: "Water is dripping under the kitchen sink since yesterday night.",
-      time: "09:12",
-    },
-    {
-      id: "m2",
-      sender: "artisan",
-      text: "Good morning. From the photo, the joint under the trap has failed. I will need to replace the trap and about 2 metres of pipe. Is the mixer tap also leaking?",
-      time: "09:14",
-    },
-    {
-      id: "m3",
-      sender: "customer",
-      isVoice: true,
-      voiceDuration: "0:24",
-      time: "09:18",
-    },
-  ]);
-
   // Messages for Support
   const [supportMessages, setSupportMessages] = useState<ChatMessage[]>([
     {
       id: "s1",
       sender: "support",
-      text: "Hello Daniel! Bluefixx Safety & Resolution team is active 24/7. How can we support your booking BFX-20481?",
-      time: "09:20",
+      text: `Hello ${user?.fullName ? user.fullName.split(" ")[0] : ""}! Bluefixx Safety & Resolution team is active 24/7. How can we support you today?`,
+      time: "Just now",
     },
   ]);
 
-  const currentMessages = activeConversation === "emeka" ? emekaMessages : supportMessages;
+  const currentMessages = activeConversation === "support" ? supportMessages : chatMessages;
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
+    const textToSend = inputText.trim();
+    setInputText("");
+
     const newMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: "customer",
-      text: inputText.trim(),
+      text: textToSend,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    if (activeConversation === "emeka") {
-      setEmekaMessages((prev) => [...prev, newMsg]);
-      const textToSend = inputText.trim();
-      setInputText("");
+    if (activeConversation !== "support") {
+      setChatMessages((prev) => [...prev, newMsg]);
 
       // Dispatch to API
-      sendQuoteMessageApi("quote-emeka-1", {
+      sendQuoteMessageApi(activeConversation, {
         text: textToSend,
         clientId: `client-${Date.now()}`,
       }).catch(() => {});
-
-      // Simulate quick artisan reply
-      setTimeout(() => {
-        setEmekaMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            sender: "artisan",
-            text: "Understood! I'll include the pressure seal in the materials estimate.",
-            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          },
-        ]);
-      }, 1500);
     } else {
       setSupportMessages((prev) => [...prev, newMsg]);
-      setInputText("");
       setTimeout(() => {
         setSupportMessages((prev) => [
           ...prev,
           {
             id: (Date.now() + 1).toString(),
             sender: "support",
-            text: "Your message has been assigned to support officer Ngozi. We are monitoring this job.",
+            text: "Your message has been received by our support desk. We will respond shortly.",
             time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           },
         ]);
@@ -189,14 +206,14 @@ function MessagesPageContent() {
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    if (activeConversation === "emeka") {
-      setEmekaMessages((prev) => [...prev, photoMsg]);
+    if (activeConversation !== "support") {
+      setChatMessages((prev) => [...prev, photoMsg]);
 
       // Upload image to media storage and dispatch message with mediaId
       uploadMediaFile(file, "JOB")
         .then((res) => {
           if (res?.id) {
-            sendQuoteMessageApi("quote-emeka-1", {
+            sendQuoteMessageApi(activeConversation, {
               text: file.name,
               mediaIds: [res.id],
               clientId: `client-${Date.now()}`,
@@ -204,18 +221,6 @@ function MessagesPageContent() {
           }
         })
         .catch(() => {});
-
-      setTimeout(() => {
-        setEmekaMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            sender: "artisan",
-            text: "Thanks for the photo! I can see the joint clearly now.",
-            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          },
-        ]);
-      }, 1800);
     } else {
       setSupportMessages((prev) => [...prev, photoMsg]);
     }
@@ -253,8 +258,8 @@ function MessagesPageContent() {
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
 
-        if (activeConversation === "emeka") {
-          setEmekaMessages((prev) => [...prev, voiceMsg]);
+        if (activeConversation !== "support") {
+          setChatMessages((prev) => [...prev, voiceMsg]);
 
           // Upload audio file and dispatch message with voice mediaId
           const audioFile = new File([audioBlob], `voicenote-${Date.now()}.webm`, {
@@ -263,7 +268,7 @@ function MessagesPageContent() {
           uploadMediaFile(audioFile, "VOICE")
             .then((res) => {
               if (res?.id) {
-                sendQuoteMessageApi("quote-emeka-1", {
+                sendQuoteMessageApi(activeConversation, {
                   text: `Voice note (${durationStr})`,
                   mediaIds: [res.id],
                   clientId: `client-${Date.now()}`,
@@ -271,18 +276,6 @@ function MessagesPageContent() {
               }
             })
             .catch(() => {});
-
-          setTimeout(() => {
-            setEmekaMessages((prev) => [
-              ...prev,
-              {
-                id: (Date.now() + 1).toString(),
-                sender: "artisan",
-                text: "Heard your voice note. I'll arrive with the 1-inch elbow pipe.",
-                time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-              },
-            ]);
-          }, 2000);
         } else {
           setSupportMessages((prev) => [...prev, voiceMsg]);
         }
@@ -308,8 +301,8 @@ function MessagesPageContent() {
         voiceDuration: "0:12",
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      if (activeConversation === "emeka") {
-        setEmekaMessages((prev) => [...prev, simulatedVoiceMsg]);
+      if (activeConversation !== "support") {
+        setChatMessages((prev) => [...prev, simulatedVoiceMsg]);
       } else {
         setSupportMessages((prev) => [...prev, simulatedVoiceMsg]);
       }
@@ -395,7 +388,7 @@ function MessagesPageContent() {
           Messages
         </h1>
         <p className="font-sans text-xs text-neutral-400 mt-1">
-          Booking BFX-20481 · Bathroom Plumbing Repair
+          {activeBookingTitle}
         </p>
       </div>
 
@@ -410,43 +403,72 @@ function MessagesPageContent() {
               Conversations
             </h3>
             <span className="text-[11px] text-neutral-400">
-              Booking BFX-20481
+              Active negotiations &amp; support
             </span>
           </div>
 
           <div className="space-y-1.5">
-            {/* Conversation 1: Emeka Okafor */}
-            <button
-              type="button"
-              onClick={() => setActiveConversation("emeka")}
-              className={`w-full p-3 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer ${
-                activeConversation === "emeka"
-                  ? "bg-[#EBF1F7] border border-blue-100 shadow-2xs"
-                  : "hover:bg-neutral-50"
-              }`}
-            >
-              <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-neutral-200">
-                <Image
-                  src="/images/david.jpg"
-                  alt="Emeka Okafor"
-                  fill
-                  className="object-cover"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="font-bold text-xs sm:text-sm text-[#001B40] truncate">
-                  Emeka Okafor
-                </h4>
-                <p className="text-[11px] text-neutral-500 truncate">
-                  Plumbing · Quote negotiation
-                </p>
-              </div>
-            </button>
+            {/* Dynamic Real Conversations from API */}
+            {conversations.map((conv) => {
+              const isSelected = activeConversation === conv.quoteId;
+              return (
+                <button
+                  key={conv.quoteId}
+                  type="button"
+                  onClick={() => {
+                    setActiveConversation(conv.quoteId);
+                    setActivePeerName(conv.peer?.fullName || "Verified Artisan");
+                    setActivePeerRole(conv.status || "Quote Discussion");
+                    setActivePeerAvatar(conv.peer?.photoUrl || "/images/david.jpg");
+                    setActiveBookingTitle(`Quote #${conv.quoteId.slice(0, 8)} · Negotiation`);
+                  }}
+                  className={`w-full p-3 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-[#EBF1F7] border border-blue-100 shadow-2xs"
+                      : "hover:bg-neutral-50"
+                  }`}
+                >
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-neutral-200">
+                    <Image
+                      src={conv.peer?.photoUrl || "/images/david.jpg"}
+                      alt={conv.peer?.fullName || "Artisan"}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-bold text-xs sm:text-sm text-[#001B40] truncate">
+                        {conv.peer?.fullName || "Artisan"}
+                      </h4>
+                      {conv.unread > 0 && (
+                        <span className="w-2 h-2 rounded-full bg-blue-600" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-500 truncate">
+                      {conv.latestMessage?.text || "Quote negotiation"}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
 
-            {/* Conversation 2: Bluefixx Support */}
+            {/* Empty notice if no active conversations */}
+            {conversations.length === 0 && (
+              <div className="p-3 text-center text-xs text-neutral-400 bg-neutral-50 rounded-xl">
+                No active artisan chats
+              </div>
+            )}
+
+            {/* Conversation: Bluefixx Support */}
             <button
               type="button"
-              onClick={() => setActiveConversation("support")}
+              onClick={() => {
+                setActiveConversation("support");
+                setActivePeerName("Bluefixx Support");
+                setActivePeerRole("24/7 Safety & Assistance");
+                setActiveBookingTitle("Safety & Support Desk");
+              }}
               className={`w-full p-3 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer ${
                 activeConversation === "support"
                   ? "bg-[#EBF1F7] border border-blue-100 shadow-2xs"
@@ -478,10 +500,10 @@ function MessagesPageContent() {
           <div className="bg-[#001B40] text-white px-5 py-3.5 flex items-center justify-between">
             <div>
               <h3 className="font-heading font-bold text-sm sm:text-base text-white">
-                {activeConversation === "emeka" ? "Emeka Okafor" : "Bluefixx Support"}
+                {activePeerName}
               </h3>
               <p className="text-[11px] text-blue-200/80">
-                {activeConversation === "emeka" ? "Plumbing · Quote negotiation" : "2 minutes to respond"}
+                {activePeerRole}
               </p>
             </div>
 
@@ -500,7 +522,7 @@ function MessagesPageContent() {
 
           {/* Subheader info line */}
           <div className="bg-neutral-50 px-4 py-2 border-b border-neutral-100 flex items-center justify-between text-[11px] text-neutral-500">
-            <span>Booking BFX-20481 · Bathroom Plumbing Repair</span>
+            <span>{activeBookingTitle}</span>
             <Link
               href="/bookings"
               className="font-bold text-[#001B40] hover:underline"
@@ -514,14 +536,20 @@ function MessagesPageContent() {
             {/* Context notice */}
             <div className="text-center my-2">
               <span className="text-[11px] font-medium text-neutral-400 bg-neutral-100/70 px-3 py-1 rounded-full">
-                Conversation with {activeConversation === "emeka" ? "Emeka Okafor" : "Bluefixx Support"}
+                Conversation with {activePeerName}
               </span>
               <p className="text-[10px] text-neutral-400 mt-1">
-                Quick request sent · Leak &amp; burst pipe repair · Independence Layout
+                {activeBookingTitle}
               </p>
             </div>
 
-            {currentMessages.map((msg) => {
+            {currentMessages.length === 0 ? (
+              <div className="py-16 text-center text-xs text-neutral-400">
+                <p className="font-semibold text-neutral-700">No messages yet</p>
+                <p className="text-neutral-400 mt-1">Send a message or voice note below to start discussing the job.</p>
+              </div>
+            ) : (
+              currentMessages.map((msg) => {
               const isMe = msg.sender === "customer";
               return (
                 <div
@@ -592,7 +620,7 @@ function MessagesPageContent() {
                   </span>
                 </div>
               );
-            })}
+            }))}
           </div>
 
           {/* Bottom Chat Input Bar */}
@@ -717,13 +745,13 @@ function MessagesPageContent() {
 
           <div className="space-y-1 pt-2 border-t border-neutral-100 text-xs">
             <span className="font-bold text-neutral-800 block">
-              Job report
+              {activePeerName}
+            </span>
+            <span className="text-neutral-500 block truncate">
+              {activeBookingTitle}
             </span>
             <span className="text-neutral-500 block">
-              Booking BFX-20481
-            </span>
-            <span className="text-neutral-500 block">
-              Independence Layout
+              {activePeerRole}
             </span>
           </div>
 

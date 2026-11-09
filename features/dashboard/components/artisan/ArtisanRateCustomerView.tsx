@@ -16,10 +16,10 @@ interface ArtisanRateCustomerViewProps {
 
 const FEEDBACK_TAGS = [
   "Punctual",
-  "Clear brief",
-  "Easy to find",
-  "Safe area",
-  "Help on site",
+  "Paid on time",
+  "Respectful",
+  "Good tea",
+  "Clear problem",
 ];
 
 export function ArtisanRateCustomerView({

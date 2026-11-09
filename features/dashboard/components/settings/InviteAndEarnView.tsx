@@ -21,35 +21,87 @@ interface ReferralRecord {
 
 export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
   const [activeFilter, setActiveFilter] = useState<"All" | "In progress" | "Reward earned" | "Not qualified">("All");
-  const [referralCode, setReferralCode] = useState("BLUE-SIMEON");
-  const [referralUrl, setReferralUrl] = useState("https://bluefixx.ng/invite/BLUE-SIMEON");
+  const [referralCode, setReferralCode] = useState("");
+  const [referralUrl, setReferralUrl] = useState("");
+  const [earnedKobo, setEarnedKobo] = useState(0);
+  const [pendingKobo, setPendingKobo] = useState(0);
+  const [invitedCount, setInvitedCount] = useState(0);
+  const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isClaiming, setIsClaiming] = useState(false);
+
+  async function loadReferralData() {
+    setIsLoading(true);
+    try {
+      const data = await getReferralSummaryApi();
+      if (data) {
+        if (data.referralCode) setReferralCode(data.referralCode);
+        if (data.referralLink) setReferralUrl(data.referralLink);
+        setEarnedKobo(data.totalEarnedKobo || 0);
+        setPendingKobo(data.pendingRewardKobo || 0);
+        setInvitedCount(data.totalInvited || 0);
+
+        if (Array.isArray(data.history) && data.history.length > 0) {
+          const mapped: ReferralRecord[] = data.history.map((h) => ({
+            id: h.id,
+            friendName: h.refereeName || "Friend",
+            joinedDate: `Joined ${new Date(h.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}`,
+            progressSummary:
+              h.status === "CLAIMED"
+                ? "Reward claimed"
+                : h.status === "COMPLETED"
+                ? "Ready to claim"
+                : "In progress",
+            progressDetail:
+              h.status === "CLAIMED"
+                ? "Referral completed and paid into your wallet."
+                : h.status === "COMPLETED"
+                ? "Qualifying job completed. Claim reward to wallet."
+                : "Friend joined. Reward unlocks upon their first completed job.",
+            reward: `₦${((h.rewardKobo || 200000) / 100).toLocaleString()}`,
+            status:
+              h.status === "CLAIMED"
+                ? "Reward earned"
+                : h.status === "COMPLETED"
+                ? "Reward pending"
+                : "In progress",
+            statusColor:
+              h.status === "CLAIMED"
+                ? "bg-emerald-50 text-emerald-700"
+                : h.status === "COMPLETED"
+                ? "bg-amber-50 text-amber-700"
+                : "bg-blue-50 text-blue-700",
+          }));
+          setReferrals(mapped);
+        } else {
+          setReferrals([]);
+        }
+      }
+    } catch {
+      setReferrals([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadReferralData() {
-      try {
-        const data = await getReferralSummaryApi();
-        if (data) {
-          if (data.referralCode) setReferralCode(data.referralCode);
-          if (data.referralLink) setReferralUrl(data.referralLink);
-        }
-      } catch {
-        // Fallback silently
-      }
-    }
     loadReferralData();
   }, []);
 
   const handleCopyCode = () => {
+    if (!referralCode) return;
     navigator.clipboard.writeText(referralCode);
     toast.success("Referral code copied to clipboard!");
   };
 
   const handleCopyLink = () => {
+    if (!referralUrl) return;
     navigator.clipboard.writeText(referralUrl);
     toast.success("Referral link copied to clipboard!");
   };
 
   const handleShareInvite = () => {
+    if (!referralCode && !referralUrl) return;
     if (navigator.share) {
       navigator.share({
         title: "Join me on BlueFixx",
@@ -61,68 +113,18 @@ export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
     }
   };
 
-  const referrals: ReferralRecord[] = [
-    {
-      id: "ref-1",
-      friendName: "Daniel Uche",
-      joinedDate: "Customer · Joined Aug 24",
-      progressSummary: "4/4 steps complete",
-      progressDetail: "Joined Bluefixx · Completed profile · Booked first service · Completed first transaction",
-      reward: "₦2,000",
-      status: "Reward earned",
-      statusColor: "bg-emerald-50 text-emerald-700",
-    },
-    {
-      id: "ref-2",
-      friendName: "Fatima Yusuf",
-      joinedDate: "Customer · Joined Aug 19",
-      progressSummary: "3/3 steps complete",
-      progressDetail: "Joined Bluefixx · Completed verification · Completed profile · Reward unlocks when Fatima completes her first job.",
-      reward: "₦2,000",
-      status: "In progress",
-      statusColor: "bg-blue-50 text-blue-700",
-    },
-    {
-      id: "ref-3",
-      friendName: "Peter Adams",
-      joinedDate: "Customer · Joined Aug 15",
-      progressSummary: "2/4 steps complete",
-      progressDetail: "Payment to Emeka was sent · Reward is pending the completed transaction.",
-      reward: "₦2,000",
-      status: "Reward pending",
-      statusColor: "bg-amber-50 text-amber-700",
-    },
-    {
-      id: "ref-4",
-      friendName: "+234 803 ••• 42",
-      joinedDate: "Customer · Joined",
-      progressSummary: "1/4 steps complete",
-      progressDetail: "Invite sent. Profile, first service and first transaction still incomplete.",
-      reward: "₦2,000",
-      status: "Invited",
-      statusColor: "bg-neutral-100 text-neutral-600",
-    },
-    {
-      id: "ref-5",
-      friendName: "Sam O.",
-      joinedDate: "Customer · Joined",
-      progressSummary: "1/4 steps complete",
-      progressDetail: "Invite window expired after 30 days without a first booking.",
-      reward: "₦2,000",
-      status: "Expired",
-      statusColor: "bg-neutral-100 text-neutral-500",
-    },
-    {
-      id: "ref-6",
-      friendName: "Unknown device",
-      joinedDate: "Customer",
-      progressSummary: "0/4 steps complete",
-      progressDetail: "Blocked: This account shares a direct bank account with yours. Self-referrals do not qualify.",
-      reward: "No reward",
-      status: "Blocked",
-      statusColor: "bg-rose-50 text-rose-700",
-    },
-  ];
+  const handleClaim = async () => {
+    setIsClaiming(true);
+    try {
+      const res = await claimReferralRewardApi();
+      toast.success(res.message || "Referral reward claimed into your wallet!");
+      await loadReferralData();
+    } catch {
+      toast.error("Failed to claim referral reward. Please try again.");
+    } finally {
+      setIsClaiming(false);
+    }
+  };
 
   const filteredReferrals = referrals.filter((r) => {
     if (activeFilter === "All") return true;
@@ -213,28 +215,40 @@ export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
         <div className="lg:col-span-5 grid grid-cols-2 gap-3.5">
           <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-xs flex flex-col justify-between">
             <span className="font-heading font-black text-2xl sm:text-3xl text-[#001B40]">
-              ₦10,000
+              ₦{(earnedKobo / 100).toLocaleString()}
             </span>
             <span className="text-xs text-neutral-400 font-medium">Earned</span>
           </div>
 
           <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-xs flex flex-col justify-between">
             <span className="font-heading font-black text-2xl sm:text-3xl text-[#001B40]">
-              12
+              ₦{(pendingKobo / 100).toLocaleString()}
+            </span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs text-neutral-400 font-medium">Pending</span>
+              {pendingKobo > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClaim}
+                  disabled={isClaiming}
+                  className="text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-2 py-0.5 rounded cursor-pointer transition-colors disabled:opacity-50"
+                >
+                  {isClaiming ? "..." : "Claim"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-xs flex flex-col justify-between">
+            <span className="font-heading font-black text-2xl sm:text-3xl text-[#001B40]">
+              {invitedCount}
             </span>
             <span className="text-xs text-neutral-400 font-medium">Invited</span>
           </div>
 
           <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-xs flex flex-col justify-between">
             <span className="font-heading font-black text-2xl sm:text-3xl text-[#001B40]">
-              7
-            </span>
-            <span className="text-xs text-neutral-400 font-medium">Joined</span>
-          </div>
-
-          <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-xs flex flex-col justify-between">
-            <span className="font-heading font-black text-2xl sm:text-3xl text-[#001B40]">
-              5
+              {referrals.filter((r) => r.status === "Reward earned").length}
             </span>
             <span className="text-xs text-neutral-400 font-medium">Activated</span>
           </div>
@@ -347,39 +361,63 @@ export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {filteredReferrals.map((row) => (
-                <tr key={row.id} className="hover:bg-neutral-50/50 transition-colors">
-                  <td className="py-4 pr-4 whitespace-nowrap">
-                    <span className="font-bold text-[#001B40] block">
-                      {row.friendName}
-                    </span>
-                    <span className="text-[11px] text-neutral-400">
-                      {row.joinedDate}
-                    </span>
-                  </td>
-
-                  <td className="py-4 px-4 min-w-[260px]">
-                    <span className="font-semibold text-neutral-800 block">
-                      {row.progressSummary}
-                    </span>
-                    <span className="text-[11px] text-neutral-400 line-clamp-1">
-                      {row.progressDetail}
-                    </span>
-                  </td>
-
-                  <td className="py-4 px-4 text-right whitespace-nowrap">
-                    <span className="font-bold text-[#001B40]">
-                      {row.reward}
-                    </span>
-                  </td>
-
-                  <td className="py-4 pl-4 text-right whitespace-nowrap">
-                    <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${row.statusColor}`}>
-                      {row.status}
-                    </span>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-xs text-neutral-400">
+                    Loading your referrals...
                   </td>
                 </tr>
-              ))}
+              ) : filteredReferrals.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-12 text-center">
+                    <p className="text-sm font-semibold text-neutral-800">No referrals yet</p>
+                    <p className="font-sans text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
+                      Share your referral code with friends. When they complete their first booking, you will earn ₦2,000!
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleShareInvite}
+                      className="mt-4 px-4 py-2 rounded-xl bg-[#001B40] text-white text-xs font-semibold cursor-pointer shadow-xs"
+                    >
+                      Share invite link
+                    </button>
+                  </td>
+                </tr>
+              ) : (
+                filteredReferrals.map((row) => (
+                  <tr key={row.id} className="hover:bg-neutral-50/50 transition-colors">
+                    <td className="py-4 pr-4 whitespace-nowrap">
+                      <span className="font-bold text-[#001B40] block">
+                        {row.friendName}
+                      </span>
+                      <span className="text-[11px] text-neutral-400">
+                        {row.joinedDate}
+                      </span>
+                    </td>
+
+                    <td className="py-4 px-4 min-w-[260px]">
+                      <span className="font-semibold text-neutral-800 block">
+                        {row.progressSummary}
+                      </span>
+                      <span className="text-[11px] text-neutral-400 line-clamp-1">
+                        {row.progressDetail}
+                      </span>
+                    </td>
+
+                    <td className="py-4 px-4 text-right whitespace-nowrap">
+                      <span className="font-bold text-[#001B40]">
+                        {row.reward}
+                      </span>
+                    </td>
+
+                    <td className="py-4 pl-4 text-right whitespace-nowrap">
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${row.statusColor}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

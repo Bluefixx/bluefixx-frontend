@@ -374,9 +374,12 @@ export interface AccountProfile {
 
 export interface UpdateAccountRequest {
   fullName?: string;
+  photoId?: string;
+  avatarId?: string;
   email?: string;
   bio?: string;
-  avatarId?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
   emergencyContact?: {
     name: string;
     phone: string;

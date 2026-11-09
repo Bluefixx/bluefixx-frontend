@@ -19,15 +19,19 @@ export function setAccessToken(token: string | null) {
   if (typeof window !== "undefined") {
     if (token) {
       sessionStorage.setItem("bluefixx_access_token", token);
+      localStorage.setItem("bluefixx_access_token", token);
     } else {
       sessionStorage.removeItem("bluefixx_access_token");
+      localStorage.removeItem("bluefixx_access_token");
     }
   }
 }
 
 export function getAccessToken(): string | null {
   if (!inMemoryAccessToken && typeof window !== "undefined") {
-    inMemoryAccessToken = sessionStorage.getItem("bluefixx_access_token");
+    inMemoryAccessToken =
+      sessionStorage.getItem("bluefixx_access_token") ||
+      localStorage.getItem("bluefixx_access_token");
   }
   return inMemoryAccessToken;
 }

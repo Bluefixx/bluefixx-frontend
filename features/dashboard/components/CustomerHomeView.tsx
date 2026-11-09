@@ -7,13 +7,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/stores/auth-store";
 import {
   getCustomerDashboardApi,
-  getCatalogApi,
+  getServicesApi,
   getArtisansApi,
 } from "@/lib/api/customer";
 import { getWalletApi } from "@/lib/api/wallet";
 import {
   CustomerDashboardResponse,
-  CatalogGroup,
+  TradeCategory,
   ArtisanListItem,
   WalletSummary,
 } from "@/types/customer";
@@ -22,13 +22,13 @@ import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
 
 export default function CustomerHomeView() {
   const router = useRouter();
-  const { user, walletBalance, setWalletBalance } = useAuth();
+  const { user, walletBalance, setWalletBalance, locationName } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArtisanId, setSelectedArtisanId] = useState<string | null>(null);
 
   // Live API data states
   const [dashboardData, setDashboardData] = useState<CustomerDashboardResponse | null>(null);
-  const [catalogGroups, setCatalogGroups] = useState<CatalogGroup[]>([]);
+  const [tradeCategories, setTradeCategories] = useState<TradeCategory[]>([]);
   const [nearbyArtisans, setNearbyArtisans] = useState<ArtisanListItem[]>([]);
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,29 +50,40 @@ export default function CustomerHomeView() {
         console.debug("Dashboard aggregate endpoint offline, using defaults.", err);
       }
 
-      // 2. Catalog groups with real starting prices
+      // 2. Services / Trade categories from GET /services
       try {
-        const catRes = await getCatalogApi();
-        if (mounted && Array.isArray(catRes) && catRes.length > 0) {
-          setCatalogGroups(catRes);
+        const servicesRes = await getServicesApi();
+        if (mounted && Array.isArray(servicesRes) && servicesRes.length > 0) {
+          setTradeCategories(servicesRes);
         }
       } catch (err) {
-        console.debug("Catalog endpoint offline, using mock categories.", err);
+        console.debug("Services endpoint offline, using fallback categories.", err);
       }
 
       // 3. Nearby artisans discovery
       try {
+        const locLower = (locationName || "").toLowerCase();
+        let lat = 6.4474;
+        let lng = 7.5126;
+        if (locLower.includes("lagos") || locLower.includes("vi") || locLower.includes("ikeja")) {
+          lat = 6.5244;
+          lng = 3.3792;
+        } else if (locLower.includes("abuja") || locLower.includes("maitama")) {
+          lat = 9.0765;
+          lng = 7.3986;
+        }
+
         const artRes = await getArtisansApi({
-          latitude: 6.4474,
-          longitude: 7.5126,
-          distance: 25,
+          latitude: lat,
+          longitude: lng,
+          distance: 100,
           limit: 6,
         });
-        if (mounted && Array.isArray(artRes) && artRes.length > 0) {
+        if (mounted && Array.isArray(artRes)) {
           setNearbyArtisans(artRes);
         }
       } catch (err) {
-        console.debug("Artisans endpoint offline, using mock artisans.", err);
+        console.debug("Artisans endpoint offline:", err);
       }
 
       // 4. Wallet summary
@@ -99,7 +110,7 @@ export default function CustomerHomeView() {
     return () => {
       mounted = false;
     };
-  }, [setWalletBalance]);
+  }, [setWalletBalance, locationName]);
 
   // Dynamic time-of-day greeting (evaluated client-side to prevent SSR prerender mismatch)
   const [greeting, setGreeting] = useState("Good morning");
@@ -127,29 +138,21 @@ export default function CustomerHomeView() {
     return ["Plumbing", "Electrical", "Cleaning"];
   }, [dashboardData]);
 
-  // Categories list: use API catalog groups if returned, otherwise fallback to CATEGORIES
+  // Categories list: use API trade categories if returned
   const displayCategories = useMemo(() => {
-    if (catalogGroups.length > 0) {
-      return catalogGroups.map((group) => {
-        let count = 0;
-        if (group.trades) {
-          count = group.trades.reduce(
-            (acc, trade) => acc + (trade.services?.length || 1),
-            0
-          );
-        }
+    if (tradeCategories.length > 0) {
+      return tradeCategories.map((trade) => {
+        const count = trade.services?.length || 1;
         return {
-          id: group.id,
-          name: group.categoryName,
-          count: count || 4,
-          startingPrice: group.startingPriceKobo
-            ? Math.round(group.startingPriceKobo / 100)
-            : undefined,
+          id: trade.id,
+          name: trade.name,
+          count,
+          startingPrice: 15000,
         };
       });
     }
-    return CATEGORIES.filter((c) => c.id !== "all");
-  }, [catalogGroups]);
+    return [];
+  }, [tradeCategories]);
 
   // Current balance display
   const currentBalance = useMemo(() => {
@@ -170,7 +173,7 @@ export default function CustomerHomeView() {
         return Math.round(rawHeld / 100);
       }
     }
-    return 120000;
+    return 0;
   }, [walletSummary]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -400,68 +403,74 @@ export default function CustomerHomeView() {
         </div>
 
         {/* Categories Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-          {displayCategories.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/explore?category=${cat.id}`}
-              className="bg-white rounded-2xl p-4 border border-neutral-200/80 hover:border-[#001B40] hover:shadow-md transition-all group flex flex-col justify-between"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mb-3 group-hover:bg-[#001B40] group-hover:text-white transition-colors">
-                {cat.id.includes("construct") || cat.id.includes("home") ? (
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" />
-                    <path d="M17.64 15 22 10.64" />
-                    <path d="m20.91 3.26-4 4" />
-                    <path d="m14.82 4.24 3.9 3.9" />
-                    <path d="m11.5 8.5 3-3" />
-                  </svg>
-                ) : cat.id.includes("repair") || cat.id.includes("tech") ? (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                  </svg>
-                ) : cat.id.includes("auto") ? (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect width="16" height="12" x="4" y="5" rx="2" />
-                    <circle cx="8" cy="17" r="2" />
-                    <circle cx="16" cy="17" r="2" />
-                  </svg>
-                ) : cat.id.includes("fashion") || cat.id.includes("beauty") ? (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="6" cy="6" r="3" />
-                    <circle cx="6" cy="18" r="3" />
-                    <line x1="20" y1="4" x2="8.12" y2="15.88" />
-                    <line x1="14.47" y1="14.48" x2="20" y2="20" />
-                    <line x1="8.12" y1="8.12" x2="12" y2="12" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect width="16" height="20" x="4" y="2" rx="2" />
-                    <line x1="9" y1="22" x2="9" y2="18" />
-                    <line x1="15" y1="22" x2="15" y2="18" />
-                  </svg>
-                )}
+        {isLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="bg-white rounded-2xl p-4 border border-neutral-100 animate-pulse h-32 flex flex-col justify-between">
+                <div className="w-9 h-9 rounded-xl bg-neutral-200" />
+                <div className="space-y-1.5">
+                  <div className="h-3.5 bg-neutral-200 rounded-md w-3/4" />
+                  <div className="h-2.5 bg-neutral-100 rounded-md w-1/2" />
+                </div>
               </div>
-              <div>
-                <h4 className="font-sans font-bold text-xs sm:text-sm text-[#0F1115] group-hover:text-[#001B40] transition-colors leading-snug">
-                  {cat.name}
-                </h4>
-                <p className="font-sans text-[11px] text-neutral-400 mt-1">
-                  {cat.count} services
-                  {"startingPrice" in cat && cat.startingPrice ? ` · From ₦${cat.startingPrice.toLocaleString()}` : ""}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : displayCategories.length === 0 ? (
+          <div className="bg-white rounded-2xl p-8 text-center border border-neutral-200/80">
+            <p className="text-xs font-semibold text-neutral-600">No categories loaded yet. Please refresh or explore all services.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+            {displayCategories.map((cat) => {
+              const nameLower = cat.name.toLowerCase();
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/explore?category=${cat.id}`}
+                  className="bg-white rounded-2xl p-4 border border-neutral-200/80 hover:border-[#001B40] hover:shadow-md transition-all group flex flex-col justify-between"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 mb-3 group-hover:bg-[#001B40] group-hover:text-white transition-colors">
+                    {nameLower.includes("plumb") || nameLower.includes("pipe") ? (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                      </svg>
+                    ) : nameLower.includes("electr") || nameLower.includes("power") ? (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                      </svg>
+                    ) : nameLower.includes("carpent") || nameLower.includes("wood") || nameLower.includes("construct") ? (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" />
+                        <path d="M17.64 15 22 10.64" />
+                        <path d="m20.91 3.26-4 4" />
+                      </svg>
+                    ) : nameLower.includes("auto") || nameLower.includes("mechanic") ? (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="16" height="12" x="4" y="5" rx="2" />
+                        <circle cx="8" cy="17" r="2" />
+                        <circle cx="16" cy="17" r="2" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect width="16" height="20" x="4" y="2" rx="2" />
+                        <line x1="9" y1="22" x2="9" y2="18" />
+                        <line x1="15" y1="22" x2="15" y2="18" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-sans font-bold text-xs sm:text-sm text-[#0F1115] group-hover:text-[#001B40] transition-colors leading-snug">
+                      {cat.name}
+                    </h4>
+                    <p className="font-sans text-[11px] text-neutral-400 mt-1">
+                      {cat.count} {cat.count === 1 ? "service" : "services"}
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 5. Section: Trusted Professionals Near You */}
@@ -572,86 +581,28 @@ export default function CustomerHomeView() {
                   </div>
                 </div>
               ))
-            : TRUSTED_ARTISANS.map((artisan) => (
-                <div
-                  key={artisan.id}
-                  className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs hover:shadow-md transition-shadow flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Header: Avatar, Name, Trade & Verification Icon */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200">
-                          <Image
-                            src={artisan.avatarUrl}
-                            alt={artisan.name}
-                            width={48}
-                            height={48}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <h4 className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
-                            {artisan.name}
-                          </h4>
-                          <p className="font-sans text-xs text-neutral-500">{artisan.trade}</p>
-                        </div>
-                      </div>
-
-                      {/* Verification Checkmark Pill */}
-                      <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Rating & Distance Meta */}
-                    <div className="flex items-center justify-between text-xs text-neutral-500 mt-3 pt-2 border-t border-neutral-100">
-                      <div className="flex items-center gap-1 text-neutral-800 font-semibold">
-                        <span className="text-amber-500">★</span>
-                        <span>{artisan.rating}</span>
-                        <span className="text-neutral-400 font-normal">({artisan.reviewCount})</span>
-                      </div>
-                      <span>
-                        {artisan.distance} · {artisan.experienceYears} yrs
-                      </span>
-                    </div>
-
-                    {/* Identity Verified Pill */}
-                    <div className="mt-2.5">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md">
-                        <span>•</span> Identity verified
-                      </span>
-                    </div>
+            : (
+                <div className="col-span-full bg-white rounded-3xl p-8 text-center border border-neutral-200/80 shadow-2xs">
+                  <div className="w-12 h-12 rounded-full bg-blue-50 text-[#001B40] flex items-center justify-center mx-auto mb-2">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
                   </div>
-
-                  {/* Bottom Price, Availability & View Profile CTA */}
-                  <div className="mt-4 pt-3 border-t border-neutral-100 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[11px] text-neutral-400 block">From</span>
-                        <span className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
-                          ₦{artisan.startingPrice.toLocaleString()}
-                        </span>
-                      </div>
-
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                        {artisan.availability}
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedArtisanId(artisan.id)}
-                      className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 active:bg-neutral-100 text-xs sm:text-sm font-semibold text-neutral-800 transition-colors cursor-pointer text-center"
-                    >
-                      View profile
-                    </button>
-                  </div>
+                  <p className="font-heading font-bold text-sm text-[#001B40]">No verified artisans active nearby right now</p>
+                  <p className="text-xs text-neutral-400 mt-1 max-w-sm mx-auto">
+                    Post your job requirement to broadcast your request to qualified artisans across the region.
+                  </p>
+                  <Link
+                    href="/post-job"
+                    className="mt-3.5 inline-block px-5 py-2.5 rounded-xl bg-[#001B40] text-white font-semibold text-xs shadow-xs hover:bg-[#074292] transition-colors"
+                  >
+                    Post a job
+                  </Link>
                 </div>
-              ))}
+              )}
         </div>
       </div>
     </div>

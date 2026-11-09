@@ -66,7 +66,16 @@ function TalentHomeViewContent({
   onOpenRoleSwitcher,
 }: TalentHomeViewProps) {
   const { user } = useAuth();
-  const userName = user?.fullName ? user.fullName.split(" ")[0] : "Daniel";
+  const userName = user?.fullName ? user.fullName.split(" ")[0] : "Learner";
+
+  const [timeGreeting, setTimeGreeting] = useState("Good morning");
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setTimeGreeting("Good morning");
+    else if (hour < 17) setTimeGreeting("Good afternoon");
+    else setTimeGreeting("Good evening");
+  }, []);
+
   const searchParams = useSearchParams();
   const urlView = searchParams.get("view") as TalentSubView | null;
 
@@ -540,7 +549,7 @@ function TalentHomeViewContent({
       {/* Top Main Heading */}
       <div>
         <h1 className="font-heading font-extrabold text-2xl sm:text-3xl lg:text-4xl text-[#001B40] tracking-tight">
-          Good morning, {userName}
+          {timeGreeting}, {userName}
         </h1>
       </div>
 
@@ -557,10 +566,10 @@ function TalentHomeViewContent({
           </div>
           <div>
             <span className="font-sans text-xs text-neutral-400 font-medium block">
-              Good morning
+              {timeGreeting}
             </span>
             <span className="font-heading font-extrabold text-base sm:text-lg text-[#0F1115]">
-              {user?.fullName || "Daniel Eze"}
+              {user?.fullName || "Learner"}
             </span>
           </div>
         </div>
@@ -608,75 +617,102 @@ function TalentHomeViewContent({
         </div>
 
         {/* Training Main Card & Next Session Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-          {/* Active Apprenticeship Card (8 cols) */}
-          <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
-                  {homeData?.enrollmentTitle || "Welding & Metal Fabrication Apprenticeship"}
-                </h3>
-                <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full shrink-0">
-                  {homeData?.stageName || "Advanced Welding"}
-                </span>
-              </div>
-              <p className="font-sans text-xs text-neutral-400 font-medium">
-                Master artisan:{" "}
-                <span className="font-semibold text-neutral-700">
-                  {homeData?.artisanName || "John Obiora"}
-                </span>
+        {!homeData ? (
+          <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-2xs text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#001B40] flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                <path d="M6 12v5c3 3 9 3 12 0v-5" />
+              </svg>
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                No active apprenticeship
+              </h3>
+              <p className="font-sans text-xs text-neutral-400 max-w-md mx-auto">
+                Explore master artisans offering training in welding, plumbing, electrical, and more. Apply to start your learning journey.
               </p>
             </div>
-
-            {/* Progress Bar & Stats */}
-            <div className="space-y-2">
-              <div className="w-full bg-neutral-100 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-[#001B40] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${homeData?.progressPercent ?? 65}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-xs text-neutral-400 font-medium">
-                <span>{homeData?.progressPercent ?? 65}% complete</span>
-                <span>Attendance: {homeData?.attendancePercent ?? 92}%</span>
-              </div>
-            </div>
-
-            {/* Bottom Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentView("progress")}
-              className="w-full py-3 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
-            >
-              Open My Apprenticeship
-            </button>
-          </div>
-
-          {/* Right Cards (4 cols): Next session + Payment */}
-          <div className="lg:col-span-4 flex flex-col justify-between gap-4">
-            {/* Next Session Card */}
-            <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-2 flex-1">
-              <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
-                NEXT SESSION
-              </span>
-              <p className="font-sans font-bold text-sm text-[#0F1115] leading-snug">
-                {homeData?.nextSessionText || "Thursday 28 August · 8:00am · Emene workshop"}
-              </p>
-            </div>
-
-            {/* Payment Escrow Card */}
-            <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-2 flex-1">
-              <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
-                PAYMENT
-              </span>
-              <p className="font-sans text-xs text-neutral-600 leading-relaxed">
-                <span className="font-bold text-neutral-800">Held in escrow:</span>{" "}
-                {homeData?.escrowHeldText ||
-                  "₦50,000 held in escrow and released to John as you learn."}
-              </p>
+            <div>
+              <button
+                type="button"
+                onClick={() => setCurrentView("discover")}
+                className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs shadow-xs transition-colors cursor-pointer"
+              >
+                Find opportunities
+              </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            {/* Active Apprenticeship Card (8 cols) */}
+            <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
+                    {homeData.enrollmentTitle}
+                  </h3>
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full shrink-0">
+                    {homeData.stageName}
+                  </span>
+                </div>
+                <p className="font-sans text-xs text-neutral-400 font-medium">
+                  Master artisan:{" "}
+                  <span className="font-semibold text-neutral-700">
+                    {homeData.artisanName}
+                  </span>
+                </p>
+              </div>
+
+              {/* Progress Bar & Stats */}
+              <div className="space-y-2">
+                <div className="w-full bg-neutral-100 rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-[#001B40] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${homeData.progressPercent}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-neutral-400 font-medium">
+                  <span>{homeData.progressPercent}% complete</span>
+                  <span>Attendance: {homeData.attendancePercent}%</span>
+                </div>
+              </div>
+
+              {/* Bottom Button */}
+              <button
+                type="button"
+                onClick={() => setCurrentView("progress")}
+                className="w-full py-3 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
+              >
+                Open My Apprenticeship
+              </button>
+            </div>
+
+            {/* Right Cards (4 cols): Next session + Payment */}
+            <div className="lg:col-span-4 flex flex-col justify-between gap-4">
+              {/* Next Session Card */}
+              <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-2 flex-1">
+                <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
+                  NEXT SESSION
+                </span>
+                <p className="font-sans font-bold text-sm text-[#0F1115] leading-snug">
+                  {homeData.nextSessionText}
+                </p>
+              </div>
+
+              {/* Payment Escrow Card */}
+              <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-2 flex-1">
+                <span className="text-[10px] font-bold text-neutral-400 tracking-wider uppercase block">
+                  PAYMENT
+                </span>
+                <p className="font-sans text-xs text-neutral-600 leading-relaxed">
+                  <span className="font-bold text-neutral-800">Held in escrow:</span>{" "}
+                  {homeData.escrowHeldText}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SECTION 2: Learn another skill */}

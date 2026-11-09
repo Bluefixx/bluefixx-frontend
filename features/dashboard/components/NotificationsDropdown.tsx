@@ -110,44 +110,57 @@ export function NotificationsDropdown({ isOpen, onClose }: NotificationsDropdown
 
       {/* Notifications List */}
       <div className="divide-y divide-neutral-50 max-h-96 overflow-y-auto">
-        {recentNotifications.map((notif) => (
-          <Link
-            key={notif.id}
-            href={notif.actionUrl || "/notifications"}
-            onClick={() => {
-              markAsRead(notif.id);
-              onClose();
-            }}
-            className={`flex items-start gap-3 px-4 py-3 hover:bg-neutral-50/80 transition-colors ${
-              !notif.isRead ? "bg-blue-50/20" : ""
-            }`}
-          >
-            {/* Type Icon Container */}
-            <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0 mt-0.5">
-              {getNotificationIcon(notif.type)}
+        {recentNotifications.length === 0 ? (
+          <div className="py-8 px-4 text-center">
+            <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-2 text-neutral-400">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
             </div>
+            <p className="text-xs font-semibold text-neutral-800">No notifications yet</p>
+            <p className="text-[11px] text-neutral-400 mt-0.5">You&apos;re all caught up with your updates.</p>
+          </div>
+        ) : (
+          recentNotifications.map((notif) => (
+            <Link
+              key={notif.id}
+              href={notif.actionUrl || "/notifications"}
+              onClick={() => {
+                markAsRead(notif.id);
+                onClose();
+              }}
+              className={`flex items-start gap-3 px-4 py-3 hover:bg-neutral-50/80 transition-colors ${
+                !notif.isRead ? "bg-blue-50/20" : ""
+              }`}
+            >
+              {/* Type Icon Container */}
+              <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0 mt-0.5">
+                {getNotificationIcon(notif.type)}
+              </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <p className="font-heading font-bold text-xs text-[#001B40] leading-snug">
-                {notif.title}
-              </p>
-              <p className="font-sans text-[11px] text-neutral-500 line-clamp-2 mt-0.5 leading-relaxed">
-                {notif.description}
-              </p>
-            </div>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <p className="font-heading font-bold text-xs text-[#001B40] leading-snug">
+                  {notif.title}
+                </p>
+                <p className="font-sans text-[11px] text-neutral-500 line-clamp-2 mt-0.5 leading-relaxed">
+                  {notif.description}
+                </p>
+              </div>
 
-            {/* Time & Unread Dot */}
-            <div className="flex flex-col items-end gap-1.5 shrink-0 pt-0.5">
-              <span className="font-sans text-[10px] text-neutral-400">
-                {notif.time}
-              </span>
-              {!notif.isRead && (
-                <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
-              )}
-            </div>
-          </Link>
-        ))}
+              {/* Time & Unread Dot */}
+              <div className="flex flex-col items-end gap-1.5 shrink-0 pt-0.5">
+                <span className="font-sans text-[10px] text-neutral-400">
+                  {notif.time}
+                </span>
+                {!notif.isRead && (
+                  <span className="w-2 h-2 rounded-full bg-blue-600 ring-2 ring-white" />
+                )}
+              </div>
+            </Link>
+          ))
+        )}
       </div>
 
       {/* Footer */}

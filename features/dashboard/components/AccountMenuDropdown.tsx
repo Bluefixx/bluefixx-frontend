@@ -67,7 +67,7 @@ export default function AccountMenuDropdown({
       <button
         onClick={() => {
           onClose();
-          router.push("/dashboard/profile");
+          router.push("/profile");
         }}
         className="w-full px-4 py-2 text-left text-xs sm:text-sm font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-2.5 cursor-pointer transition-colors"
       >
@@ -81,7 +81,7 @@ export default function AccountMenuDropdown({
       <button
         onClick={() => {
           onClose();
-          router.push("/dashboard/settings");
+          router.push("/settings");
         }}
         className="w-full px-4 py-2 text-left text-xs sm:text-sm font-medium text-neutral-700 hover:bg-neutral-50 flex items-center gap-2.5 cursor-pointer transition-colors"
       >

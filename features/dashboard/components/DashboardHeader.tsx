@@ -29,9 +29,9 @@ export default function DashboardHeader({
     let mounted = true;
     getNotificationsApi()
       .then((items) => {
-        if (mounted && Array.isArray(items) && items.length > 0) {
+        if (mounted && Array.isArray(items)) {
           setNotifications(
-            items.map((it) => ({
+            items.map((it: any) => ({
               id: it.id,
               title: it.title,
               description: it.body || it.title,
@@ -42,7 +42,7 @@ export default function DashboardHeader({
                   })
                 : "Today",
               dateGroup: "Today",
-              isRead: it.read,
+              isRead: Boolean(it.read || it.readAt),
               type: (it.type?.toLowerCase() as any) || "quote",
               actionUrl: "/notifications",
             }))
@@ -257,8 +257,12 @@ export default function DashboardHeader({
           <button
             type="button"
             onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            title="Notifications"
-            className="relative w-10 h-10 rounded-full border border-neutral-200/90 hover:border-neutral-300 hover:bg-neutral-50 flex items-center justify-center text-neutral-700 transition-all cursor-pointer shadow-2xs"
+            title={unreadCount > 0 ? `${unreadCount} unread notification(s)` : "Notifications"}
+            className={`relative w-10 h-10 rounded-full border transition-all cursor-pointer shadow-2xs flex items-center justify-center ${
+              unreadCount > 0
+                ? "border-amber-300 bg-amber-50/50 text-amber-600 hover:bg-amber-100/60"
+                : "border-neutral-200/90 hover:border-neutral-300 hover:bg-neutral-50 text-neutral-700"
+            }`}
           >
             <svg
               className="w-4 h-4"

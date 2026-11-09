@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
 
 interface ArtisanSettingsOverviewViewProps {
   onBack: () => void;
@@ -15,6 +16,12 @@ export function ArtisanSettingsOverviewView({
   onNavigate,
   onLogout,
 }: ArtisanSettingsOverviewViewProps) {
+  const { user, locationName, walletBalance } = useAuth();
+  const displayName = user?.fullName || "John Obiora";
+  const displayLocation = locationName || "Independence Layout, Enugu";
+  const displayPhone = user?.phone || "+234 803 555 0142";
+  const displayWallet = walletBalance > 0 ? `₦${walletBalance.toLocaleString()}` : "₦168,000";
+
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
@@ -59,17 +66,17 @@ export function ArtisanSettingsOverviewView({
           <div className="w-14 h-14 rounded-full overflow-hidden relative border-2 border-neutral-100 shrink-0 bg-neutral-200">
             <Image
               src="/images/david.jpg"
-              alt="John Obiora"
+              alt={displayName}
               fill
               className="object-cover"
             />
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-heading font-bold text-[#0F1115]">
-              John Obiora
+              {displayName}
             </h2>
             <p className="text-xs sm:text-sm text-neutral-500">
-              Independence Layout, Enugu
+              {displayLocation}
             </p>
           </div>
         </div>
@@ -155,7 +162,7 @@ export function ArtisanSettingsOverviewView({
                   Personal details
                 </div>
                 <div className="text-xs text-neutral-500">
-                  +234 803 555 0142
+                  {displayPhone}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -235,7 +242,7 @@ export function ArtisanSettingsOverviewView({
                   Bluefixx Wallet
                 </div>
                 <div className="text-xs text-neutral-500">
-                  ₦168,000
+                  {displayWallet}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -532,7 +539,7 @@ export function ArtisanSettingsOverviewView({
               Delete BlueFixx account?
             </h3>
             <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
-              This permanently removes your jobs, reviews, certificates and apprenticeship. Withdraw your ₦168,000 balance first. This cannot be undone.
+              This permanently removes your jobs, reviews, certificates and apprenticeship. Withdraw your {displayWallet} balance first. This cannot be undone.
             </p>
             <div className="flex gap-3 pt-2">
               <button

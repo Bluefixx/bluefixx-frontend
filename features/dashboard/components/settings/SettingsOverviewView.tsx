@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { getWalletApi } from "@/lib/api/wallet";
 
 interface SettingsOverviewViewProps {
   onNavigate: (tab: "personal-details" | "pin" | "notifications" | "language" | "support" | "report-problem" | "referral") => void;
@@ -21,9 +22,29 @@ export function SettingsOverviewView({
   onNavigate,
   userData,
 }: SettingsOverviewViewProps) {
-  const { walletBalance, resetAuth } = useAuth();
+  const { walletBalance, setWalletBalance, resetAuth } = useAuth();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getWalletApi()
+      .then((data) => {
+        if (!mounted || !data) return;
+        const rawAvail = (data as any).availableBalanceKobo ?? data.available;
+        if (rawAvail !== undefined && rawAvail !== null) {
+          const kobo = typeof rawAvail === "string" ? parseInt(rawAvail, 10) : rawAvail;
+          if (!isNaN(kobo)) {
+            setWalletBalance(Math.round(kobo / 100));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [setWalletBalance]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 animate-in fade-in duration-150">
@@ -229,7 +250,7 @@ export function SettingsOverviewView({
               Bluefixx Wallet
             </span>
             <div className="font-heading font-black text-3xl sm:text-4xl text-white tracking-tight">
-              ₦{(walletBalance || 85000).toLocaleString()}
+              ₦{(walletBalance ?? 0).toLocaleString()}
             </div>
             <Link
               href="/wallet"

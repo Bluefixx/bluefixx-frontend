@@ -146,12 +146,17 @@ const CANCELLATION_REASONS = [
   "Other reason",
 ];
 
-export default function JobPostingsView() {
+interface JobPostingsViewProps {
+  onJobsLoaded?: (count: number) => void;
+}
+
+export default function JobPostingsView({ onJobsLoaded }: JobPostingsViewProps = {}) {
   const router = useRouter();
 
   // Job data state
-  const [jobs, setJobs] = useState<PostedJob[]>(INITIAL_POSTED_JOBS);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>("BFX-20541");
+  const [jobs, setJobs] = useState<PostedJob[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Navigation subviews
   const [currentSubView, setCurrentSubView] = useState<JobSubView>("details");
@@ -169,10 +174,13 @@ export default function JobPostingsView() {
 
   // Load jobs from API
   React.useEffect(() => {
+    let mounted = true;
     async function fetchJobs() {
+      setIsLoading(true);
       try {
         const liveJobs = await getJobsApi();
-        if (liveJobs && liveJobs.length > 0) {
+        if (!mounted) return;
+        if (liveJobs && Array.isArray(liveJobs) && liveJobs.length > 0) {
           const mappedJobs: PostedJob[] = liveJobs.map((j) => ({
             id: j.id,
             title: j.title,
@@ -207,12 +215,26 @@ export default function JobPostingsView() {
           if (mappedJobs[0]?.id) {
             setSelectedJobId(mappedJobs[0].id);
           }
+          if (onJobsLoaded) onJobsLoaded(mappedJobs.length);
+        } else {
+          setJobs([]);
+          setSelectedJobId(null);
+          if (onJobsLoaded) onJobsLoaded(0);
         }
       } catch {
-        // Fallback to INITIAL_POSTED_JOBS
+        if (mounted) {
+          setJobs([]);
+          setSelectedJobId(null);
+          if (onJobsLoaded) onJobsLoaded(0);
+        }
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     }
     fetchJobs();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Perform cancellation
@@ -306,6 +328,21 @@ export default function JobPostingsView() {
         onBack={() => setCurrentSubView("compare")}
         onContinue={() => setCurrentSubView("compare")}
       />
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // LOADING STATE
+  // ══════════════════════════════════════════════════════════
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-neutral-200 rounded w-48" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="h-64 bg-neutral-100 rounded-2xl" />
+          <div className="md:col-span-2 h-96 bg-neutral-100 rounded-2xl" />
+        </div>
+      </div>
     );
   }
 

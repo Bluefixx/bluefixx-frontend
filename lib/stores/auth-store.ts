@@ -146,7 +146,7 @@ export const DEFAULT_AUTH_STATE: AuthState = {
   accessToken: null,
   activeRole: "customer",
   apprenticeTrainingCompleted: false,
-  walletBalance: 85000,
+  walletBalance: 0,
   locationName: "Independence Layout, Enugu",
   isLoading: false,
   challengeId: null,

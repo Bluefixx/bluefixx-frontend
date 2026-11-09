@@ -11,7 +11,7 @@ import PaymentReleasedView from "@/features/dashboard/components/PaymentReleased
 import RateArtisanView from "@/features/dashboard/components/RateArtisanView";
 import WarrantyClaimView from "@/features/dashboard/components/WarrantyClaimView";
 import WarrantyClaimSentView from "@/features/dashboard/components/WarrantyClaimSentView";
-import { getBookingsApi } from "@/lib/api";
+import { getBookingsApi, getJobsApi } from "@/lib/api";
 import { Booking } from "@/types/customer";
 
 function BookingsPageContent() {
@@ -28,31 +28,49 @@ function BookingsPageContent() {
       : "job-posts"
   );
 
+  const [jobPostsCount, setJobPostsCount] = useState<number>(0);
   const [activeBookingsList, setActiveBookingsList] = useState<Booking[]>([]);
   const [completedBookingsList, setCompletedBookingsList] = useState<Booking[]>([]);
+  const [selectedActiveBookingId, setSelectedActiveBookingId] = useState<string | null>(null);
+  const [selectedCompletedBookingId, setSelectedCompletedBookingId] = useState<string | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     async function fetchBookings() {
       try {
-        const [activeRes, completedRes] = await Promise.allSettled([
+        const [jobsRes, activeRes, completedRes] = await Promise.allSettled([
+          getJobsApi(),
           getBookingsApi({ tab: "active" }),
           getBookingsApi({ tab: "completed" }),
         ]);
-        if (activeRes.status === "fulfilled" && activeRes.value) {
-          setActiveBookingsList(activeRes.value);
+        if (!mounted) return;
+        if (jobsRes.status === "fulfilled" && Array.isArray(jobsRes.value)) {
+          setJobPostsCount(jobsRes.value.length);
         }
-        if (completedRes.status === "fulfilled" && completedRes.value) {
+        if (activeRes.status === "fulfilled" && Array.isArray(activeRes.value)) {
+          setActiveBookingsList(activeRes.value);
+          if (activeRes.value[0]?.id) {
+            setSelectedActiveBookingId(activeRes.value[0].id);
+          }
+        }
+        if (completedRes.status === "fulfilled" && Array.isArray(completedRes.value)) {
           setCompletedBookingsList(completedRes.value);
+          if (completedRes.value[0]?.id) {
+            setSelectedCompletedBookingId(completedRes.value[0].id);
+          }
         }
       } catch {
         // Fallback silently
       }
     }
     fetchBookings();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const [isSecuringActiveBooking, setIsSecuringActiveBooking] = useState(false);
-  const [activeViewMode, setActiveViewMode] = useState<"tracker" | "list">("tracker");
+  const [activeViewMode, setActiveViewMode] = useState<"tracker" | "list">("list");
   const [completedViewMode, setCompletedViewMode] = useState<
     "list" | "payment-released" | "rate-artisan" | "warranty-claim" | "warranty-claim-sent"
   >(
@@ -60,7 +78,7 @@ function BookingsPageContent() {
       ? "rate-artisan"
       : viewParam === "warranty"
       ? "warranty-claim"
-      : "payment-released"
+      : "list"
   );
 
   useEffect(() => {
@@ -87,7 +105,7 @@ function BookingsPageContent() {
               : "text-neutral-500 hover:text-neutral-800"
           }`}
         >
-          Job posts (3)
+          Job posts ({jobPostsCount})
         </button>
         <button
           type="button"
@@ -98,7 +116,7 @@ function BookingsPageContent() {
               : "text-neutral-500 hover:text-neutral-800"
           }`}
         >
-          Active bookings (1)
+          Active bookings ({activeBookingsList.length})
         </button>
         <button
           type="button"
@@ -109,14 +127,16 @@ function BookingsPageContent() {
               : "text-neutral-500 hover:text-neutral-800"
           }`}
         >
-          Completed (4)
+          Completed ({completedBookingsList.length})
         </button>
       </div>
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 1. JOB POSTS VIEW (Screenshots 1 - 5)                       */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {activeTab === "job-posts" && <JobPostingsView />}
+      {activeTab === "job-posts" && (
+        <JobPostingsView onJobsLoaded={(count) => setJobPostsCount(count)} />
+      )}
 
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 2. ACTIVE BOOKINGS                                         */}
@@ -132,7 +152,7 @@ function BookingsPageContent() {
           />
         ) : activeViewMode === "tracker" ? (
           <JobProgressTrackerView
-            jobId="BFX-20481"
+            jobId={selectedActiveBookingId || "BFX-20481"}
             onBack={() => setActiveViewMode("list")}
             onPaymentReleased={() => {
               handleTabChange("completed");
@@ -141,83 +161,70 @@ function BookingsPageContent() {
           />
         ) : (
           <div className="space-y-4">
-            {/* Booking 1: Scheduled / Active Tracker Available */}
-            <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
-                    PLUMBING
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-                    Scheduled · Escrow Secured
-                  </span>
+            {activeBookingsList.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center border border-neutral-200/80 shadow-2xs">
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-[#001B40] flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
                 </div>
-                <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                  Bathroom Plumbing Repair
-                </h3>
-                <p className="font-sans text-xs text-neutral-500 mt-1">
-                  Assigned to <span className="font-semibold text-neutral-800">Emeka Okafor</span> (Plumber ★ 4.9) · 14 Ogui Road, Independence Layout
+                <h3 className="font-heading font-bold text-base text-neutral-800">No active bookings in progress</h3>
+                <p className="font-sans text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
+                  When you accept an artisan quote or fund an escrow, your active scheduled bookings will appear here.
                 </p>
-              </div>
-
-              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2.5 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
-                <span className="font-sans font-bold text-base text-[#001B40]">
-                  ₦120,000
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveViewMode("tracker")}
-                    className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
-                  >
-                    Track Progress →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsSecuringActiveBooking(true)}
-                    className="px-3 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-medium cursor-pointer transition-colors"
-                  >
-                    Reschedule
-                  </button>
+                <div className="mt-4">
+                  <Link href="/post-job" className="px-4 py-2 rounded-xl bg-[#001B40] text-white text-xs font-semibold">
+                    Post a job
+                  </Link>
                 </div>
               </div>
-            </div>
-
-            {/* Booking 2: Artisan En Route */}
-            <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
-                    PLUMBING
-                  </span>
-                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                    Artisan En Route
-                  </span>
-                </div>
-                <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                  Kitchen Sink Pipe Leak &amp; Pressure Valve Repair
-                </h3>
-                <p className="font-sans text-xs text-neutral-500 mt-1">
-                  Assigned to <span className="font-semibold text-neutral-800">David Eze</span> (Plumber) · Arriving today around 2:00 PM
-                </p>
-              </div>
-
-              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
-                <span className="font-sans font-bold text-base text-[#001B40]">
-                  ₦18,500
-                </span>
-                <span className="text-[11px] text-neutral-400">Escrow Held Safely</span>
-                <button
-                  type="button"
-                  onClick={() => toast("Calling David Eze (+234 803 111 2233)...", { icon: "📞" })}
-                  className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
+            ) : (
+              activeBookingsList.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="bg-white rounded-2xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
-                  Contact Artisan
-                </button>
-              </div>
-            </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                        BOOKING #{booking.id.slice(0, 8)}
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                        {booking.status.replace(/_/g, " ")} · Escrow {booking.funded ? "Secured" : "Pending"}
+                      </span>
+                    </div>
+                    <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                      Service Booking
+                    </h3>
+                    <p className="font-sans text-xs text-neutral-500 mt-1">
+                      Visit: {booking.visitStart ? new Date(booking.visitStart).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "Scheduled"}
+                    </p>
+                  </div>
+
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2.5 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                    <span className="font-sans font-bold text-base text-[#001B40]">
+                      ₦{(parseInt(booking.base, 10) / 100).toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedActiveBookingId(booking.id);
+                          setActiveViewMode("tracker");
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer transition-colors shadow-2xs"
+                      >
+                        Track Progress →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )
       )}
@@ -234,12 +241,13 @@ function BookingsPageContent() {
           />
         ) : completedViewMode === "rate-artisan" ? (
           <RateArtisanView
-            onBack={() => setCompletedViewMode("payment-released")}
+            bookingId={selectedCompletedBookingId || "BFX-BK-20541"}
+            onBack={() => setCompletedViewMode("list")}
             onSubmitSuccess={() => setCompletedViewMode("list")}
           />
         ) : completedViewMode === "warranty-claim" ? (
           <WarrantyClaimView
-            onBack={() => setCompletedViewMode("payment-released")}
+            onBack={() => setCompletedViewMode("list")}
             onSubmitSuccess={() => setCompletedViewMode("warranty-claim-sent")}
           />
         ) : completedViewMode === "warranty-claim-sent" ? (
@@ -249,74 +257,75 @@ function BookingsPageContent() {
           />
         ) : (
           <div className="space-y-4">
-            {/* Completed Job Item 1: Bathroom Plumbing Repair (matches screenshot) */}
-            <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded uppercase">
-                    PLUMBING
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                    7-day warranty active
-                  </span>
+            {completedBookingsList.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center border border-neutral-200/80 shadow-2xs">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                 </div>
-                <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                  Bathroom Plumbing Repair
-                </h3>
-                <p className="font-sans text-xs text-neutral-500 mt-1">
-                  Completed by <span className="font-semibold text-neutral-800">Emeka Okafor</span> · Updated Today · 9:39
+                <h3 className="font-heading font-bold text-base text-neutral-800">No completed bookings yet</h3>
+                <p className="font-sans text-xs text-neutral-500 mt-1 max-w-sm mx-auto">
+                  Your completed jobs, warranty receipts, and review requests will be available here once an artisan finishes work.
                 </p>
               </div>
+            ) : (
+              completedBookingsList.map((booking) => (
+                <div
+                  key={booking.id}
+                  className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded uppercase">
+                        COMPLETED #{booking.id.slice(0, 8)}
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                        Warranty protected
+                      </span>
+                    </div>
+                    <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                      Service Booking
+                    </h3>
+                    <p className="font-sans text-xs text-neutral-500 mt-1">
+                      Completed {booking.completedAt ? new Date(booking.completedAt).toLocaleDateString("en-NG", { dateStyle: "medium" }) : "Recently"}
+                    </p>
+                  </div>
 
-              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
-                <span className="font-sans font-bold text-base text-[#001B40]">
-                  ₦120,000
-                </span>
-                <span className="text-[11px] text-emerald-600 font-semibold">
-                  ✓ Payment Released
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCompletedViewMode("warranty-claim")}
-                    className="px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold cursor-pointer"
-                  >
-                    Report Issue
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCompletedViewMode("payment-released")}
-                    className="px-3 py-1.5 rounded-lg bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
-                  >
-                    View Receipt
-                  </button>
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-neutral-100">
+                    <span className="font-sans font-bold text-base text-[#001B40]">
+                      ₦{(parseInt(booking.base, 10) / 100).toLocaleString()}
+                    </span>
+                    <span className="text-[11px] text-emerald-600 font-semibold">
+                      ✓ {booking.released ? "Payment Released" : "Completed"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCompletedBookingId(booking.id);
+                          setCompletedViewMode("rate-artisan");
+                        }}
+                        className="px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-xs font-semibold cursor-pointer"
+                      >
+                        Rate Artisan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCompletedBookingId(booking.id);
+                          setCompletedViewMode("payment-released");
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer"
+                      >
+                        View Receipt
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Completed Job Item 2: Electrical */}
-            <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-[11px] font-bold text-neutral-600 bg-neutral-100 px-2 py-0.5 rounded uppercase">
-                  ELECTRICAL
-                </span>
-                <h3 className="font-sans font-bold text-base text-[#0F1115] mt-1">
-                  Distribution Box Circuit Breaker Replacement
-                </h3>
-                <p className="font-sans text-xs text-neutral-500 mt-1">
-                  Completed by <span className="font-semibold text-neutral-800">John Okafor</span> · Warranty expired
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="font-sans font-bold text-base text-neutral-900">
-                  ₦22,000
-                </span>
-                <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
-                  ✓ Escrow Released
-                </p>
-              </div>
-            </div>
+              ))
+            )}
           </div>
         )
       )}

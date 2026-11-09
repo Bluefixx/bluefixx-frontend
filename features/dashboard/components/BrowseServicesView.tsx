@@ -3,9 +3,17 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CATEGORIES, SERVICES, Category, ServiceItem } from "../data/mock-dashboard-data";
 import { getServicesApi } from "@/lib/api/customer";
 import { TradeCategory } from "@/types/customer";
+
+interface ServiceItem {
+  id: string;
+  name: string;
+  categoryId: string;
+  categoryName: string;
+  startingPrice: number;
+  description: string;
+}
 
 export default function BrowseServicesView() {
   const router = useRouter();
@@ -16,17 +24,24 @@ export default function BrowseServicesView() {
   const [activeCategoryId, setActiveCategoryId] = useState<string>(initialCategory);
   const [searchTerm, setSearchTerm] = useState<string>(initialQuery);
   const [apiCategories, setApiCategories] = useState<TradeCategory[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let mounted = true;
+    setIsLoading(true);
     getServicesApi()
       .then((data) => {
-        if (mounted && Array.isArray(data) && data.length > 0) {
+        if (mounted && Array.isArray(data)) {
           setApiCategories(data);
         }
       })
       .catch((err) => {
-        console.debug("Services endpoint offline, using fallback catalog.", err);
+        console.debug("Services endpoint error:", err);
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
@@ -34,7 +49,7 @@ export default function BrowseServicesView() {
     };
   }, []);
 
-  // Compute all available services
+  // Compute all available services dynamically from API
   const allServices = useMemo<ServiceItem[]>(() => {
     if (apiCategories.length > 0) {
       const flattened: ServiceItem[] = [];
@@ -52,9 +67,9 @@ export default function BrowseServicesView() {
           });
         }
       });
-      if (flattened.length > 0) return flattened;
+      return flattened;
     }
-    return SERVICES;
+    return [];
   }, [apiCategories]);
 
   // Filter services by category and search
@@ -70,11 +85,28 @@ export default function BrowseServicesView() {
     });
   }, [allServices, activeCategoryId, searchTerm]);
 
+  // Dynamic category list (all + categories with real counts)
+  const categoriesList = useMemo(() => {
+    if (apiCategories.length > 0) {
+      return [
+        { id: "all", name: "All categories", count: allServices.length },
+        ...apiCategories.map((c) => ({
+          id: c.id,
+          name: c.name,
+          count: c.services?.length || 0,
+        })),
+      ];
+    }
+    return [{ id: "all", name: "All categories", count: 0 }];
+  }, [apiCategories, allServices]);
+
   // Group filtered services by category
   const groupedCategories = useMemo(() => {
-    const map = new Map<string, { category: Category; items: ServiceItem[] }>();
+    const map = new Map<string, { category: { id: string; name: string }; items: ServiceItem[] }>();
 
-    CATEGORIES.filter((c) => c.id !== "all").forEach((cat) => {
+    const categoriesToGroup = apiCategories.map((c) => ({ id: c.id, name: c.name }));
+
+    categoriesToGroup.forEach((cat) => {
       const items = filteredServices.filter((s) => s.categoryId === cat.id);
       if (items.length > 0) {
         map.set(cat.id, { category: cat, items });
@@ -82,7 +114,7 @@ export default function BrowseServicesView() {
     });
 
     return Array.from(map.values());
-  }, [filteredServices]);
+  }, [filteredServices, apiCategories]);
 
   const handleSelectService = (service: ServiceItem) => {
     router.push(`/dashboard/post-job?serviceId=${service.id}`);
@@ -101,7 +133,9 @@ export default function BrowseServicesView() {
           Browse services
         </h1>
         <p className="font-sans text-xs sm:text-sm text-neutral-500 mt-1">
-          29 services. Five categories. Find the right professional for the job.
+          {isLoading
+            ? "Loading available services catalog..."
+            : `${allServices.length} services · ${apiCategories.length} categories. Find the right professional for the job.`}
         </p>
       </div>
 
@@ -131,9 +165,9 @@ export default function BrowseServicesView() {
             onChange={(e) => setActiveCategoryId(e.target.value)}
             className="w-full sm:w-48 bg-transparent py-2 pl-3 pr-8 text-xs sm:text-sm text-neutral-700 font-medium focus:outline-none cursor-pointer appearance-none"
           >
-            {CATEGORIES.map((cat) => (
+            {categoriesList.map((cat) => (
               <option key={cat.id} value={cat.id}>
-                {cat.name}
+                {cat.name} ({cat.count})
               </option>
             ))}
           </select>
@@ -153,30 +187,38 @@ export default function BrowseServicesView() {
             <span className="font-sans font-bold text-[11px] tracking-wider text-neutral-400 uppercase px-3 py-1.5 block">
               CATEGORIES
             </span>
-            {CATEGORIES.map((cat) => {
-              const isSelected = activeCategoryId === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setActiveCategoryId(cat.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-blue-50/80 font-bold text-[#001B40]"
-                      : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 font-medium"
-                  }`}
-                >
-                  <span className="truncate">{cat.name}</span>
-                  <span
-                    className={`text-xs ml-2 ${
-                      isSelected ? "text-[#001B40] font-bold" : "text-neutral-400"
+            {isLoading ? (
+              <div className="space-y-2 p-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-9 bg-neutral-100 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            ) : (
+              categoriesList.map((cat) => {
+                const isSelected = activeCategoryId === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategoryId(cat.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-50/80 font-bold text-[#001B40]"
+                        : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 font-medium"
                     }`}
                   >
-                    {cat.count}
-                  </span>
-                </button>
-              );
-            })}
+                    <span className="truncate">{cat.name}</span>
+                    <span
+                      className={`text-xs ml-2 ${
+                        isSelected ? "text-[#001B40] font-bold" : "text-neutral-400"
+                      }`}
+                    >
+                      {cat.count}
+                    </span>
+                  </button>
+                );
+              })
+            )}
           </div>
 
           {/* Not Sure Where to Start CTA Card */}
@@ -198,21 +240,35 @@ export default function BrowseServicesView() {
 
         {/* Right Column: Grouped Category Services Cards */}
         <div className="lg:col-span-3 space-y-8">
-          {groupedCategories.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white rounded-2xl p-5 border border-neutral-200/80 space-y-3 animate-pulse">
+                  <div className="h-5 bg-neutral-200 rounded w-1/2" />
+                  <div className="h-4 bg-neutral-100 rounded w-3/4" />
+                  <div className="h-4 bg-neutral-100 rounded w-1/3 pt-3" />
+                </div>
+              ))}
+            </div>
+          ) : groupedCategories.length === 0 ? (
             <div className="bg-white rounded-2xl p-12 text-center border border-neutral-200/80">
               <p className="text-sm font-semibold text-neutral-800">No services found</p>
               <p className="text-xs text-neutral-500 mt-1">
-                Try searching for something else or clearing your category filter.
+                {searchTerm || activeCategoryId !== "all"
+                  ? "Try searching for something else or clearing your category filter."
+                  : "No services are currently published. Check back soon!"}
               </p>
-              <button
-                onClick={() => {
-                  setSearchTerm("");
-                  setActiveCategoryId("all");
-                }}
-                className="mt-4 px-4 py-2 rounded-xl bg-[#001B40] text-white text-xs font-semibold"
-              >
-                Reset filters
-              </button>
+              {(searchTerm || activeCategoryId !== "all") && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setActiveCategoryId("all");
+                  }}
+                  className="mt-4 px-4 py-2 rounded-xl bg-[#001B40] text-white text-xs font-semibold"
+                >
+                  Reset filters
+                </button>
+              )}
             </div>
           ) : (
             groupedCategories.map(({ category, items }) => (
@@ -223,13 +279,6 @@ export default function BrowseServicesView() {
                     <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115] flex items-center gap-2">
                       <span>{category.name}</span>
                     </h3>
-                    <p className="font-sans text-xs text-neutral-500">
-                      {category.id === "home-construction" && "Build, fix and finish your space"}
-                      {category.id === "repairs-technical" && "Get machines and appliances working again"}
-                      {category.id === "automotive" && "Vehicle diagnosis, repair, and detailing"}
-                      {category.id === "fashion-beauty" && "Personal grooming, tailoring, and style"}
-                      {category.id === "facility-property" && "Property maintenance, cleaning, and security"}
-                    </p>
                   </div>
                   <span className="text-xs text-neutral-400 font-medium">
                     {items.length} services

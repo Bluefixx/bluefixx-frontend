@@ -9,10 +9,18 @@ export async function getNotificationsApi(): Promise<NotificationItem[]> {
 }
 
 /**
- * Mark notification as read
+ * Mark notification(s) as read
  */
-export async function markNotificationReadApi(id: string): Promise<{ message: string }> {
-  return apiClient.post<{ message: string }>(`/notifications/${id}/read`, {});
+export async function markNotificationReadApi(ids: string | string[]): Promise<{ count: number }> {
+  const idsArray = Array.isArray(ids) ? ids : [ids];
+  return apiClient.post<{ count: number }>("/notifications/read", { ids: idsArray });
+}
+
+/**
+ * Get notifications summary
+ */
+export async function getNotificationsSummaryApi(): Promise<any> {
+  return apiClient.get<any>("/notifications/summary");
 }
 
 /**

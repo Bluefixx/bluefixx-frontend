@@ -47,7 +47,7 @@ export function TalentEditProfileView({
     setIsSaving(true);
     try {
       const updatedFullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
-      await updatePersonalDetailsApi({
+      await updateAccountProfileApi({
         fullName: updatedFullName,
       });
       if (user) {

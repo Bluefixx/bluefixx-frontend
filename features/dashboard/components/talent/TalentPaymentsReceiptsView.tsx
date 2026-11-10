@@ -190,7 +190,7 @@ export function TalentPaymentsReceiptsView({
             <div className="bg-white rounded-3xl border border-neutral-200/80 shadow-2xs overflow-hidden">
               <div className="divide-y divide-neutral-100">
                 {transactions.map((tx) => {
-                  const isPositive = tx.kind === "DEPOSIT" || tx.category === "deposit" || tx.category === "refund";
+                  const isPositive = tx.type === "DEPOSIT" || tx.type === "REFUND";
                   const formattedAmount = formatNaira(Math.abs(Number(tx.amount || 0)), true);
                   const displayDate = tx.createdAt
                     ? new Date(tx.createdAt).toLocaleDateString("en-GB", {

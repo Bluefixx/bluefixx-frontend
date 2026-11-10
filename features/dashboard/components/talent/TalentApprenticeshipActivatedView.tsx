@@ -18,12 +18,12 @@ export function TalentApprenticeshipActivatedView({
   onBack,
   onViewApprenticeship,
   onManageArtisan,
-  amount = "₦150,000",
-  programmeTitle = "Welding & Metal Fabrication Apprenticeship",
-  masterArtisan = "John Obiora",
-  reference = "BFX-TRN-4417202",
-  paymentMethod = "Paystack · Debit Card **** 4012",
-  startDate = "1 September 2025",
+  amount = "₦0",
+  programmeTitle = "Apprenticeship Programme",
+  masterArtisan = "Verified Master Artisan",
+  reference = "BFX-TRN",
+  paymentMethod = "Payment confirmed",
+  startDate = "Upcoming intake",
 }: TalentApprenticeshipActivatedViewProps) {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 select-none animate-in fade-in duration-200">

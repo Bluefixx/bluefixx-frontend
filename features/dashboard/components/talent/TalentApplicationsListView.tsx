@@ -36,58 +36,29 @@ export function TalentApplicationsListView({
   onMakePayment,
   onFindMore,
 }: TalentApplicationsListViewProps) {
-  const defaultApplications: TalentApplicationItem[] = [
-    {
-      id: "app-1",
-      programmeTitle: "Electrical Installation",
-      artisanName: "John Obiora",
-      location: "Enugu",
-      appliedDate: "2 Feb 2026",
-      status: "accepted",
-      startDate: "3 Feb 2026",
-      schedule: "Monday - Saturday · 8:00 AM - 5:00 PM",
-      fee: "₦150,000",
-      duration: "3 months",
-    },
-    {
-      id: "app-2",
-      programmeTitle: "Solar Installation",
-      artisanName: "John Obiora",
-      location: "Enugu",
-      appliedDate: "9 Aug 2026",
-      status: "under_review",
-      fee: "₦80,000",
-      duration: "2 months",
-    },
-    {
-      id: "app-3",
-      programmeTitle: "AC Repair & Servicing",
-      artisanName: "Welding Workshop",
-      location: "Enugu",
-      appliedDate: "28 Jul 2026",
-      status: "declined",
-      declineReason:
-        "All places on this apprenticeship were filled. Other workshops in Enugu are still taking apprentices.",
-      fee: "₦65,000",
-      duration: "3 months",
-    },
-  ];
-
-  const [applications, setApplications] = useState<TalentApplicationItem[]>(defaultApplications);
+  const [applications, setApplications] = useState<TalentApplicationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+    setIsLoading(true);
+
     getTalentApplicationsApi()
       .then((items) => {
-        if (!isMounted || !items || items.length === 0) return;
+        if (!isMounted) return;
+        if (!items || items.length === 0) {
+          setApplications([]);
+          return;
+        }
+
         const mapped: TalentApplicationItem[] = items.map((app) => {
           let uiStatus: ApplicationStatus = "under_review";
           if (app.status === "ACCEPTED") uiStatus = "accepted";
           else if (app.status === "DECLINED" || app.status === "EXPIRED" || app.status === "WITHDRAWN")
             uiStatus = "declined";
 
-          const feeKobo = Number(app.program?.fee || 5000000);
-          const feeNgn = `₦${(feeKobo / 100).toLocaleString("en-NG")}`;
+          const feeKobo = Number(app.program?.fee || 0);
+          const feeNgn = feeKobo > 0 ? `₦${(feeKobo / 100).toLocaleString("en-NG")}` : "₦0";
 
           return {
             id: app.id,
@@ -104,15 +75,18 @@ export function TalentApplicationsListView({
             status: uiStatus,
             startDate: "Upcoming intake",
             schedule: "Monday - Saturday · 8:00 AM - 5:00 PM",
-            declineReason: app.decisionReason,
+            declineReason: app.decisionReason || "Places were filled on this apprenticeship intake.",
             fee: feeNgn,
-            duration: `${app.program?.durationWeeks ? Math.round(app.program.durationWeeks / 4) : 3} months`,
+            duration: app.program?.durationWeeks ? `${app.program.durationWeeks} weeks` : "Flexible",
           };
         });
         setApplications(mapped);
       })
       .catch(() => {
-        // Retain fallback applications
+        if (isMounted) setApplications([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
 
     return () => {
@@ -162,8 +136,26 @@ export function TalentApplicationsListView({
         </p>
       </div>
 
-      {/* List or Empty State */}
-      {applications.length > 0 ? (
+      {/* List, Skeleton or Empty State */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4 animate-pulse"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <div className="h-5 bg-neutral-100 rounded-md w-1/2" />
+                  <div className="h-3 bg-neutral-100 rounded-md w-1/3" />
+                </div>
+                <div className="h-6 w-20 bg-neutral-100 rounded-full" />
+              </div>
+              <div className="h-16 bg-neutral-50 rounded-2xl" />
+            </div>
+          ))}
+        </div>
+      ) : applications.length > 0 ? (
         <div className="space-y-4">
           {applications.map((app) => (
             <div

@@ -248,8 +248,8 @@ export function TalentMessagesView({
                   : "hover:bg-neutral-50 border border-transparent"
               }`}
             >
-              <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-200 shrink-0">
-                <Image src="/images/david.jpg" alt="John Obiora" fill className="object-cover" />
+              <div className="w-11 h-11 rounded-full bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                <span>JO</span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
@@ -277,8 +277,8 @@ export function TalentMessagesView({
                   : "hover:bg-neutral-50 border border-transparent"
               }`}
             >
-              <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-200 shrink-0">
-                <Image src="/images/james.jpg" alt="Chinedu Okafor" fill className="object-cover" />
+              <div className="w-11 h-11 rounded-full bg-[#074292] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                <span>CO</span>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
@@ -325,8 +325,8 @@ export function TalentMessagesView({
           {/* Top Chat Header */}
           <div className="p-5 border-b border-neutral-100 flex items-center justify-between gap-4 bg-neutral-50/50">
             <div className="flex items-center gap-3">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-200 shrink-0">
-                <Image src="/images/david.jpg" alt="John Obiora" fill className="object-cover" />
+              <div className="w-10 h-10 rounded-full bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                <span>JO</span>
               </div>
               <div>
                 <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">

@@ -17,17 +17,13 @@ interface TalentRequestRefundViewProps {
 export function TalentRequestRefundView({
   onBack,
   onSubmitSuccess,
-  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
-  programmeTitle = "Welding & Metal Fabrication",
-  daysUsed = "12 of 30 days used",
-  heldInEscrow = "₦150,000",
+  enrollmentId = "",
+  programmeTitle = "Apprenticeship Programme",
+  daysUsed = "Within 30-day window",
+  heldInEscrow = "₦0",
 }: TalentRequestRefundViewProps) {
-  const [selectedReasons, setSelectedReasons] = useState<string[]>([
-    "Sessions cancelled or missed",
-  ]);
-  const [description, setDescription] = useState(
-    "Four sessions were cancelled in two weeks with no make-up dates provided by the workshop."
-  );
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+  const [description, setDescription] = useState("");
   const [refundTo, setRefundTo] = useState("Bluefixx wallet (within 24 hours)");
   const [isSubmitting, setIsSubmitting] = useState(false);
 

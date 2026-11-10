@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { payTalentEnrollmentApi } from "@/lib/api/talent";
 import { getWalletApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { formatNaira } from "@/lib/utils/currency";
 
 interface TalentApprenticeshipPaymentViewProps {
   onBack: () => void;
@@ -22,11 +23,11 @@ export function TalentApprenticeshipPaymentView({
   onOpenRefundPolicy,
   onPaymentSuccess,
   onPaymentFailed,
-  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
-  programmeTitle = "Welding & Metal Fabrication",
-  artisanName = "John Obiora",
-  fee = "₦150,000",
-  walletBalance: defaultWalletBalance = "₦185,500",
+  enrollmentId = "",
+  programmeTitle = "Apprenticeship Programme",
+  artisanName = "Verified Master Artisan",
+  fee = "₦0",
+  walletBalance: defaultWalletBalance = "₦0",
 }: TalentApprenticeshipPaymentViewProps) {
   const [paymentMethod, setPaymentMethod] = useState<"wallet" | "paystack">("wallet");
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -40,8 +41,8 @@ export function TalentApprenticeshipPaymentView({
     getWalletApi()
       .then((data) => {
         if (!isMounted || !data) return;
-        const availableKobo = Number(data.available || 18550000);
-        setWalletBalance(`₦${(availableKobo / 100).toLocaleString("en-NG")}`);
+        const availableKobo = Number(data.available ?? 0);
+        setWalletBalance(formatNaira(availableKobo, true));
       })
       .catch(() => {
         // Retain fallback wallet balance

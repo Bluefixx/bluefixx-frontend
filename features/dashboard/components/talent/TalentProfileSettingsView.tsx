@@ -41,13 +41,17 @@ export function TalentProfileSettingsView({
       {/* Main Profile Info Card */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative w-16 h-16 rounded-full overflow-hidden bg-neutral-100 border-2 border-white shadow-xs shrink-0">
-            <Image
-              src="/images/david.jpg"
-              alt={userName}
-              fill
-              className="object-cover"
-            />
+          <div className="relative w-16 h-16 rounded-full overflow-hidden bg-[#001B40] text-white flex items-center justify-center font-heading font-extrabold text-xl border-2 border-white shadow-xs shrink-0">
+            {user?.avatarUrl ? (
+              <Image
+                src={user.avatarUrl}
+                alt={userName}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <span>{userName.charAt(0).toUpperCase()}</span>
+            )}
           </div>
           <div>
             <h2 className="font-heading font-extrabold text-lg sm:text-xl text-[#0F1115]">

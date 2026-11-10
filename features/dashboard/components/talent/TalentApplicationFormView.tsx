@@ -20,12 +20,12 @@ interface TalentApplicationFormViewProps {
 
 export function TalentApplicationFormView({
   onBack,
-  programId = "8d23ca35-8dac-409e-922b-43c5ef62c7d8",
-  programmeTitle = "Welding & Metal Fabrication Apprenticeship",
-  artisanName = "John Obiora",
-  artisanAvatar = "/images/david.jpg",
-  duration = "3 months",
-  fee = "₦50,000",
+  programId = "",
+  programmeTitle = "Apprenticeship Programme",
+  artisanName = "Verified Master Artisan",
+  artisanAvatar,
+  duration = "Flexible",
+  fee = "₦0",
   onSubmitSuccess,
 }: TalentApplicationFormViewProps) {
   // Form fields state
@@ -381,13 +381,17 @@ export function TalentApplicationFormView({
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-5 sticky top-24">
             {/* Master Mini Header */}
             <div className="flex items-center gap-3 pb-4 border-b border-neutral-100">
-              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-100 shrink-0">
-                <Image
-                  src={artisanAvatar}
-                  alt={artisanName}
-                  fill
-                  className="object-cover"
-                />
+              <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                {artisanAvatar ? (
+                  <Image
+                    src={artisanAvatar}
+                    alt={artisanName}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <span>{artisanName.charAt(0).toUpperCase()}</span>
+                )}
               </div>
               <div>
                 <h4 className="font-sans font-bold text-xs sm:text-sm text-[#0F1115]">

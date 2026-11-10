@@ -14,10 +14,10 @@ interface TalentRefundPolicyViewProps {
 export function TalentRefundPolicyView({
   onBack,
   onRequestRefund,
-  programmeTitle = "Welding & Metal Fabrication",
-  feePaid = "₦150,000",
-  startDate = "1 Sep 2025",
-  windowEnd = "1 Oct 2025",
+  programmeTitle = "Apprenticeship Programme",
+  feePaid = "₦0",
+  startDate = "Active intake",
+  windowEnd = "30 days from start",
 }: TalentRefundPolicyViewProps) {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 select-none animate-in fade-in duration-200">

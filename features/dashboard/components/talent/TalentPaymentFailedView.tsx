@@ -14,7 +14,7 @@ export function TalentPaymentFailedView({
   onBack,
   onUseWallet,
   onTryAgain,
-  amount = "₦150,000",
+  amount = "₦0",
   holdHours = 48,
 }: TalentPaymentFailedViewProps) {
   return (

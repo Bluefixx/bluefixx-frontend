@@ -75,7 +75,7 @@ function DashboardSidebarContent({
   const isMyApplicationsActive = pathname.includes("/dashboard") && (viewParam === "applications-list" || viewParam === "apply" || viewParam === "application-sent" || viewParam === "application-accepted" || viewParam === "application-declined");
   const isLearnActive = isFindApprenticeshipsActive || isMyApplicationsActive;
   const isMyApprenticeshipActive = pathname.includes("/dashboard") && viewParam === "progress" && currentTab !== "payments";
-  const isPaymentsReceiptsActive = pathname.includes("/dashboard") && (viewParam === "refund-policy" || viewParam === "request-refund" || (viewParam === "progress" && currentTab === "payments"));
+  const isPaymentsReceiptsActive = pathname.includes("/dashboard") && (viewParam === "payments-receipts" || viewParam === "refund-policy" || viewParam === "request-refund" || (viewParam === "progress" && currentTab === "payments"));
   const isProgressActive = isMyApprenticeshipActive || isPaymentsReceiptsActive;
 
   // Artisan-specific navigation state
@@ -290,7 +290,7 @@ function DashboardSidebarContent({
                       My apprenticeship
                     </Link>
                     <Link
-                      href="/dashboard?view=refund-policy"
+                      href="/dashboard?view=payments-receipts"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isPaymentsReceiptsActive

@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { getTalentProgramsApi } from "@/lib/api/talent";
+import { getServicesApi } from "@/lib/api/customer";
+import { formatNaira } from "@/lib/utils/currency";
 
-interface ApprenticeshipProgramme {
+export interface ApprenticeshipProgramme {
   id: string;
   title: string;
   trade: string;
   artisanName: string;
-  artisanAvatar: string;
+  artisanAvatar?: string;
   isVerified: boolean;
   rating: number;
   experienceYears: number;
@@ -28,130 +30,103 @@ export function TalentDiscoveryView({
   onBack,
   onSelectProgramme,
 }: TalentDiscoveryViewProps) {
-  const [selectedTrade, setSelectedTrade] = useState("All trades");
+  const [selectedTradeId, setSelectedTradeId] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [trades, setTrades] = useState<{ id: string; name: string }[]>([
+    { id: "all", name: "All trades" },
+  ]);
+  const [programmes, setProgrammes] = useState<ApprenticeshipProgramme[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const trades = ["All trades", "Welding", "Electrical", "Plumbing", "Carpentry"];
-
-  const defaultProgrammes: ApprenticeshipProgramme[] = [
-    {
-      id: "prog-1",
-      title: "Welding & Metal Fabrication Apprenticeship",
-      trade: "Welding",
-      artisanName: "John Obiora",
-      artisanAvatar: "/images/david.jpg",
-      isVerified: true,
-      rating: 4.9,
-      experienceYears: 7,
-      location: "Emene Industrial Layout",
-      duration: "3 months",
-      fee: "₦50,000",
-      placesLeft: 1,
-    },
-    {
-      id: "prog-2",
-      title: "Home Electrical Installation Apprenticeship",
-      trade: "Electrical",
-      artisanName: "Chinedu Okafor",
-      artisanAvatar: "/images/james.jpg",
-      isVerified: true,
-      rating: 4.8,
-      experienceYears: 5,
-      location: "New Haven",
-      duration: "3 months",
-      fee: "₦40,000",
-      placesLeft: 1,
-    },
-    {
-      id: "prog-3",
-      title: "Pipe Laying & Sanitary Plumbing",
-      trade: "Plumbing",
-      artisanName: "Michael Obi",
-      artisanAvatar: "/images/workers.png",
-      isVerified: true,
-      rating: 4.7,
-      experienceYears: 6,
-      location: "Independence Layout",
-      duration: "4 months",
-      fee: "₦60,000",
-      placesLeft: 2,
-    },
-    {
-      id: "prog-4",
-      title: "Modern Furniture & Cabinetry",
-      trade: "Carpentry",
-      artisanName: "Emeka Nwankwo",
-      artisanAvatar: "/images/customers.png",
-      isVerified: true,
-      rating: 4.9,
-      experienceYears: 9,
-      location: "Ogui Road",
-      duration: "6 months",
-      fee: "₦75,000",
-      placesLeft: 1,
-    },
-  ];
-
-  const [programmes, setProgrammes] = useState<ApprenticeshipProgramme[]>(defaultProgrammes);
-
+  // Fetch real trade categories from service catalog
   useEffect(() => {
     let isMounted = true;
-    getTalentProgramsApi({
-      search: searchQuery || undefined,
-    })
-      .then((items) => {
-        if (!isMounted) return;
-        if (items && items.length > 0) {
-          const mapped: ApprenticeshipProgramme[] = items.map((p) => {
-            const feeKobo = Number(p.fee || 5000000);
-            const feeFormatted = `₦${(feeKobo / 100).toLocaleString("en-NG")}`;
-            const ratingScore =
-              p.artisan?.ArtisanProfile_userId?.ratingTotal &&
-                p.artisan?.ArtisanProfile_userId?.ratingCount
-                ? Number(
-                  (
-                    p.artisan.ArtisanProfile_userId.ratingTotal /
-                    p.artisan.ArtisanProfile_userId.ratingCount
-                  ).toFixed(1)
-                )
-                : 4.9;
-
-            return {
-              id: p.id,
-              title: p.title,
-              trade: p.trade?.name || "Trade",
-              artisanName: p.artisan?.fullName || "Verified Artisan",
-              artisanAvatar: p.artisan?.avatarUrl || "/images/david.jpg",
-              isVerified: p.artisan?.ArtisanProfile_userId?.approval === "APPROVED",
-              rating: ratingScore,
-              experienceYears: p.artisan?.ArtisanProfile_userId?.yearsExperience ?? 5,
-              location: p.location || "Enugu",
-              duration: `${p.durationWeeks ? Math.round(p.durationWeeks / 4) : 3} months`,
-              fee: feeFormatted,
-              placesLeft: p.placesLeft ?? 1,
-            };
-          });
-          setProgrammes(mapped);
-        }
+    getServicesApi()
+      .then((categories) => {
+        if (!isMounted || !categories) return;
+        const mappedTrades = categories.map((cat) => ({
+          id: cat.id,
+          name: cat.name,
+        }));
+        setTrades([{ id: "all", name: "All trades" }, ...mappedTrades]);
       })
       .catch(() => {
-        // Retain default programs on offline/fallback
+        // Fallback default trade names if categories endpoint fails
+        setTrades([
+          { id: "all", name: "All trades" },
+          { id: "welding", name: "Welding" },
+          { id: "electrical", name: "Electrical" },
+          { id: "plumbing", name: "Plumbing" },
+          { id: "carpentry", name: "Carpentry" },
+        ]);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [searchQuery, selectedTrade]);
+  }, []);
 
-  const filteredProgrammes = programmes.filter((p) => {
-    const matchesTrade = selectedTrade === "All trades" || p.trade === selectedTrade;
-    const matchesQuery =
-      !searchQuery ||
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.artisanName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.trade.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTrade && matchesQuery;
-  });
+  // Fetch real talent apprenticeship programmes
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    const tradeParam = selectedTradeId !== "all" ? selectedTradeId : undefined;
+
+    getTalentProgramsApi({
+      search: searchQuery.trim() || undefined,
+      tradeId: tradeParam,
+    })
+      .then((items) => {
+        if (!isMounted) return;
+        if (!items || items.length === 0) {
+          setProgrammes([]);
+          return;
+        }
+
+        const mapped: ApprenticeshipProgramme[] = items.map((p) => {
+          const feeKobo = Number(p.fee || 0);
+          const feeFormatted = formatNaira(feeKobo, true);
+          const ratingScore =
+            p.artisan?.ArtisanProfile_userId?.ratingTotal &&
+            p.artisan?.ArtisanProfile_userId?.ratingCount
+              ? Number(
+                  (
+                    p.artisan.ArtisanProfile_userId.ratingTotal /
+                    p.artisan.ArtisanProfile_userId.ratingCount
+                  ).toFixed(1)
+                )
+              : 5.0;
+
+          return {
+            id: p.id,
+            title: p.title,
+            trade: p.trade?.name || "Technical Trade",
+            artisanName: p.artisan?.fullName || "Verified Artisan",
+            artisanAvatar: p.artisan?.avatarUrl,
+            isVerified: p.artisan?.ArtisanProfile_userId?.approval === "APPROVED",
+            rating: ratingScore,
+            experienceYears: p.artisan?.ArtisanProfile_userId?.yearsExperience ?? 5,
+            location: p.location || "Enugu",
+            duration: p.durationWeeks ? `${p.durationWeeks} weeks` : "Flexible",
+            fee: feeFormatted,
+            placesLeft: p.placesLeft ?? 1,
+          };
+        });
+
+        setProgrammes(mapped);
+      })
+      .catch(() => {
+        if (isMounted) setProgrammes([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchQuery, selectedTradeId]);
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
@@ -172,7 +147,7 @@ export function TalentDiscoveryView({
           Learn from a master artisan
         </h1>
         <p className="font-sans text-xs sm:text-sm text-neutral-500 mt-1">
-          Verified programmes in Enugu
+          Verified apprenticeship programmes in Enugu
         </p>
       </div>
 
@@ -197,23 +172,46 @@ export function TalentDiscoveryView({
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {trades.map((trade) => (
           <button
-            key={trade}
+            key={trade.id}
             type="button"
-            onClick={() => setSelectedTrade(trade)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${selectedTrade === trade
-              ? "bg-[#001B40] text-white shadow-xs"
-              : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-              }`}
+            onClick={() => setSelectedTradeId(trade.id)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              selectedTradeId === trade.id
+                ? "bg-[#001B40] text-white shadow-xs"
+                : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
+            }`}
           >
-            {trade}
+            {trade.name}
           </button>
         ))}
       </div>
 
-      {/* Programmes Grid or Empty State */}
-      {filteredProgrammes.length > 0 ? (
+      {/* Loading Skeleton */}
+      {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-          {filteredProgrammes.map((prog) => (
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 animate-pulse"
+            >
+              <div className="h-5 bg-neutral-100 rounded-md w-3/4" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-neutral-100 shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-4 bg-neutral-100 rounded-md w-1/3" />
+                  <div className="h-3 bg-neutral-100 rounded-md w-1/2" />
+                </div>
+              </div>
+              <div className="pt-3 border-t border-neutral-100 flex items-center justify-between">
+                <div className="h-4 bg-neutral-100 rounded-md w-24" />
+                <div className="h-4 bg-neutral-100 rounded-md w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : programmes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+          {programmes.map((prog) => (
             <div
               key={prog.id}
               onClick={() => onSelectProgramme(prog)}
@@ -226,13 +224,17 @@ export function TalentDiscoveryView({
 
                 {/* Master Artisan Row */}
                 <div className="flex items-center gap-3">
-                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-100 shrink-0">
-                    <Image
-                      src={prog.artisanAvatar}
-                      alt={prog.artisanName}
-                      fill
-                      className="object-cover"
-                    />
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                    {prog.artisanAvatar ? (
+                      <Image
+                        src={prog.artisanAvatar}
+                        alt={prog.artisanName}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span>{prog.artisanName.charAt(0).toUpperCase()}</span>
+                    )}
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
@@ -246,7 +248,7 @@ export function TalentDiscoveryView({
                       )}
                     </div>
                     <p className="font-sans text-[11px] text-neutral-400 mt-0.5">
-                      ★ {prog.rating} · {prog.experienceYears} years · {prog.location}
+                      ★ {prog.rating} · {prog.experienceYears} yrs exp · {prog.location}
                     </p>
                   </div>
                 </div>
@@ -264,14 +266,14 @@ export function TalentDiscoveryView({
                 </div>
 
                 <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
-                  {prog.placesLeft} place left
+                  {prog.placesLeft} {prog.placesLeft === 1 ? "place" : "places"} left
                 </span>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        /* Empty State Card matching Figma Talent Web · Discover: no programmes nearby */
+        /* Dynamic Empty State */
         <div className="max-w-xl mx-auto bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/80 shadow-2xs text-center space-y-6 mt-6">
           <div className="w-16 h-16 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 mx-auto">
             <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -282,34 +284,38 @@ export function TalentDiscoveryView({
 
           <div className="space-y-2">
             <h3 className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
-              No apprenticeships near you yet
+              No apprenticeships found
             </h3>
             <p className="font-sans text-xs sm:text-sm text-neutral-500 max-w-md mx-auto leading-relaxed">
-              There are no open places in {selectedTrade !== "All trades" ? selectedTrade : "Welding"} within 10 km. Try another trade, widen your area, or get notified when a place opens.
+              {searchQuery
+                ? `No apprenticeship programmes match "${searchQuery}". Try a different keyword or trade.`
+                : "There are currently no open programmes published for this trade. Check back soon or select another category."}
             </p>
           </div>
 
           <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedTrade("All trades");
-                setSearchQuery("");
-              }}
-              className="px-6 py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-700 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
-            >
-              Change filters
-            </button>
+            {(selectedTradeId !== "all" || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTradeId("all");
+                  setSearchQuery("");
+                }}
+                className="px-6 py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-700 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
+              >
+                Clear filters
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {
                 import("react-hot-toast").then(({ default: toast }) =>
-                  toast.success("We will notify you when places open!")
+                  toast.success("We will notify you when new apprenticeships open!")
                 );
               }}
               className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
             >
-              Notify me
+              Get notified
             </button>
           </div>
         </div>

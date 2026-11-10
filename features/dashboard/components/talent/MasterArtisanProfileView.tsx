@@ -19,39 +19,74 @@ export function MasterArtisanProfileView({
   programId,
 }: MasterArtisanProfileViewProps) {
   const [selectedProgramme, setSelectedProgramme] = useState({
-    id: programId || "prog-welding-1",
-    title: "Welding & Metal Fabrication Apprenticeship",
-    fee: "₦50,000",
-    duration: "3 months",
+    id: programId || "",
+    title: "Apprenticeship Programme",
+    fee: "₦0",
+    duration: "Flexible",
   });
 
-  const [skills, setSkills] = useState<string[]>([
-    "Workshop safety",
-    "Gas welding",
-    "Measurement & cutting",
-    "Gate fabrication",
-    "Arc welding",
-    "Grinding & finishing",
-  ]);
+  const [artisanData, setArtisanData] = useState<{
+    name: string;
+    avatarUrl?: string;
+    location: string;
+    rating: number;
+    experienceYears: number;
+    trade: string;
+  }>({
+    name: "Master Artisan",
+    avatarUrl: undefined,
+    location: "Enugu",
+    rating: 5.0,
+    experienceYears: 5,
+    trade: "Technical Trade",
+  });
 
+  const [skills, setSkills] = useState<string[]>([]);
   const [placesRemaining, setPlacesRemaining] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!programId) return;
+    if (!programId) {
+      setIsLoading(false);
+      return;
+    }
     let isMounted = true;
+    setIsLoading(true);
 
     getTalentProgramByIdApi(programId)
       .then((detail) => {
         if (!isMounted || !detail) return;
-        const feeKobo = Number(detail.fee || 5000000);
-        const feeNgn = `₦${(feeKobo / 100).toLocaleString("en-NG")}`;
+        const feeKobo = Number(detail.fee || 0);
+        const feeNgn = feeKobo > 0 ? `₦${(feeKobo / 100).toLocaleString("en-NG")}` : "₦0";
 
         setSelectedProgramme({
           id: detail.id,
-          title: detail.title,
+          title: detail.title || "Apprenticeship Programme",
           fee: feeNgn,
-          duration: `${detail.durationWeeks ? Math.round(detail.durationWeeks / 4) : 3} months`,
+          duration: detail.durationWeeks ? `${detail.durationWeeks} weeks` : "Flexible",
         });
+
+        if (detail.artisan) {
+          const ratingScore =
+            detail.artisan.ArtisanProfile_userId?.ratingTotal &&
+            detail.artisan.ArtisanProfile_userId?.ratingCount
+              ? Number(
+                  (
+                    detail.artisan.ArtisanProfile_userId.ratingTotal /
+                    detail.artisan.ArtisanProfile_userId.ratingCount
+                  ).toFixed(1)
+                )
+              : 5.0;
+
+          setArtisanData({
+            name: detail.artisan.fullName || "Verified Master Artisan",
+            avatarUrl: detail.artisan.avatarUrl,
+            location: detail.location || "Enugu",
+            rating: ratingScore,
+            experienceYears: detail.artisan.ArtisanProfile_userId?.yearsExperience ?? 5,
+            trade: detail.trade?.name || detail.title || "Apprenticeship",
+          });
+        }
 
         if (detail.outcomes && detail.outcomes.length > 0) {
           setSkills(detail.outcomes);
@@ -62,7 +97,10 @@ export function MasterArtisanProfileView({
         }
       })
       .catch(() => {
-        // Retain fallback design state
+        // Fallback gracefully
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
       });
 
     return () => {
@@ -112,18 +150,22 @@ export function MasterArtisanProfileView({
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/80 shadow-2xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-white shadow-xs bg-neutral-100 shrink-0">
-              <Image
-                src="/images/david.jpg"
-                alt="John Obiora"
-                fill
-                className="object-cover"
-              />
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 border-white shadow-xs bg-[#001B40] text-white flex items-center justify-center font-heading font-extrabold text-2xl shrink-0">
+              {artisanData.avatarUrl ? (
+                <Image
+                  src={artisanData.avatarUrl}
+                  alt={artisanData.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <span>{artisanData.name.charAt(0).toUpperCase()}</span>
+              )}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
-                  John Obiora
+                  {artisanData.name}
                 </h2>
                 <span className="text-[11px] font-bold text-white bg-[#001B40] px-2.5 py-0.5 rounded-full">
                   Master Artisan
@@ -133,7 +175,7 @@ export function MasterArtisanProfileView({
                 </span>
               </div>
               <p className="font-sans text-xs sm:text-sm text-neutral-500 mt-1">
-                Welding & metal fabrication · Emene workshop, Enugu
+                {artisanData.trade} · {artisanData.location}
               </p>
             </div>
           </div>
@@ -142,16 +184,16 @@ export function MasterArtisanProfileView({
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-100 text-center min-w-[80px]">
               <span className="font-sans font-bold text-lg text-[#001B40] block">
-                12
+                {placesRemaining}
               </span>
               <span className="font-sans text-[10px] text-neutral-400 font-medium">
-                Apprentices trained
+                Places open
               </span>
             </div>
 
             <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-100 text-center min-w-[80px]">
               <span className="font-sans font-bold text-lg text-[#001B40] block">
-                4.9
+                ★ {artisanData.rating}
               </span>
               <span className="font-sans text-[10px] text-neutral-400 font-medium">
                 Rating
@@ -160,7 +202,7 @@ export function MasterArtisanProfileView({
 
             <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-100 text-center min-w-[80px]">
               <span className="font-sans font-bold text-lg text-[#001B40] block">
-                7 yrs
+                {artisanData.experienceYears} yrs
               </span>
               <span className="font-sans text-[10px] text-neutral-400 font-medium">
                 Experience
@@ -179,16 +221,22 @@ export function MasterArtisanProfileView({
             <h3 className="font-heading font-bold text-base text-[#0F1115]">
               What you will learn
             </h3>
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill, idx) => (
-                <span
-                  key={idx}
-                  className="px-3.5 py-1.5 rounded-full bg-neutral-100/80 text-neutral-700 font-sans text-xs font-semibold"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
+            {skills.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {skills.map((skill, idx) => (
+                  <span
+                    key={idx}
+                    className="px-3.5 py-1.5 rounded-full bg-neutral-100/80 text-neutral-700 font-sans text-xs font-semibold"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-neutral-400">
+                Key workshop skills and techniques tailored to this practical apprenticeship.
+              </p>
+            )}
           </div>
 
           {/* Apprenticeships offered */}

@@ -19,14 +19,14 @@ interface TalentApplicationDeclinedDetailViewProps {
 export function TalentApplicationDeclinedDetailView({
   onBack,
   onFindOther,
-  programmeTitle = "Welding & Metal Fabrication Apprenticeship",
-  artisanName = "John Obiora",
-  artisanTitle = "Master Welder & Fabricator · 7 years",
-  artisanAvatar = "/images/david.jpg",
-  startDate = "1 September 2025",
-  duration = "3 months",
-  location = "Emene Industrial Layout, Enugu",
-  fee = "₦150,000",
+  programmeTitle = "Apprenticeship Programme",
+  artisanName = "Verified Master Artisan",
+  artisanTitle = "Master Artisan",
+  artisanAvatar,
+  startDate = "Upcoming intake",
+  duration = "Flexible",
+  location = "Enugu",
+  fee = "₦0",
 }: TalentApplicationDeclinedDetailViewProps) {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 select-none animate-in fade-in duration-200">
@@ -74,13 +74,17 @@ export function TalentApplicationDeclinedDetailView({
 
           {/* Master Artisan Card */}
           <div className="p-4 sm:p-5 rounded-2xl bg-neutral-50/80 border border-neutral-200/70 flex items-center gap-4">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-200 shrink-0">
-              <Image
-                src={artisanAvatar}
-                alt={artisanName}
-                fill
-                className="object-cover"
-              />
+            <div className="relative w-12 h-12 rounded-full overflow-hidden bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-sm shrink-0">
+              {artisanAvatar ? (
+                <Image
+                  src={artisanAvatar}
+                  alt={artisanName}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <span>{artisanName.charAt(0).toUpperCase()}</span>
+              )}
             </div>
             <div>
               <p className="font-sans font-bold text-sm text-[#0F1115]">

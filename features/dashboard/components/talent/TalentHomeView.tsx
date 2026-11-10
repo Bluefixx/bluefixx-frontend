@@ -5,7 +5,10 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { getTalentHomeApi } from "@/lib/api/talent";
+import { getTalentHomeApi, getTalentProgramsApi } from "@/lib/api/talent";
+import { formatNaira } from "@/lib/utils/currency";
+import { TalentProgramListItem } from "@/types/talent";
+import { TalentPaymentsReceiptsView } from "./TalentPaymentsReceiptsView";
 import { TalentTrainingProgressView } from "./TalentTrainingProgressView";
 import { TalentDiscoveryView } from "./TalentDiscoveryView";
 import { MasterArtisanProfileView } from "./MasterArtisanProfileView";
@@ -43,6 +46,7 @@ export type TalentSubView =
   | "payment"
   | "payment-failed"
   | "apprenticeship-activated"
+  | "payments-receipts"
   | "refund-policy"
   | "request-refund"
   | "refund-requested"
@@ -92,6 +96,7 @@ function TalentHomeViewContent({
     "payment",
     "payment-failed",
     "apprenticeship-activated",
+    "payments-receipts",
     "refund-policy",
     "request-refund",
     "refund-requested",
@@ -126,10 +131,10 @@ function TalentHomeViewContent({
     fee: string;
     duration: string;
   }>({
-    id: "prog-welding-1",
-    title: "Welding & Metal Fabrication Apprenticeship",
-    fee: "₦150,000",
-    duration: "3 months",
+    id: "",
+    title: "Apprenticeship Programme",
+    fee: "₦0",
+    duration: "Flexible",
   });
 
   const [homeData, setHomeData] = useState<{
@@ -143,6 +148,10 @@ function TalentHomeViewContent({
     escrowHeldText: string;
   } | null>(null);
 
+  const [otherSkills, setOtherSkills] = useState<TalentProgramListItem[]>([]);
+  const [isLoadingOtherSkills, setIsLoadingOtherSkills] = useState(true);
+
+  // Fetch active enrollment summary
   useEffect(() => {
     let isMounted = true;
     getTalentHomeApi()
@@ -151,30 +160,55 @@ function TalentHomeViewContent({
         if (data && data.enrollments && data.enrollments.length > 0) {
           const primary = data.enrollments[0];
           const nextSession = data.upcomingSessions?.[0];
-          const feeKobo = Number(primary.fee || 5000000);
-          const feeNgn = (feeKobo / 100).toLocaleString("en-NG");
+          const feeKobo = Number(primary.fee || 0);
+          const feeNgn = formatNaira(feeKobo, true);
 
           setHomeData({
-            enrollmentTitle: primary.programTitle || "Welding & Metal Fabrication Apprenticeship",
-            stageName: "Advanced Welding",
-            artisanName: primary.masterArtisanName || "John Obiora",
-            progressPercent: primary.progressPercent ?? 65,
-            attendancePercent: primary.attendancePercent ?? 92,
+            enrollmentTitle: primary.programTitle || "Apprenticeship Programme",
+            stageName: primary.status ? primary.status.replace("_", " ") : "Active Training",
+            artisanName: primary.masterArtisanName || "Verified Master Artisan",
+            progressPercent: primary.progressPercent ?? 0,
+            attendancePercent: primary.attendancePercent ?? 100,
             enrollmentId: primary.id,
             nextSessionText: nextSession
               ? `${nextSession.date} · ${nextSession.time} · ${nextSession.location}`
-              : "Thursday 28 August · 8:00am · Emene workshop",
-            escrowHeldText: `₦${feeNgn} held in escrow and released to ${primary.masterArtisanName || "John"} as you learn.`,
+              : "Session schedule to be announced by master artisan",
+            escrowHeldText: `${feeNgn} held in escrow and released to ${primary.masterArtisanName || "master artisan"} as you learn.`,
           });
           setActiveProgramme((prev) => ({
             ...prev,
             id: primary.id,
             title: primary.programTitle || prev.title,
+            fee: feeNgn,
           }));
+        } else {
+          setHomeData(null);
         }
       })
       .catch(() => {
-        // Resilient offline fallback preserves UI
+        if (isMounted) setHomeData(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Fetch other apprenticeship skills for discovery section
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingOtherSkills(true);
+
+    getTalentProgramsApi({ limit: 4 })
+      .then((items) => {
+        if (!isMounted) return;
+        setOtherSkills(items || []);
+      })
+      .catch(() => {
+        if (isMounted) setOtherSkills([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingOtherSkills(false);
       });
 
     return () => {
@@ -356,15 +390,17 @@ function TalentHomeViewContent({
   }
 
   // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 10: 30-DAY REFUND POLICY
+  // SUBVIEW 10: PAYMENTS & RECEIPTS (WITH 30-DAY REFUND POLICY)
   // ══════════════════════════════════════════════════════════════
-  if (currentView === "refund-policy") {
+  if (currentView === "payments-receipts" || currentView === "refund-policy") {
     return (
-      <TalentRefundPolicyView
-        onBack={() => setCurrentView("payment")}
+      <TalentPaymentsReceiptsView
+        onBack={() => setCurrentView("home")}
         onRequestRefund={() => setCurrentView("request-refund")}
-        programmeTitle={activeProgramme.title}
+        programmeTitle={homeData?.enrollmentTitle || activeProgramme.title}
         feePaid={activeProgramme.fee}
+        startDate="Active intake"
+        windowEnd="30 days from start"
       />
     );
   }
@@ -556,13 +592,17 @@ function TalentHomeViewContent({
       {/* Greeting Banner Card */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-white shadow-xs bg-neutral-100 shrink-0">
-            <Image
-              src="/images/david.jpg"
-              alt={userName}
-              fill
-              className="object-cover"
-            />
+          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden border-2 border-white shadow-xs bg-[#001B40] text-white flex items-center justify-center font-heading font-extrabold text-lg sm:text-xl shrink-0">
+            {user?.avatarUrl ? (
+              <Image
+                src={user.avatarUrl}
+                alt={userName}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <span>{userName.charAt(0).toUpperCase()}</span>
+            )}
           </div>
           <div>
             <span className="font-sans text-xs text-neutral-400 font-medium block">
@@ -730,33 +770,71 @@ function TalentHomeViewContent({
           </button>
         </div>
 
-        {/* Skill Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h3 className="font-heading font-bold text-base text-[#0F1115]">
-              Home Electrical Installation
-            </h3>
-            <p className="font-sans text-xs text-neutral-400">
-              Chinedu Okafor · 6 months · ₦120,000
-            </p>
+        {/* Dynamic Skill Cards or Empty State */}
+        {isLoadingOtherSkills ? (
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs animate-pulse space-y-3">
+            <div className="h-5 bg-neutral-100 rounded-md w-1/3" />
+            <div className="h-4 bg-neutral-100 rounded-md w-1/4" />
           </div>
+        ) : otherSkills.length > 0 ? (
+          <div className="space-y-3">
+            {otherSkills.slice(0, 2).map((skill) => {
+              const feeFormatted = formatNaira(Number(skill.fee || 0), true);
+              const durationFormatted = skill.durationWeeks
+                ? `${skill.durationWeeks} weeks`
+                : "Flexible";
+              return (
+                <div
+                  key={skill.id}
+                  className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="space-y-1">
+                    <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                      {skill.title}
+                    </h3>
+                    <p className="font-sans text-xs text-neutral-400">
+                      {skill.artisan?.fullName || "Verified Master Artisan"} · {durationFormatted} · {feeFormatted}
+                    </p>
+                  </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveProgramme({
-                id: "prog-electrical-1",
-                title: "Home Electrical Installation Apprenticeship",
-                fee: "₦120,000",
-                duration: "6 months",
-              });
-              setCurrentView("master-profile");
-            }}
-            className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer self-start sm:self-center"
-          >
-            View Programme
-          </button>
-        </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveProgramme({
+                        id: skill.id,
+                        title: skill.title,
+                        fee: feeFormatted,
+                        duration: durationFormatted,
+                      });
+                      setCurrentView("master-profile");
+                    }}
+                    className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer self-start sm:self-center"
+                  >
+                    View Programme
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                Explore apprenticeship skills
+              </h3>
+              <p className="font-sans text-xs text-neutral-400">
+                Browse open workshops in welding, plumbing, carpentry, and electrical installations.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentView("discover")}
+              className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer self-start sm:self-center"
+            >
+              Explore all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Graduation & Certification Completed Modal */}

@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import { updateAccountProfileApi } from "@/lib/api/account";
 
 interface TalentEditProfileViewProps {
   onBack: () => void;
@@ -14,34 +16,55 @@ interface TalentEditProfileViewProps {
     email: string;
     address: string;
     emergencyContact: string;
-    avatarUrl: string;
+    avatarUrl?: string;
   };
 }
 
 export function TalentEditProfileView({
   onBack,
   onSaveSuccess,
-  initialData = {
-    firstName: "Daniel",
-    lastName: "Eze",
-    phone: "+234 810 142 7789",
-    email: "daniel.eze@gmail.com",
-    address: "14 Ziks Avenue, Independence Layout, Enugu",
-    emergencyContact: "+234 803 771 9021 (Ada Eze - Sister)",
-    avatarUrl: "/images/david.jpg",
-  },
+  initialData,
 }: TalentEditProfileViewProps) {
-  const [formData, setFormData] = useState(initialData);
+  const { user, setUser } = useAuth();
+
+  const nameParts = (user?.fullName || "").trim().split(" ");
+  const userFirst = nameParts[0] || "";
+  const userLast = nameParts.slice(1).join(" ") || "";
+
+  const [formData, setFormData] = useState({
+    firstName: initialData?.firstName || userFirst || "",
+    lastName: initialData?.lastName || userLast || "",
+    phone: initialData?.phone || user?.phone || "",
+    email: initialData?.email || user?.email || "",
+    address: initialData?.address || "",
+    emergencyContact: initialData?.emergencyContact || "",
+    avatarUrl: initialData?.avatarUrl || user?.avatarUrl,
+  });
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      const updatedFullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      await updatePersonalDetailsApi({
+        fullName: updatedFullName,
+      });
+      if (user) {
+        setUser({
+          ...user,
+          fullName: updatedFullName,
+          email: formData.email,
+          phone: formData.phone,
+        });
+      }
       toast.success("Personal details updated successfully!");
       onSaveSuccess();
-    }, 1000);
+    } catch {
+      toast.error("Failed to update personal details. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -69,13 +92,17 @@ export function TalentEditProfileView({
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-9 border border-neutral-200/80 shadow-2xs space-y-7">
         {/* Profile Photo Uploader Section */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-5 p-5 rounded-2xl bg-neutral-50/60 border border-neutral-200/60">
-          <div className="relative w-20 h-20 rounded-full overflow-hidden bg-neutral-200 shrink-0 border-2 border-white shadow-xs">
-            <Image
-              src={formData.avatarUrl}
-              alt={formData.firstName}
-              fill
-              className="object-cover"
-            />
+          <div className="relative w-20 h-20 rounded-full overflow-hidden bg-[#001B40] text-white flex items-center justify-center font-heading font-extrabold text-2xl shrink-0 border-2 border-white shadow-xs">
+            {formData.avatarUrl ? (
+              <Image
+                src={formData.avatarUrl}
+                alt={formData.firstName || "User"}
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <span>{(formData.firstName || user?.fullName || "L").charAt(0).toUpperCase()}</span>
+            )}
           </div>
           <div className="space-y-1.5">
             <h4 className="font-heading font-bold text-sm text-[#0F1115]">

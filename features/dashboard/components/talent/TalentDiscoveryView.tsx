@@ -89,13 +89,13 @@ export function TalentDiscoveryView({
           const feeFormatted = formatNaira(feeKobo, true);
           const ratingScore =
             p.artisan?.ArtisanProfile_userId?.ratingTotal &&
-            p.artisan?.ArtisanProfile_userId?.ratingCount
+              p.artisan?.ArtisanProfile_userId?.ratingCount
               ? Number(
-                  (
-                    p.artisan.ArtisanProfile_userId.ratingTotal /
-                    p.artisan.ArtisanProfile_userId.ratingCount
-                  ).toFixed(1)
-                )
+                (
+                  p.artisan.ArtisanProfile_userId.ratingTotal /
+                  p.artisan.ArtisanProfile_userId.ratingCount
+                ).toFixed(1)
+              )
               : 5.0;
 
           return {
@@ -168,18 +168,17 @@ export function TalentDiscoveryView({
         />
       </div>
 
-      {/* Filter Category Pills */}
+      {/*Filter Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {trades.map((trade) => (
           <button
             key={trade.id}
             type="button"
             onClick={() => setSelectedTradeId(trade.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              selectedTradeId === trade.id
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${selectedTradeId === trade.id
                 ? "bg-[#001B40] text-white shadow-xs"
                 : "bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50"
-            }`}
+              }`}
           >
             {trade.name}
           </button>

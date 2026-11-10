@@ -132,22 +132,12 @@ export type AuthStore = AuthState & AuthActions;
 // ────────────────────────────────────────────────────────────────
 
 export const DEFAULT_AUTH_STATE: AuthState = {
-  user: {
-    id: "usr-daniel-eze",
-    fullName: "Daniel Eze",
-    email: "daniel.eze@bluefixx.com",
-    phone: "+234 803 245 0182",
-    state: "Enugu",
-    city: "Independence Layout",
-    streetAddress: "14 Ziks Avenue",
-    role: "customer",
-    isVerified: true,
-  },
+  user: null,
   accessToken: null,
   activeRole: "customer",
   apprenticeTrainingCompleted: false,
   walletBalance: 0,
-  locationName: "Independence Layout, Enugu",
+  locationName: "",
   isLoading: false,
   challengeId: null,
   registrationData: {},

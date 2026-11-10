@@ -24,21 +24,32 @@ interface PersonalDetailsViewProps {
   }) => void;
 }
 
+function normalizeE164Phone(val: string): string {
+  let cleaned = val.trim().replace(/[\s\-\(\)]/g, "");
+  if (!cleaned) return "";
+  if (cleaned.startsWith("0") && cleaned.length === 11) {
+    cleaned = "+234" + cleaned.slice(1);
+  } else if (!cleaned.startsWith("+")) {
+    cleaned = "+" + cleaned;
+  }
+  return cleaned;
+}
+
 export function PersonalDetailsView({
   onBack,
   userData,
   onUpdateUserData,
 }: PersonalDetailsViewProps) {
   const { user, setUser } = useAuth();
-  const nameParts = (user?.fullName || userData.fullName).split(" ");
-  const [firstName, setFirstName] = useState(nameParts[0] || "Daniel");
-  const [lastName, setLastName] = useState(nameParts.slice(1).join(" ") || "Eze");
-  const [phone, setPhone] = useState(user?.phone || userData.phone || "+234 803 212 1788");
-  const [email, setEmail] = useState(user?.email || userData.email || "danieleze@gmail.com");
-  const [address, setAddress] = useState(userData.location || "Enugu, Nigeria");
-  const [emergencyName, setEmergencyName] = useState("Ada Eze");
-  const [emergencyPhone, setEmergencyPhone] = useState("+234 809 221 9049");
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatarUrl || userData.avatarUrl || "");
+  const nameParts = (user?.fullName || userData.fullName || "").split(" ");
+  const [firstName, setFirstName] = useState(nameParts[0] || "");
+  const [lastName, setLastName] = useState(nameParts.slice(1).join(" ") || "");
+  const [phone, setPhone] = useState(user?.phone || userData.phone || "");
+  const [email, setEmail] = useState(user?.email || userData.email || "");
+  const [address, setAddress] = useState(userData.location || "");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatarUrl || "");
   const [avatarMediaId, setAvatarMediaId] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -49,17 +60,28 @@ export function PersonalDetailsView({
       try {
         const profile = await getAccountProfileApi();
         if (profile) {
-          if (profile.fullName) {
-            const parts = profile.fullName.split(" ");
+          const profileUser = (profile as any)?.user || profile;
+          const profileSettings = (profile as any)?.settings;
+
+          if (profileUser.fullName) {
+            const parts = profileUser.fullName.split(" ");
             setFirstName(parts[0] || "");
             setLastName(parts.slice(1).join(" ") || "");
           }
-          if (profile.email) setEmail(profile.email);
-          if (profile.phone) setPhone(profile.phone);
-          if (profile.avatarUrl) setAvatarPreview(profile.avatarUrl);
-          if (profile.emergencyContact) {
-            setEmergencyName(profile.emergencyContact.name || "");
-            setEmergencyPhone(profile.emergencyContact.phone || "");
+          if (profileUser.email) setEmail(profileUser.email);
+          if (profileUser.phone) setPhone(profileUser.phone);
+          if (profileUser.avatarUrl) setAvatarPreview(profileUser.avatarUrl);
+
+          if (profileSettings?.emergencyName) {
+            setEmergencyName(profileSettings.emergencyName);
+          } else if (profile.emergencyContact?.name) {
+            setEmergencyName(profile.emergencyContact.name);
+          }
+
+          if (profileSettings?.emergencyPhone) {
+            setEmergencyPhone(profileSettings.emergencyPhone);
+          } else if (profile.emergencyContact?.phone) {
+            setEmergencyPhone(profile.emergencyContact.phone);
           }
         }
       } catch {
@@ -92,38 +114,56 @@ export function PersonalDetailsView({
     setIsSaving(true);
     const updatedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
+    // Normalize and validate emergencyPhone if provided
+    let sanitizedEmergencyPhone = "";
+    if (emergencyPhone.trim()) {
+      sanitizedEmergencyPhone = normalizeE164Phone(emergencyPhone);
+      const e164Regex = /^\+[1-9]\d{7,14}$/;
+      if (!e164Regex.test(sanitizedEmergencyPhone)) {
+        setIsSaving(false);
+        toast.error("Emergency phone must be in international format (e.g. +2348012345678)");
+        return;
+      }
+    }
+
     try {
       await updateAccountProfileApi({
         fullName: updatedFullName,
         photoId: avatarMediaId,
         emergencyName: emergencyName.trim(),
-        emergencyPhone: emergencyPhone.trim(),
+        emergencyPhone: sanitizedEmergencyPhone,
         language: "en",
       });
-    } catch {
-      // Graceful fallback
-    }
 
-    if (user) {
-      setUser({
-        ...user,
+      if (user) {
+        setUser({
+          ...user,
+          fullName: updatedFullName,
+          email: email.trim(),
+          phone: phone.trim(),
+          avatarUrl: avatarPreview || user.avatarUrl,
+        });
+      }
+
+      onUpdateUserData({
         fullName: updatedFullName,
         email: email.trim(),
         phone: phone.trim(),
-        avatarUrl: avatarPreview || user.avatarUrl,
+        location: address.trim(),
+        avatarUrl: avatarPreview,
       });
-    }
 
-    onUpdateUserData({
-      fullName: updatedFullName,
-      email: email.trim(),
-      phone: phone.trim(),
-      location: address.trim(),
-      avatarUrl: avatarPreview,
-    });
-    setIsSaving(false);
-    toast.success("Personal details saved successfully");
-    onBack();
+      toast.success("Personal details saved successfully");
+      onBack();
+    } catch (err: any) {
+      const errMsg =
+        err?.message ||
+        err?.response?.data?.error?.message ||
+        "Failed to save personal details. Please check your inputs.";
+      toast.error(errMsg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -173,7 +213,7 @@ export function PersonalDetailsView({
                     className="object-cover"
                   />
                 ) : (
-                  <span>{firstName.charAt(0)}</span>
+                  <span>{firstName ? firstName.charAt(0).toUpperCase() : (user?.fullName?.charAt(0).toUpperCase() || "U")}</span>
                 )}
               </div>
               <div>
@@ -301,9 +341,17 @@ export function PersonalDetailsView({
             <div className="pt-4">
               <button
                 type="submit"
-                className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
+                disabled={isSaving}
+                className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] disabled:opacity-60 text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
-                Save changes
+                {isSaving ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Saving changes...</span>
+                  </>
+                ) : (
+                  <span>Save changes</span>
+                )}
               </button>
             </div>
           </form>

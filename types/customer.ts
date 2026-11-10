@@ -453,16 +453,29 @@ export interface CreateBankAccountRequest {
 
 // ── Referrals ("Invite and Earn") ────────────────────────────
 export interface ReferralSummary {
-  referralCode: string;
-  referralLink: string;
-  totalInvited: number;
-  totalEarnedKobo: number;
-  pendingRewardKobo: number;
-  history: {
+  code?: string;
+  referralCode?: string;
+  inviteUrl?: string | null;
+  referralLink?: string;
+  policy?: {
+    enabled: boolean;
+    inviterReward: string;
+    inviteeReward: string;
+    expiryDays: number;
+  };
+  totals?: {
+    invited: number;
+    qualified: number;
+    earned: string;
+  };
+  totalInvited?: number;
+  totalEarnedKobo?: number;
+  pendingRewardKobo?: number;
+  history?: {
     id: string;
-    refereeName: string;
-    status: "PENDING" | "COMPLETED" | "CLAIMED";
-    rewardKobo: number;
+    refereeName?: string;
+    status: string;
+    rewardKobo?: number;
     createdAt: string;
   }[];
 }

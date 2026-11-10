@@ -1,13 +1,44 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-09 (Customer Dashboard Dynamic Integration & Persistence on Refresh)*
+*Last updated: 2026-11-10 (Customer Dashboard Dynamic Integration, Authentication & Settings Fixes)*
 
 ---
 
 ## 1. Current Task Overview & Completed Deliverables
 
-### A. Customer Dashboard Dynamic Data & Persistence Fixes
-1. **Header Notifications & Bell Dot (`DashboardHeader.tsx` & `NotificationsDropdown.tsx`)**:
+### A. Customer Dashboard Dynamic Data, Location, Authentication & Settings Fixes
+1. **Dynamic Location & Addresses in Header (`DashboardHeader.tsx`)**:
+   - Replaced default hardcoded location with dynamic location fetching via `getSavedAddressesApi()` (`GET /addresses`).
+   - Dynamically computes header location string prioritizing active selected location, default saved address, or user's city/state.
+   - Quick Location dropdown renders user's real saved addresses with "Default" badges plus metro regions with seamless address switching.
+
+2. **Automatic 401 Unauthorized & Session Expiration Handling (`lib/api/client.ts` & `AuthProvider.tsx`)**:
+   - Solved issue where expired tokens resulted in 401 errors across the network tab while leaving the UI stuck.
+   - Intercepts 401 responses: attempts refresh token rotation; if expired or absent, immediately purges stored credentials (`localStorage`, `sessionStorage`), resets the auth store (`resetAuth()`), and redirects user cleanly to `/login`.
+
+3. **My Profile View (`app/(dashboard)/profile/page.tsx`)**:
+   - Replaced static placeholder fields with live authenticated user data (`fullName`, `email`, `phone`, `role`, member join date).
+   - Dynamic avatar rendering (with uppercase initial fallback when no photo exists).
+   - "Update profile" button now acts as a deep link redirecting directly to `/settings?tab=personal-details`, allowing instant editing.
+
+4. **Personal Details in Account Settings (`PersonalDetailsView.tsx`)**:
+   - Fixed emergency phone validation error (`emergencyPhone: Invalid string: must match pattern /^\+[1-9]\d{7,14}$/`) by implementing `normalizeE164Phone()` to strip invalid characters and validate against E.164.
+   - Removed mock profile picture (`/images/david.jpg`); renders dynamic initials or user-uploaded avatars.
+   - Added `isSaving` loading spinner and disabled state to the submit button.
+   - Fixed bug where a success toast appeared even on validation/network error.
+
+5. **Transaction PIN Management (`TransactionPinView.tsx` & `lib/api/account.ts`)**:
+   - Hydrates `pinConfigured` flag from `getAccountProfileApi()`. If PIN is already configured, renders the "PIN Configured & Active" screen with "Change PIN" option instead of defaulting back to "Create PIN".
+   - Fixed error handling so that 401 or network errors display appropriate toast errors rather than prematurely navigating to the success step.
+   - Added `isSubmitting` spinner state to the confirmation button.
+
+6. **Referral Program (`InviteAndEarnView.tsx` & `types/customer.ts`)**:
+   - Updated data contract to match the real API response from `GET /account/referrals`:
+     `{ code, inviteUrl, totals: { invited, qualified, earned }, policy: { inviterReward, ... } }`.
+   - Generates fallback invite URL (`${origin}/invite/${code}`) when `inviteUrl` is null.
+   - Integrated `getReferralHistoryApi()` (`GET /account/referrals/history`) to dynamically display user's referral invite list.
+
+7. **Header Notifications & Bell Dot (`DashboardHeader.tsx` & `NotificationsDropdown.tsx`)**:
    - Notifications bell pip is now strictly dynamic (`unreadCount > 0`). When there are unread notifications, the bell button transitions to `border-amber-300 bg-amber-50/50 text-amber-600` with the amber pip. When all are read, the bell returns to neutral with zero pip.
    - `getNotificationsApi()` updates `setNotifications` even with an empty array `[]` so empty inboxes correctly clear unread count.
    - Added a polished empty state in `NotificationsDropdown.tsx` ("No notifications yet. You're all caught up with your updates.").

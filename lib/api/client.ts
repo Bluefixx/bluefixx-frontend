@@ -156,12 +156,39 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         setAccessToken(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("bluefixx_user");
+          localStorage.removeItem("bluefixx_access_token");
+          sessionStorage.removeItem("bluefixx_access_token");
+        }
         if (onAuthFailureCallback) {
           onAuthFailureCallback();
+        } else if (typeof window !== "undefined") {
+          const path = window.location.pathname;
+          if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+            window.location.href = "/login";
+          }
         }
         return Promise.reject(normalizeError(refreshError));
       } finally {
         isRefreshing = false;
+      }
+    }
+
+    if (is401 && !isAuthRoute) {
+      setAccessToken(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("bluefixx_user");
+        localStorage.removeItem("bluefixx_access_token");
+        sessionStorage.removeItem("bluefixx_access_token");
+      }
+      if (onAuthFailureCallback) {
+        onAuthFailureCallback();
+      } else if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+          window.location.href = "/login";
+        }
       }
     }
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { getReferralSummaryApi, claimReferralRewardApi } from "@/lib/api";
+import { getReferralSummaryApi, getReferralHistoryApi, claimReferralRewardApi } from "@/lib/api";
 
 interface InviteAndEarnViewProps {
   onBack: () => void;
@@ -26,6 +26,8 @@ export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
   const [earnedKobo, setEarnedKobo] = useState(0);
   const [pendingKobo, setPendingKobo] = useState(0);
   const [invitedCount, setInvitedCount] = useState(0);
+  const [activatedCount, setActivatedCount] = useState(0);
+  const [rewardAmountNaira, setRewardAmountNaira] = useState(2000);
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isClaiming, setIsClaiming] = useState(false);
@@ -35,13 +37,76 @@ export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
     try {
       const data = await getReferralSummaryApi();
       if (data) {
-        if (data.referralCode) setReferralCode(data.referralCode);
-        if (data.referralLink) setReferralUrl(data.referralLink);
-        setEarnedKobo(data.totalEarnedKobo || 0);
-        setPendingKobo(data.pendingRewardKobo || 0);
-        setInvitedCount(data.totalInvited || 0);
+        // Backend returns "code", fallback to "referralCode"
+        const code = data.code || data.referralCode || "";
+        setReferralCode(code);
 
-        if (Array.isArray(data.history) && data.history.length > 0) {
+        // Backend returns "inviteUrl" (can be null), fallback to window origin link
+        const url =
+          data.inviteUrl ||
+          data.referralLink ||
+          (code && typeof window !== "undefined"
+            ? `${window.location.origin}/invite/${code}`
+            : "");
+        setReferralUrl(url);
+
+        // Backend returns totals.earned (in kobo string or number)
+        const rawEarned = data.totals?.earned ?? data.totalEarnedKobo ?? "0";
+        const parsedEarned = typeof rawEarned === "string" ? parseInt(rawEarned, 10) : rawEarned;
+        setEarnedKobo(isNaN(parsedEarned) ? 0 : parsedEarned);
+
+        const rawInvited = data.totals?.invited ?? data.totalInvited ?? 0;
+        setInvitedCount(rawInvited);
+
+        const rawQualified = data.totals?.qualified ?? 0;
+        setActivatedCount(rawQualified);
+
+        setPendingKobo(data.pendingRewardKobo || 0);
+
+        if (data.policy?.inviterReward) {
+          const policyReward = parseInt(data.policy.inviterReward, 10);
+          if (!isNaN(policyReward) && policyReward > 0) {
+            setRewardAmountNaira(Math.round(policyReward / 100));
+          }
+        }
+      }
+
+      // Fetch referral history from API #89
+      try {
+        const historyData = await getReferralHistoryApi();
+        if (Array.isArray(historyData) && historyData.length > 0) {
+          const mapped: ReferralRecord[] = historyData.map((h: any, idx: number) => {
+            const rawStatus = (h.status || "IN_PROGRESS").toUpperCase();
+            const isEarned = rawStatus === "CLAIMED" || rawStatus === "COMPLETED" || rawStatus === "REWARD EARNED";
+            const isPending = rawStatus === "PENDING" || rawStatus === "QUALIFIED";
+            const referee = h.refereeName || h.name || h.friendName || `Invited Friend #${idx + 1}`;
+            const dateStr = h.createdAt
+              ? `Joined ${new Date(h.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric" })}`
+              : "Recent";
+            const rewardVal = h.rewardKobo ?? h.reward ?? 200000;
+            const rewardNum = typeof rewardVal === "string" ? parseInt(rewardVal, 10) : rewardVal;
+
+            return {
+              id: h.id || `ref-${idx}`,
+              friendName: referee,
+              joinedDate: dateStr,
+              progressSummary: isEarned ? "Reward claimed" : isPending ? "Ready to claim" : "In progress",
+              progressDetail: isEarned
+                ? "Referral completed and paid into your wallet."
+                : isPending
+                ? "Qualifying booking completed."
+                : "Invite joined. Unlocks when they complete their first booking.",
+              reward: `₦${(rewardNum / 100).toLocaleString()}`,
+              status: isEarned ? "Reward earned" : isPending ? "Reward pending" : "In progress",
+              statusColor: isEarned
+                ? "bg-emerald-50 text-emerald-700"
+                : isPending
+                ? "bg-amber-50 text-amber-700"
+                : "bg-blue-50 text-blue-700",
+            };
+          });
+          setReferrals(mapped);
+        } else if (data?.history && Array.isArray(data.history) && data.history.length > 0) {
           const mapped: ReferralRecord[] = data.history.map((h) => ({
             id: h.id,
             friendName: h.refereeName || "Friend",
@@ -76,6 +141,8 @@ export function InviteAndEarnView({ onBack }: InviteAndEarnViewProps) {
         } else {
           setReferrals([]);
         }
+      } catch {
+        setReferrals([]);
       }
     } catch {
       setReferrals([]);

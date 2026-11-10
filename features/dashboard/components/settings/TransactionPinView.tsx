@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { setTransactionPinApi } from "@/lib/api";
+import { setTransactionPinApi, getAccountProfileApi } from "@/lib/api";
 
 interface TransactionPinViewProps {
   onBack: () => void;
@@ -13,11 +13,32 @@ export function TransactionPinView({
   onBack,
   onPinConfigured,
 }: TransactionPinViewProps) {
-  // Sub-step: "create" | "confirm" | "success"
-  const [subStep, setSubStep] = useState<"create" | "confirm" | "success">("create");
+  // Sub-step: "loading" | "create" | "confirm" | "success" | "configured"
+  const [subStep, setSubStep] = useState<"loading" | "create" | "confirm" | "success" | "configured">("loading");
   const [createPin, setCreatePin] = useState<string[]>(["", "", "", ""]);
   const [confirmPin, setConfirmPin] = useState<string[]>(["", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    getAccountProfileApi()
+      .then((profile) => {
+        if (!mounted) return;
+        const isConfigured = Boolean((profile as any)?.settings?.pinConfigured);
+        if (isConfigured) {
+          setSubStep("configured");
+        } else {
+          setSubStep("create");
+        }
+      })
+      .catch(() => {
+        if (mounted) setSubStep("create");
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleCreateDigitChange = (index: number, val: string) => {
     const char = val.replace(/[^0-9]/g, "").slice(-1);
@@ -79,15 +100,113 @@ export function TransactionPinView({
 
     setIsSubmitting(true);
     try {
-      await setTransactionPinApi({ pin: pin1 });
-    } catch {
-      // Graceful fallback for mock mode
+      const res = await setTransactionPinApi({ pin: pin1 });
+      toast.success(res?.message || "Transaction PIN saved successfully");
+      setSubStep("success");
+      onPinConfigured();
+    } catch (err: any) {
+      const errMsg =
+        err?.message ||
+        err?.response?.data?.error?.message ||
+        "Failed to save transaction PIN. Please try again.";
+      toast.error(errMsg);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
-
-    setSubStep("success");
-    onPinConfigured();
   };
+
+  if (subStep === "loading") {
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto pb-16 animate-pulse">
+        <div className="h-6 w-32 bg-neutral-200 rounded-md" />
+        <div className="h-48 bg-white rounded-3xl border border-neutral-200/80 p-8" />
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // VIEW: PIN ALREADY CONFIGURED
+  // ══════════════════════════════════════════════════════════════
+  if (subStep === "configured") {
+    return (
+      <div className="space-y-6 max-w-5xl mx-auto pb-16 animate-in fade-in duration-150">
+        <div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-400 hover:text-neutral-800 transition-colors mb-2 cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            <span>Settings</span>
+          </button>
+          <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40]">
+            Transaction PIN
+          </h1>
+          <p className="font-sans text-xs sm:text-sm text-neutral-400 mt-1">
+            Your wallet security is active.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="lg:col-span-8 bg-white rounded-3xl p-8 sm:p-12 border border-neutral-200/80 shadow-xs flex flex-col items-center text-center space-y-5">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <polyline points="9 12 11 14 15 10" />
+              </svg>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="font-heading font-extrabold text-xl sm:text-2xl text-[#001B40]">
+                PIN Configured &amp; Active
+              </h2>
+              <p className="font-sans text-xs sm:text-sm text-neutral-500 max-w-sm leading-relaxed">
+                Your 4-digit transaction PIN is saved. It protects all payments, escrow releases, and withdrawals on your Bluefixx account.
+              </p>
+            </div>
+
+            <div className="pt-4 flex flex-col sm:flex-row items-center gap-3 w-full max-w-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatePin(["", "", "", ""]);
+                  setConfirmPin(["", "", "", ""]);
+                  setSubStep("create");
+                }}
+                className="flex-1 py-3 bg-[#001B40] hover:bg-[#074292] text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
+              >
+                Change PIN
+              </button>
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex-1 py-3 border border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-semibold text-xs sm:text-sm rounded-xl text-center transition-colors cursor-pointer"
+              >
+                Back to Settings
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-xs space-y-4">
+            <h3 className="font-heading font-bold text-sm text-[#001B40]">
+              Wallet protection
+            </h3>
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              Your PIN is required whenever authorizing a service deposit, releasing funds to an artisan, or withdrawing to your bank.
+            </p>
+            <div className="pt-3 border-t border-neutral-100 space-y-1 text-xs">
+              <span className="font-bold text-[#001B40] block">Need help resetting?</span>
+              <p className="text-neutral-500 leading-relaxed">
+                If you forget your PIN, you can reset it via OTP sent to your registered phone or email.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ══════════════════════════════════════════════════════════════
   // VIEW: PIN CREATED (Screenshot 5 Right)
@@ -228,11 +347,18 @@ export function TransactionPinView({
             <div className="w-full max-w-md pt-2">
               <button
                 type="button"
-                disabled={confirmPin.some((d) => !d)}
+                disabled={confirmPin.some((d) => !d) || isSubmitting}
                 onClick={handleValidateAndSave}
-                className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
+                className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
               >
-                Confirm PIN
+                {isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Saving PIN...</span>
+                  </>
+                ) : (
+                  <span>Confirm PIN</span>
+                )}
               </button>
             </div>
           </div>

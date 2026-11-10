@@ -8,6 +8,8 @@ import { useNotifications } from "@/lib/stores/notifications-store";
 import AccountMenuDropdown from "./AccountMenuDropdown";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { getNotificationsApi } from "@/lib/api/notifications";
+import { getSavedAddressesApi } from "@/lib/api/account";
+import { SavedAddress } from "@/types/customer";
 
 interface DashboardHeaderProps {
   onOpenRoleSwitcher: () => void;
@@ -24,6 +26,7 @@ export default function DashboardHeader({
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -53,10 +56,27 @@ export default function DashboardHeader({
         console.debug("Notifications API offline, using cached notifications.", err);
       });
 
+    // Hydrate user addresses for dynamic location
+    getSavedAddressesApi()
+      .then((addrs) => {
+        if (!mounted || !Array.isArray(addrs)) return;
+        setSavedAddresses(addrs);
+        if (!locationName && addrs.length > 0) {
+          const def = addrs.find((a) => a.isDefault) || addrs[0];
+          const name = [def.area || def.street, def.city].filter(Boolean).join(", ");
+          if (name) setLocationName(name);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       mounted = false;
     };
-  }, [setNotifications]);
+  }, [setNotifications, locationName, setLocationName]);
+
+  const displayLocation =
+    locationName ||
+    (user?.city && user?.state ? `${user.city}, ${user.state}` : user?.state || "Lagos, Nigeria");
 
   const handleWalletClick = () => {
     toast(`Wallet balance: ₦${walletBalance.toLocaleString()}`, {
@@ -118,9 +138,9 @@ export default function DashboardHeader({
               Your location
             </span>
             <div className="flex items-center gap-1 font-sans font-bold text-xs sm:text-sm text-[#0F1115] group-hover:text-[#001B40]">
-              <span>{locationName || "Independence Layout, Enugu"}</span>
+              <span className="max-w-[140px] sm:max-w-[180px] truncate">{displayLocation}</span>
               <svg
-                className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700"
+                className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-700 shrink-0"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -134,18 +154,56 @@ export default function DashboardHeader({
 
         {/* Quick Location Dropdown Modal */}
         {isLocationModalOpen && (
-          <div className="absolute left-0 top-14 w-64 bg-white rounded-2xl shadow-xl border border-neutral-100 p-3 z-50 animate-in fade-in duration-100">
+          <div className="absolute left-0 top-14 w-72 bg-white rounded-2xl shadow-xl border border-neutral-100 p-3 z-50 animate-in fade-in duration-100">
             <p className="font-bold text-xs text-neutral-800 mb-2 px-1">
-              Change Location
+              Select Location
             </p>
-            <div className="space-y-1">
+
+            {savedAddresses.length > 0 && (
+              <div className="space-y-1 mb-2">
+                <p className="text-[10px] uppercase font-bold text-neutral-400 px-1 mb-1">Saved Addresses</p>
+                {savedAddresses.map((addr) => {
+                  const addrLabel = [addr.area || addr.street, addr.city].filter(Boolean).join(", ");
+                  const isSelected = locationName === addrLabel || locationName === addr.title;
+                  return (
+                    <button
+                      key={addr.id}
+                      onClick={() => {
+                        setLocationName(addrLabel);
+                        setIsLocationModalOpen(false);
+                        toast.success(`Location set to ${addr.title || addr.city}`);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                        isSelected
+                          ? "bg-blue-50 text-blue-700 font-bold"
+                          : "text-neutral-700 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">{addr.title || "Address"}</span>
+                        {addr.isDefault && (
+                          <span className="text-[9px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold">
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-neutral-500 block truncate">
+                        {addr.street || addr.area}, {addr.city}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className={`space-y-1 ${savedAddresses.length > 0 ? "pt-2 border-t border-neutral-100" : ""}`}>
+              <p className="text-[10px] uppercase font-bold text-neutral-400 px-1 mb-1">Cities & Regions</p>
               {[
-                "Independence Layout, Enugu",
-                "New Haven, Enugu",
-                "GRA, Enugu",
-                "Victoria Island, Lagos",
-                "Ikeja, Lagos",
-                "Maitama, Abuja",
+                "Lagos, Nigeria",
+                "Abuja, Nigeria",
+                "Port Harcourt, Nigeria",
+                "Enugu, Nigeria",
+                "Ibadan, Nigeria",
               ].map((loc) => (
                 <button
                   key={loc}
@@ -154,7 +212,7 @@ export default function DashboardHeader({
                     setIsLocationModalOpen(false);
                     toast.success(`Location set to ${loc}`);
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
+                  className={`w-full text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer ${
                     locationName === loc
                       ? "bg-blue-50 text-blue-700 font-bold"
                       : "text-neutral-700 hover:bg-neutral-50"

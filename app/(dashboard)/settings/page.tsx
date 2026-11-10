@@ -46,11 +46,11 @@ function SettingsPageContent() {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("overview");
   const [userData, setUserData] = useState<UserSettingsData>({
-    fullName: user?.fullName || (isArtisan ? "John Obiora" : "Daniel Eze"),
-    email: user?.email || (isArtisan ? "john.obiora@gmail.com" : "danieleze@gmail.com"),
-    phone: user?.phone || "+234 803 555 0142",
-    location: locationName || "Independence Layout, Enugu",
-    avatarUrl: "/images/david.jpg",
+    fullName: user?.fullName || (isArtisan ? "Artisan User" : "Customer User"),
+    email: user?.email || "",
+    phone: user?.phone || "",
+    location: locationName || "Lagos, Nigeria",
+    avatarUrl: user?.avatarUrl,
   });
 
   useEffect(() => {

@@ -2,11 +2,19 @@
 
 This document tracks current progress, backlog, known issues, and next actions for `bluefixx-frontend`.
 
-*Last updated: 2026-10-15 (Customer, Artisan & Apprentice Dashboards, Explore Services, 8-Step Post a Job & Role Switching)*
+*Last updated: 2026-11-10 (Customer Dashboard Dynamic Integration, Authentication & Settings Fixes)*
 
 ---
 
 ## 1. Completed Work
+- [x] **Customer Dashboard Dynamic Integration & Auth/Settings Fixes**:
+  - **Dynamic Location & Saved Addresses in Header**: Connected `getSavedAddressesApi()` (`GET /addresses`) to populate real user addresses and allow instant switching. Removed static location placeholders.
+  - **401 Unauthorized & Token Expiration Auto-Logout**: Wired `lib/api/client.ts` 401 interceptor to `AuthProvider.tsx`'s `resetAuth()`, clearing storage and cleanly redirecting to `/login` instead of leaving the UI stuck with failing requests.
+  - **My Profile Page**: Dynamic profile details (`fullName`, `email`, `phone`, `role`, join date) with initial-based DP fallback. Linked "Update profile" button to `/settings?tab=personal-details`.
+  - **Personal Details Form**: Implemented E.164 phone sanitization (`normalizeE164Phone`) to prevent `emergencyPhone: Invalid string: must match pattern /^\+[1-9]\d{7,14}$/` validation errors. Added button loading states and fixed error toast triggers.
+  - **Transaction PIN Management**: Hydrates `pinConfigured` state from `getAccountProfileApi()`. Displays "PIN Configured & Active" state with option to "Change PIN" if already saved. Fixed error handling for unauthorized requests and added button submission spinners.
+  - **Referral System**: Aligned frontend contract with backend schema `{ code, inviteUrl, totals, policy }` from `GET /account/referrals`. Dynamic fallback link generation and connected referral history (`getReferralHistoryApi()`).
+  - **Dynamic Bell Notifications, Browse Categories, Messages, Reviews, Wallet Balance & Settings**: All dynamic and preserved across page refreshes.
 - [x] **Artisan API Endpoints Integration (`lib/api/artisan.ts` & `types/artisan.ts`)**:
   - Implemented typed domain contracts in `types/artisan.ts` matching the BlueFixx Artisan API specification:
     - Dashboard & Availability: `ArtisanDashboardResponse`, `ArtisanAvailabilityPayload`, `ArtisanAvailabilityResponse`, `ArtisanCapabilities`

@@ -174,9 +174,15 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   // Hook into client auth failure
   useEffect(() => {
     setOnAuthFailure(() => {
-      setAccessToken(null);
+      resetAuth();
+      if (typeof window !== "undefined") {
+        const path = window.location.pathname;
+        if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+          window.location.href = "/login";
+        }
+      }
     });
-  }, [setAccessToken]);
+  }, [resetAuth]);
 
   // Hydrate user profile & wallet on initial app load if authenticated
   useEffect(() => {

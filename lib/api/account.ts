@@ -89,8 +89,8 @@ export async function confirmPhoneChangeApi(payload: {
 export async function setTransactionPinApi(payload: {
   pin: string;
   currentPin?: string;
-}): Promise<{ success: boolean }> {
-  return apiClient.post<{ success: boolean }>("/account/pin", payload);
+}): Promise<{ success?: boolean; message?: string }> {
+  return apiClient.post<{ success?: boolean; message?: string }>("/account/pin", payload);
 }
 
 /**

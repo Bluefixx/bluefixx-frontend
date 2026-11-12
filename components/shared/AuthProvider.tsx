@@ -24,6 +24,8 @@ import {
 } from "@/lib/api/client";
 import { LoginRequest, LoginResponse } from "@/types/auth";
 
+import { setCookie, deleteCookie } from "@/lib/utils/cookies";
+
 interface AuthProviderProps {
   children: React.ReactNode;
 }
@@ -84,8 +86,12 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       if (typeof window !== "undefined") {
         if (resolved) {
           localStorage.setItem("bluefixx_user", JSON.stringify(resolved));
+          if (resolved.role) {
+            setCookie("bluefixx_active_role", resolved.role.toLowerCase(), 7);
+          }
         } else {
           localStorage.removeItem("bluefixx_user");
+          deleteCookie("bluefixx_active_role");
         }
       }
       return resolved;
@@ -96,6 +102,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setActiveRoleState(role);
     if (typeof window !== "undefined") {
       localStorage.setItem("bluefixx_active_role", role);
+      setCookie("bluefixx_active_role", role, 7);
     }
   }, []);
 
@@ -169,7 +176,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     resetRegistration();
     setSelectedLanguageId("en");
     setIntroCompleted(false);
-  }, [resetRegistration, setAccessToken]);
+    deleteCookie("bluefixx_active_role");
+  }, [resetRegistration, setAccessToken, setActiveRole, setUser]);
 
   // Hook into client auth failure
   useEffect(() => {

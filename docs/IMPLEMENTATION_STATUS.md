@@ -111,6 +111,12 @@ This document tracks current progress, backlog, known issues, and next actions f
   - Header notifications bell dropdown panel matching Figma with title, "Mark all as read" link, top recent alerts, and "See all notifications" footer.
   - Dedicated `/notifications` center with `All` and `Unread` filter tabs, Today / Earlier groupings, unread count badge, and "You're all caught up" empty state.
   - Notification settings view updated to match exact category matrix table with Push, Email, and SMS toggles across 5 notification categories.
+- [x] **Role-Based Routing & Talent Route Group**:
+  - **Middleware Implementation**: Created `middleware.ts` for automated role-based redirection. Users are now directed to `/dashboard` (Customer), `/artisan` (Artisan), or `/talent/home` (Talent) based on their `activeRole` cookie.
+  - **Talent Route Group `(talent)`**: Implemented dedicated route group `app/(talent)` with a nested `talent` directory to ensure all routes are prefixed with `/talent` (e.g., `/talent/home`, `/talent/settings`). This resolved a parallel route conflict with the `(dashboard)` group.
+  - **Talent Layout & Navigation**: Created `TalentLayout.tsx`, `TalentHeader.tsx`, and `TalentSidebar.tsx` for a role-specific experience. All links now point to the correct prefixed paths.
+  - **Cookie-Based Role Sync**: Updated `AuthProvider.tsx` to sync the `activeRole` to a browser cookie, enabling server-side middleware redirection.
+  - **Redirection Logic**: Updated `LoginPage.tsx` and `UserRoleSwitcherModal.tsx` to handle the new `/talent/home` path.
 - [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---

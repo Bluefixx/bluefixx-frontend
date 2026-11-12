@@ -23,7 +23,15 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 | `/settings` | Customer Settings | Complete settings suite: Overview hub, Personal details with photo upload, 3-step Transaction PIN setup, Notifications preferences, Language selector with search and Nigerian flag radios, Safety & support (112 emergency dial, live job tracking map, safety incident modal, report submitted screen), Report a problem dispute tracker with frozen escrow, and Invite & earn referral dashboard | `app/(dashboard)/layout.tsx` | Complete | Customer Web · Settings overview, Personal details, Language, PIN wizard, Safety & support, Report a problem, Invite & earn |
 | `/reviews` | Customer Reviews | Dedicated reviews management suite: Completed bookings review pending list, interactive 5-star review submission with positive tags and feedback, and review submitted confirmation with rebook CTA | `app/(dashboard)/layout.tsx` | Complete | Customer Web · Completed bookings: review pending, Write a review, Review submitted |
 | `/notifications` | Customer Alerts | Full notifications activity feed with All / Unread filter tabs, Today / Earlier timeline groupings, real-time unread badges, mark all as read, and "You're all caught up" empty state | `app/(dashboard)/layout.tsx` | Complete | Customer Web · Notifications, Notifications panel, Notifications: all caught up |
-| `/artisan` | Artisan Dashboard | Dedicated artisan workbench with job alerts, active jobs, completed jobs, and earnings | `app/(artisan)/layout.tsx` | Complete | Artisan Web · Workbench |
+| `/artisan` | Artisan Dashboard | Dedicated artisan workbench with job alerts, active jobs, completed jobs, and earnings | `app/(artisan)/artisan/page.tsx` | Complete | Artisan Web · Workbench |
+| `/talent/home` | Talent Dashboard | Apprenticeship dashboard with active programs, milestones, and workshop sessions | `app/(talent)/talent/home/page.tsx` | Complete | Talent Web · Apprenticeships |
+| `/talent/discover` | Talent Discovery | Browse and search for apprenticeship and training programs | `app/(talent)/talent/discover/page.tsx` | Complete | Talent Web · Discovery |
+| `/talent/applications` | Talent Applications | Track and manage apprenticeship program applications | `app/(talent)/talent/applications/page.tsx` | Complete | Talent Web · Applications |
+| `/talent/enrollments` | Talent Enrollments | Access active training programs and materials | `app/(talent)/talent/enrollments/page.tsx` | Complete | Talent Web · Enrollments |
+| `/talent/progress` | Talent Progress | View milestones, learning progress, and training history | `app/(talent)/talent/progress/page.tsx` | Complete | Talent Web · Progress |
+| `/talent/certificates` | Talent Certificates | View and download earned training certificates | `app/(talent)/talent/certificates/page.tsx` | Complete | Talent Web · Certificates |
+| `/talent/reviews` | Talent Reviews | Manage reviews for programs and master artisans | `app/(talent)/talent/reviews/page.tsx` | Complete | Talent Web · Reviews |
+| `/talent/settings` | Talent Settings | Talent-specific profile and preference management | `app/(talent)/talent/settings/page.tsx` | Complete | Talent Web · Settings |
 
 ---
 

@@ -52,6 +52,8 @@ export default function UserRoleSwitcherModal({
 
     if (newRole === "artisan") {
       router.push("/artisan");
+    } else if (newRole === "apprentice") {
+      router.push("/talent/home");
     } else {
       router.push("/dashboard");
     }

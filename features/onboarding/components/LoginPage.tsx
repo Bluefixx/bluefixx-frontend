@@ -50,11 +50,18 @@ export default function LoginPage() {
         const response = await login({ email, password });
         toast.success(`Welcome back, ${response.user.fullName || "User"}!`);
         
-        // If role is not selected yet, redirect to role selection, otherwise dashboard
+        // Role-based redirection
         if (!response.user.role) {
           router.push("/signup");
         } else {
-          router.push("/dashboard");
+          const role = (response.user.role as string).toLowerCase();
+          if (role === "artisan") {
+            router.push("/artisan");
+          } else if (role === "apprentice" || role === "talent" || role === "learner") {
+            router.push("/talent/home");
+          } else {
+            router.push("/dashboard");
+          }
         }
       } catch (err: unknown) {
         if (err instanceof ApiError) {

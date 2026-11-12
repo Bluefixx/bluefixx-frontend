@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
-import { getProgramMessagesApi, sendProgramMessageApi } from "@/lib/api/talent";
+import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import {
+  getProgramMessagesApi,
+  sendProgramMessageApi,
+  markTalentProgramMessagesReadApi,
+  getTalentConversationsApi,
+} from "@/lib/api/talent";
+import { TalentConversation } from "@/types/talent";
 
 interface MessageItem {
   id: string;
@@ -20,68 +27,114 @@ interface TalentMessagesViewProps {
   programId?: string;
 }
 
+function initialsOf(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function formatConversationTime(value?: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const isToday = date.toDateString() === new Date().toDateString();
+  return isToday
+    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString([], { day: "2-digit", month: "short" });
+}
+
 export function TalentMessagesView({
   onBack,
   onOpenTraining,
   onFindMore,
-  programId = "8d23ca35-8dac-409e-922b-43c5ef62c7d8",
+  programId,
 }: TalentMessagesViewProps) {
-  const [selectedChat, setSelectedChat] = useState<string>("john");
+  const { user } = useAuth();
   const [isLockedOfferOpen, setIsLockedOfferOpen] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [messagesList, setMessagesList] = useState<MessageItem[]>([
-    {
-      id: "m-1",
-      sender: "mentor",
-      text: "Good morning Daniel. Tomorrow we start gate fabrication. Come with your PPE and safety boots.",
-      time: "09:12",
-    },
-    {
-      id: "m-2",
-      sender: "talent",
-      text: "Good morning sir. I will be at the Emene workshop by 8:00am.",
-      time: "09:15",
-    },
-    {
-      id: "m-3",
-      sender: "mentor",
-      isAudio: true,
-      audioDuration: "0:34",
-      time: "09:20",
-    },
-  ]);
+  const [conversations, setConversations] = useState<TalentConversation[]>([]);
+  const [activeProgramId, setActiveProgramId] = useState<string | undefined>(programId);
+  const [messagesList, setMessagesList] = useState<MessageItem[]>([]);
+  const [messagesProgramId, setMessagesProgramId] = useState<string | null>(null);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
 
+  // Load the Talent's real programme conversations.
   useEffect(() => {
-    if (!programId) return;
     let isMounted = true;
 
-    getProgramMessagesApi(programId)
-      .then((history) => {
-        if (!isMounted || !history || history.length === 0) return;
-        const mapped: MessageItem[] = history.map((msg) => ({
-          id: msg.id,
-          sender: "talent",
-          text: msg.text || "",
-          time: new Date(msg.createdAt).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        }));
-        setMessagesList((prev) => [...prev, ...mapped]);
+    getTalentConversationsApi()
+      .then((items) => {
+        if (!isMounted) return;
+        const list = Array.isArray(items) ? items : [];
+        setConversations(list);
+        setActiveProgramId((prev) => prev ?? list[0]?.programId);
       })
       .catch(() => {
-        // Resilient fallback preserves existing conversation
+        if (isMounted) setConversations([]);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingConversations(false);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [programId]);
+  }, []);
+
+  // Load the message history for the selected conversation.
+  useEffect(() => {
+    if (!activeProgramId) return;
+    let isMounted = true;
+
+    getProgramMessagesApi(activeProgramId)
+      .then((history) => {
+        if (!isMounted) return;
+        setMessagesList(
+          (history ?? []).map((msg) => ({
+            id: msg.id,
+            sender: msg.senderId === user?.id ? "talent" : "mentor",
+            text: msg.text || "",
+            time: new Date(msg.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          }))
+        );
+        setMessagesProgramId(activeProgramId);
+      })
+      .catch(() => {
+        if (isMounted) {
+          setMessagesList([]);
+          setMessagesProgramId(activeProgramId);
+        }
+      });
+
+    // Mark this programme conversation as read once opened
+    markTalentProgramMessagesReadApi(activeProgramId).catch(() => {
+      // Non-blocking; the inbox badge simply stays until the next fetch
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeProgramId, user?.id]);
+
+  const isLoadingMessages =
+    activeProgramId != null && messagesProgramId !== activeProgramId;
+
+  const activeConversation = conversations.find((c) => c.programId === activeProgramId);
+  const activeName =
+    activeConversation?.participant?.fullName ||
+    activeConversation?.programTitle ||
+    "Programme conversation";
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !activeProgramId) return;
 
     const textToSend = newMessage.trim();
     const tempId = `m-${Date.now()}`;
@@ -99,12 +152,12 @@ export function TalentMessagesView({
     setNewMessage("");
 
     try {
-      await sendProgramMessageApi(programId, {
+      await sendProgramMessageApi(activeProgramId, {
         clientId,
         text: textToSend,
       });
     } catch {
-      // Message already in local chat list
+      toast.error("Message could not be sent. Please try again.");
     }
   };
 
@@ -239,84 +292,55 @@ export function TalentMessagesView({
 
           {/* Conversations Items */}
           <div className="space-y-2 overflow-y-auto flex-1">
-            {/* Conversation 1: John Obiora */}
-            <div
-              onClick={() => setSelectedChat("john")}
-              className={`p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 ${
-                selectedChat === "john"
-                  ? "bg-blue-50/70 border border-blue-200/80 shadow-2xs"
-                  : "hover:bg-neutral-50 border border-transparent"
-              }`}
-            >
-              <div className="w-11 h-11 rounded-full bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
-                <span>JO</span>
+            {isLoadingConversations && (
+              <div className="p-3 text-center text-xs text-neutral-400 bg-neutral-50 rounded-xl">
+                Loading conversations...
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
-                    John Obiora
-                  </h4>
-                  <span className="text-[10px] text-neutral-400">09:20</span>
-                </div>
-                <p className="font-sans text-xs text-neutral-500 truncate mt-0.5">
-                  Voice message · 0:34
-                </p>
-                <span className="inline-block text-[10px] text-blue-700 bg-blue-100/60 font-semibold px-2 py-0.5 rounded mt-1">
-                  Approved today: Welding joint
-                </span>
-              </div>
-              <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0" />
-            </div>
+            )}
 
-            {/* Conversation 2: Chinedu Okafor */}
-            <div
-              onClick={() => setSelectedChat("chinedu")}
-              className={`p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 ${
-                selectedChat === "chinedu"
-                  ? "bg-blue-50/70 border border-blue-200/80 shadow-2xs"
-                  : "hover:bg-neutral-50 border border-transparent"
-              }`}
-            >
-              <div className="w-11 h-11 rounded-full bg-[#074292] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
-                <span>CO</span>
+            {!isLoadingConversations && conversations.length === 0 && (
+              <div className="p-3 text-center text-xs text-neutral-400 bg-neutral-50 rounded-xl">
+                No programme conversations yet
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
-                    Chinedu Okafor
-                  </h4>
-                  <span className="text-[10px] text-neutral-400">Yesterday</span>
-                </div>
-                <p className="font-sans text-xs text-neutral-500 truncate mt-0.5">
-                  The next intake for Home Electrical starts in September
-                </p>
-              </div>
-            </div>
+            )}
 
-            {/* Conversation 3: Bluefixx Support */}
-            <div
-              onClick={() => setSelectedChat("support")}
-              className={`p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 ${
-                selectedChat === "support"
-                  ? "bg-blue-50/70 border border-blue-200/80 shadow-2xs"
-                  : "hover:bg-neutral-50 border border-transparent"
-              }`}
-            >
-              <div className="w-11 h-11 rounded-full bg-[#001B40] text-white flex items-center justify-center font-bold text-xs shrink-0">
-                B
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
-                    Bluefixx Support
-                  </h4>
-                  <span className="text-[10px] text-neutral-400">22 Jul</span>
-                </div>
-                <p className="font-sans text-xs text-neutral-500 truncate mt-0.5">
-                  Payment of ₦150,000 received. Your receipt is ready.
-                </p>
-              </div>
-            </div>
+            {conversations.map((conv) => {
+              const name =
+                conv.participant?.fullName || conv.programTitle || "Programme conversation";
+              const isSelected = conv.programId === activeProgramId;
+              return (
+                <button
+                  key={conv.id}
+                  type="button"
+                  onClick={() => setActiveProgramId(conv.programId)}
+                  className={`w-full p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 text-left ${
+                    isSelected
+                      ? "bg-blue-50/70 border border-blue-200/80 shadow-2xs"
+                      : "hover:bg-neutral-50 border border-transparent"
+                  }`}
+                >
+                  <div className="w-11 h-11 rounded-full bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
+                    <span>{initialsOf(name) || "B"}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
+                        {name}
+                      </h4>
+                      <span className="text-[10px] text-neutral-400">
+                        {formatConversationTime(conv.lastMessageAt)}
+                      </span>
+                    </div>
+                    <p className="font-sans text-xs text-neutral-500 truncate mt-0.5">
+                      {conv.lastMessage || conv.programTitle || "Programme conversation"}
+                    </p>
+                  </div>
+                  {(conv.unreadCount ?? 0) > 0 && (
+                    <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -326,14 +350,14 @@ export function TalentMessagesView({
           <div className="p-5 border-b border-neutral-100 flex items-center justify-between gap-4 bg-neutral-50/50">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#001B40] text-white flex items-center justify-center font-heading font-bold text-xs shrink-0">
-                <span>JO</span>
+                <span>{initialsOf(activeName) || "B"}</span>
               </div>
               <div>
                 <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
-                  John Obiora
+                  {activeName}
                 </h3>
                 <p className="font-sans text-xs text-neutral-400">
-                  Master Artisan, Welding
+                  {activeConversation?.programTitle || "Programme conversation"}
                 </p>
               </div>
             </div>
@@ -365,6 +389,21 @@ export function TalentMessagesView({
 
           {/* Chat Messages Body */}
           <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+            {isLoadingMessages && (
+              <div className="py-12 text-center text-xs text-neutral-400">
+                Loading messages...
+              </div>
+            )}
+
+            {!isLoadingMessages && messagesList.length === 0 && (
+              <div className="py-12 text-center text-xs text-neutral-400">
+                <p className="font-semibold text-neutral-700">No messages yet</p>
+                <p className="text-neutral-400 mt-1">
+                  Send a message below to start the conversation.
+                </p>
+              </div>
+            )}
+
             {messagesList.map((msg) => (
               <div
                 key={msg.id}

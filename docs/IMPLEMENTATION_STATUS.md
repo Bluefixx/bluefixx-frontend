@@ -2,11 +2,19 @@
 
 This document tracks current progress, backlog, known issues, and next actions for `bluefixx-frontend`.
 
-*Last updated: 2026-11-10 (Customer Dashboard Dynamic Integration, Authentication & Settings Fixes)*
+*Last updated: 2026-11-13 (Media Upload Contract Fix, Talent Reviews & Messages API Wiring)*
 
 ---
 
 ## 1. Completed Work
+- [x] **Media Upload Contract Fix (`types/customer.ts` & `lib/api/media.ts`)**:
+  - Fixed `VALIDATION_ERROR` on `POST /media` by sending `{ purpose, resourceType }` instead of `{ type, filename, mimeType, sizeBytes }`.
+  - Added `MediaPurpose` + `MediaResourceType`; `MediaUploadInitiateResponse` now exposes the signed Cloudinary `fields` and `maximumBytes`.
+  - `uploadMediaFile` uploads the binary to `uploadUrl` as `multipart/form-data` with the signed fields, then completes and resolves the URL. `VOICE`/`EVIDENCE`/`ASSESSMENT` map to `resourceType: "video"`.
+- [x] **Talent Reviews & Messages API Wiring**:
+  - `app/(talent)/talent/reviews/page.tsx` resolves the real enrollment via `getTalentHomeApi()` and passes it to `TalentReviewsSuite`; submit no longer masks failures (error toast instead of a fake success state).
+  - `TalentMessagesView` now loads the real conversation list via `getTalentConversationsApi()`, loads per-programme history, derives message ownership from `user.id`, and surfaces send failures.
+
 - [x] **Customer Dashboard Dynamic Integration & Auth/Settings Fixes**:
   - **Dynamic Location & Saved Addresses in Header**: Connected `getSavedAddressesApi()` (`GET /addresses`) to populate real user addresses and allow instant switching. Removed static location placeholders.
   - **401 Unauthorized & Token Expiration Auto-Logout**: Wired `lib/api/client.ts` 401 interceptor to `AuthProvider.tsx`'s `resetAuth()`, clearing storage and cleanly redirecting to `/login` instead of leaving the UI stuck with failing requests.
@@ -114,9 +122,13 @@ This document tracks current progress, backlog, known issues, and next actions f
 - [x] **Role-Based Routing & Talent Route Group**:
   - **Middleware Implementation**: Created `middleware.ts` for automated role-based redirection. Users are now directed to `/dashboard` (Customer), `/artisan` (Artisan), or `/talent/home` (Talent) based on their `activeRole` cookie.
   - **Talent Route Group `(talent)`**: Implemented dedicated route group `app/(talent)` with a nested `talent` directory to ensure all routes are prefixed with `/talent` (e.g., `/talent/home`, `/talent/settings`). This resolved a parallel route conflict with the `(dashboard)` group.
-  - **Talent Layout & Navigation**: Created `TalentLayout.tsx`, `TalentHeader.tsx`, and `TalentSidebar.tsx` for a role-specific experience. All links now point to the correct prefixed paths.
+  - **Shared Layout & Navigation**: `app/(talent)/layout.tsx` now reuses the shared `DashboardHeader` + `DashboardSidebar` (with `UserRoleSwitcherModal`) exactly like the customer `(dashboard)` layout, so the header/sidebar look and behave identically. The apprentice nav points to the dedicated `/talent/*` routes (Home, Discover, Applications, Payments, Messages, Certificates, Reviews, Settings). The duplicate `TalentLayout.tsx` / `TalentHeader.tsx` / `TalentSidebar.tsx` have been retired.
   - **Cookie-Based Role Sync**: Updated `AuthProvider.tsx` to sync the `activeRole` to a browser cookie, enabling server-side middleware redirection.
   - **Redirection Logic**: Updated `LoginPage.tsx` and `UserRoleSwitcherModal.tsx` to handle the new `/talent/home` path.
+- [x] **Talent Dashboard — Component Integration & Endpoint Wiring**:
+  - Every `/talent/*` route now renders its feature component from `features/dashboard/components/talent/` with real data fetching, replacing the earlier placeholder pages (including the previously-missing `/talent/messages` route and a new `TalentCertificatesView`).
+  - Implemented dedicated nested routes for every sub-flow: `discover/[id]` (+ `/apply` + `/apply/sent`), `applications/[id]`, `enrollments/[id]` (+ `/payment`, `/payment-failed`, `/activated`, `/refund-policy`, `/request-refund`, `/refund-requested`), and `settings` sub-pages (`edit-profile`, `transaction-pin`, `notifications`, `safety-support`, `referrals`).
+  - Wired the full Talent API surface from `talent (1).md`: `lib/api/talent.ts` (21 endpoints) plus shared account/wallet/support/media helpers. Newly connected: availability alerts (`getTalentAlertsApi` / `createTalentAlertApi` / `deleteTalentAlertApi`), programme message read receipts (`markTalentProgramMessagesReadApi`), transaction PIN setup (`setTransactionPinApi`), and profile photo upload (`uploadMediaFile`).
 - [x] **TypeScript Strict Check**: Verified with `npx tsc --noEmit` (0 errors).
 
 ---

@@ -1,10 +1,26 @@
 import { apiClient } from "./client";
 import {
-  MediaType,
+  MediaPurpose,
+  MediaResourceType,
   MediaUploadInitiateRequest,
   MediaUploadInitiateResponse,
   MediaUrlResponse,
 } from "@/types/customer";
+
+/**
+ * Purposes whose binary is stored as a Cloudinary `video` resource.
+ * VOICE is audio-only, EVIDENCE and ASSESSMENT accept video clips.
+ */
+const VIDEO_PURPOSES: ReadonlySet<MediaPurpose> = new Set<MediaPurpose>([
+  "VOICE",
+  "EVIDENCE",
+  "ASSESSMENT",
+]);
+
+/** Map an upload purpose to the Cloudinary resource type the backend expects. */
+export function mediaResourceTypeFor(purpose: MediaPurpose): MediaResourceType {
+  return VIDEO_PURPOSES.has(purpose) ? "video" : "image";
+}
 
 /**
  * Initiate a media upload session
@@ -32,29 +48,33 @@ export async function getMediaUrlApi(id: string): Promise<MediaUrlResponse> {
 }
 
 /**
- * High-level helper to upload a File or Blob directly to BlueFixx media storage
+ * High-level helper to upload a File or Blob directly to Cloudinary using the
+ * signed fields returned by `POST /media`, then verify and resolve its URL.
  */
 export async function uploadMediaFile(
   file: File,
-  type: MediaType
+  purpose: MediaPurpose
 ): Promise<{ id: string; url?: string }> {
   try {
     const initRes = await initiateMediaUploadApi({
-      type,
-      filename: file.name,
-      mimeType: file.type || "application/octet-stream",
-      sizeBytes: file.size,
+      purpose,
+      resourceType: mediaResourceTypeFor(purpose),
     });
 
-    if (initRes.uploadUrl) {
-      // Direct binary PUT to S3 / cloud storage or backend endpoint
-      await fetch(initRes.uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": file.type || "application/octet-stream",
-        },
-        body: file,
-      });
+    // Upload the binary to the signed provider URL using the returned fields.
+    const formData = new FormData();
+    formData.append("file", file);
+    Object.entries(initRes.fields).forEach(([key, value]) => {
+      formData.append(key, String(value));
+    });
+
+    const uploadRes = await fetch(initRes.uploadUrl, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error(`Media upload failed with status ${uploadRes.status}`);
     }
 
     await completeMediaUploadApi(initRes.id);

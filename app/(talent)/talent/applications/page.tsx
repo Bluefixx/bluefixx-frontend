@@ -1,12 +1,18 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import { TalentApplicationsListView } from "@/features/dashboard/components/talent/TalentApplicationsListView";
 
 export default function TalentApplicationsPage() {
+  const router = useRouter();
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#001B40]">My Applications</h1>
-      <p className="text-neutral-600">Track your apprenticeship program applications.</p>
-    </div>
+    <TalentApplicationsListView
+      onBack={() => router.push("/talent/home")}
+      onFindMore={() => router.push("/talent/discover")}
+      onSelectApplication={(app) => router.push(`/talent/applications/${app.id}`)}
+      onMakePayment={(app) => router.push(`/talent/applications/${app.id}`)}
+    />
   );
 }

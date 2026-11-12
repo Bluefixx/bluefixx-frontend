@@ -64,6 +64,23 @@ export async function verifyPaymentApi(id: string): Promise<{ status: string }> 
 }
 
 /**
+ * Request a replacement payment when initialization was interrupted or verification failed
+ */
+export async function retryPaymentApi(
+  id: string,
+  idempotencyKey?: string
+): Promise<{
+  id: string;
+  reference: string;
+  status: string;
+  checkoutUrl?: string;
+}> {
+  const headers: Record<string, string> = {};
+  if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
+  return apiClient.post(`/payments/${id}/retry`, {}, { headers });
+}
+
+/**
  * Download payment receipt PDF
  */
 export async function downloadPaymentReceiptApi(id: string): Promise<Blob> {
@@ -80,4 +97,50 @@ export async function requestWithdrawalApi(payload: {
   bankAccountId: string;
 }): Promise<{ id: string; status: string }> {
   return apiClient.post("/wallet/withdrawals", payload);
+}
+
+/**
+ * List the user's wallet withdrawal requests
+ */
+export async function getWithdrawalsApi(params?: {
+  cursor?: string;
+  limit?: number;
+}): Promise<
+  Array<{
+    id: string;
+    amount: string;
+    kind: string;
+    status: string;
+    reference: string;
+  }>
+> {
+  return apiClient.get("/wallet/withdrawals", { params });
+}
+
+/**
+ * Get a single withdrawal request by ID
+ */
+export async function getWithdrawalByIdApi(id: string): Promise<{
+  id: string;
+  userId: string;
+  bankId: string;
+  reference: string;
+  amount: string;
+  kind: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  bank?: { bankCode: string; last4: string; accountName: string };
+}> {
+  return apiClient.get(`/wallet/withdrawals/${id}`);
+}
+
+/**
+ * Cancel a pending withdrawal request
+ */
+export async function cancelWithdrawalApi(
+  id: string,
+  reason: string
+): Promise<{ message?: string }> {
+  return apiClient.post(`/wallet/withdrawals/${id}/cancel`, { reason });
 }

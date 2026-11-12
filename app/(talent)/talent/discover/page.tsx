@@ -1,12 +1,16 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import { TalentDiscoveryView } from "@/features/dashboard/components/talent/TalentDiscoveryView";
 
 export default function TalentDiscoverPage() {
+  const router = useRouter();
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#001B40]">Discover Programs</h1>
-      <p className="text-neutral-600">Browse available apprenticeship and training programs.</p>
-    </div>
+    <TalentDiscoveryView
+      onBack={() => router.push("/talent/home")}
+      onSelectProgramme={(prog) => router.push(`/talent/discover/${prog.id}`)}
+    />
   );
 }

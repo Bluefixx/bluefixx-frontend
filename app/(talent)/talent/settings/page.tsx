@@ -1,12 +1,22 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
+import { TalentProfileSettingsView } from "@/features/dashboard/components/talent/TalentProfileSettingsView";
 
 export default function TalentSettingsPage() {
+  const router = useRouter();
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#001B40]">Talent Settings</h1>
-      <p className="text-neutral-600">Manage your talent profile and preferences.</p>
-    </div>
+    <TalentProfileSettingsView
+      onEditProfile={() => router.push("/talent/settings/edit-profile")}
+      onOpenPin={() => router.push("/talent/settings/transaction-pin")}
+      onOpenNotifications={() => router.push("/talent/settings/notifications")}
+      onOpenCertifications={() => router.push("/talent/certificates")}
+      onOpenWallet={() => router.push("/talent/enrollments")}
+      onOpenSafetySupport={() => router.push("/talent/settings/safety-support")}
+      onOpenReportProblem={() => router.push("/talent/settings/safety-support")}
+      onOpenReferrals={() => router.push("/talent/settings/referrals")}
+    />
   );
 }

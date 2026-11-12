@@ -1,0 +1,54 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { TalentApplicationFormView } from "@/features/dashboard/components/talent/TalentApplicationFormView";
+import { getTalentProgramByIdApi } from "@/lib/api/talent";
+import { formatNaira } from "@/lib/utils/currency";
+
+export default function TalentApplyPage() {
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
+
+  const [programmeTitle, setProgrammeTitle] = useState<string | undefined>();
+  const [duration, setDuration] = useState<string | undefined>();
+  const [fee, setFee] = useState<string | undefined>();
+  const [artisanName, setArtisanName] = useState<string | undefined>();
+  const [artisanAvatar, setArtisanAvatar] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!id) return;
+    let isMounted = true;
+
+    getTalentProgramByIdApi(id)
+      .then((programme) => {
+        if (!isMounted || !programme) return;
+        setProgrammeTitle(programme.title);
+        setDuration(programme.durationWeeks ? `${programme.durationWeeks} weeks` : undefined);
+        setFee(formatNaira(Number(programme.fee || 0), true));
+        setArtisanName(programme.artisan?.fullName);
+        setArtisanAvatar(programme.artisan?.avatarUrl);
+      })
+      .catch(() => {
+        // Defaults inside the form remain in place
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
+
+  return (
+    <TalentApplicationFormView
+      programId={id}
+      programmeTitle={programmeTitle}
+      duration={duration}
+      fee={fee}
+      artisanName={artisanName}
+      artisanAvatar={artisanAvatar}
+      onBack={() => router.push(`/talent/discover/${id}`)}
+      onSubmitSuccess={() => router.push(`/talent/discover/${id}/apply/sent`)}
+    />
+  );
+}

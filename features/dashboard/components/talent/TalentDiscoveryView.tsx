@@ -2,9 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { getTalentProgramsApi } from "@/lib/api/talent";
+import toast from "react-hot-toast";
+import {
+  getTalentProgramsApi,
+  getTalentAlertsApi,
+  createTalentAlertApi,
+  deleteTalentAlertApi,
+} from "@/lib/api/talent";
 import { getServicesApi } from "@/lib/api/customer";
 import { formatNaira } from "@/lib/utils/currency";
+import { TalentAlert } from "@/types/talent";
 
 export interface ApprenticeshipProgramme {
   id: string;
@@ -37,6 +44,23 @@ export function TalentDiscoveryView({
   ]);
   const [programmes, setProgrammes] = useState<ApprenticeshipProgramme[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [alerts, setAlerts] = useState<TalentAlert[]>([]);
+  const [isSavingAlert, setIsSavingAlert] = useState(false);
+
+  // Load saved programme availability alerts
+  useEffect(() => {
+    let isMounted = true;
+    getTalentAlertsApi()
+      .then((items) => {
+        if (isMounted) setAlerts(items || []);
+      })
+      .catch(() => {
+        if (isMounted) setAlerts([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Fetch real trade categories from service catalog
   useEffect(() => {
@@ -127,6 +151,55 @@ export function TalentDiscoveryView({
       isMounted = false;
     };
   }, [searchQuery, selectedTradeId]);
+
+  // Match a saved availability alert to the current trade/search filters
+  const activeTradeId = selectedTradeId !== "all" ? selectedTradeId : undefined;
+  const activeSearch = searchQuery.trim() || undefined;
+  const savedAlert = alerts.find(
+    (a) =>
+      (a.tradeId || undefined) === activeTradeId &&
+      (a.search || undefined) === activeSearch
+  );
+
+  const handleToggleAlert = async () => {
+    if (isSavingAlert) return;
+    setIsSavingAlert(true);
+
+    try {
+      if (savedAlert) {
+        await deleteTalentAlertApi(savedAlert.id);
+        setAlerts((prev) => prev.filter((a) => a.id !== savedAlert.id));
+        toast.success("Programme alert removed.");
+      } else {
+        // Use the device location when granted, otherwise fall back to Enugu centre
+        const position = await new Promise<GeolocationPosition | null>((resolve) => {
+          if (typeof navigator === "undefined" || !navigator.geolocation) {
+            resolve(null);
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            (pos) => resolve(pos),
+            () => resolve(null),
+            { timeout: 5000 }
+          );
+        });
+
+        const created = await createTalentAlertApi({
+          tradeId: activeTradeId,
+          search: activeSearch,
+          latitude: position?.coords.latitude ?? 6.5244,
+          longitude: position?.coords.longitude ?? 7.5105,
+          radiusKm: 25,
+        });
+        setAlerts((prev) => [...prev, created]);
+        toast.success("Alert saved. We will notify you when new apprenticeships open!");
+      }
+    } catch {
+      toast.error("Could not update your alert. Please try again.");
+    } finally {
+      setIsSavingAlert(false);
+    }
+  };
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
@@ -307,14 +380,15 @@ export function TalentDiscoveryView({
             )}
             <button
               type="button"
-              onClick={() => {
-                import("react-hot-toast").then(({ default: toast }) =>
-                  toast.success("We will notify you when new apprenticeships open!")
-                );
-              }}
-              className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+              onClick={handleToggleAlert}
+              disabled={isSavingAlert}
+              className={`px-6 py-2.5 rounded-xl font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer ${
+                savedAlert
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+                  : "bg-[#001B40] hover:bg-[#052F5F] text-white"
+              }`}
             >
-              Get notified
+              {savedAlert ? "Alert on · Remove" : "Get notified"}
             </button>
           </div>
         </div>

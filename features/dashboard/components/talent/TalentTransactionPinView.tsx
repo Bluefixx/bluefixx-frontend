@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { setTransactionPinApi } from "@/lib/api/account";
 
 interface TalentTransactionPinViewProps {
   onBack: () => void;
@@ -15,6 +16,7 @@ export function TalentTransactionPinView({
   const [step, setStep] = useState<"create" | "confirm" | "success">("create");
   const [firstPin, setFirstPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCreateContinue = () => {
     if (firstPin.length < 4) {
@@ -24,7 +26,7 @@ export function TalentTransactionPinView({
     setStep("confirm");
   };
 
-  const handleConfirmPin = () => {
+  const handleConfirmPin = async () => {
     if (confirmPin.length < 4) {
       toast.error("Please enter all 4 digits");
       return;
@@ -34,8 +36,21 @@ export function TalentTransactionPinView({
       setConfirmPin("");
       return;
     }
-    setStep("success");
-    toast.success("Transaction PIN created successfully!");
+
+    setIsSubmitting(true);
+    try {
+      const res = await setTransactionPinApi({ pin: firstPin });
+      toast.success(res?.message || "Transaction PIN created successfully!");
+      setStep("success");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Could not save your PIN. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // STEP 3: SUCCESS (Matching Figma Screenshot 5 Left)
@@ -187,14 +202,14 @@ export function TalentTransactionPinView({
             <button
               type="button"
               onClick={handleConfirmPin}
-              disabled={confirmPin.length < 4}
+              disabled={confirmPin.length < 4 || isSubmitting}
               className={`w-full max-w-sm mx-auto py-3.5 rounded-xl font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer ${
-                confirmPin.length === 4
+                confirmPin.length === 4 && !isSubmitting
                   ? "bg-[#001B40] hover:bg-[#052F5F] text-white"
                   : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
               }`}
             >
-              Confirm PIN
+              {isSubmitting ? "Saving PIN..." : "Confirm PIN"}
             </button>
           )}
         </div>

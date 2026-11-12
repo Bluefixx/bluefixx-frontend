@@ -1,12 +1,45 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { TalentPaymentsReceiptsView } from "@/features/dashboard/components/talent/TalentPaymentsReceiptsView";
+import { getTalentHomeApi } from "@/lib/api/talent";
 
 export default function TalentEnrollmentsPage() {
+  const router = useRouter();
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+
+  // Resolve the active apprentice enrolment so refunds can be raised against it
+  useEffect(() => {
+    let isMounted = true;
+
+    getTalentHomeApi()
+      .then((home) => {
+        if (!isMounted) return;
+        setEnrollmentId(home?.enrollments?.[0]?.id ?? null);
+      })
+      .catch(() => {
+        // Leave null; the refund action falls back to a friendly message
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleRequestRefund = () => {
+    if (enrollmentId) {
+      router.push(`/talent/enrollments/${enrollmentId}/refund-policy`);
+    } else {
+      toast.error("No active apprenticeship available to refund.");
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-[#001B40]">My Enrollments</h1>
-      <p className="text-neutral-600">Access your active training programs.</p>
-    </div>
+    <TalentPaymentsReceiptsView
+      onBack={() => router.push("/talent/home")}
+      onRequestRefund={handleRequestRefund}
+    />
   );
 }

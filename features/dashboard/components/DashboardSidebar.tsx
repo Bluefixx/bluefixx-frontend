@@ -6,6 +6,7 @@ import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { useTranslations } from "@/components/shared/LanguageProvider";
 
 interface DashboardSidebarProps {
   onOpenRoleSwitcher?: () => void;
@@ -22,6 +23,7 @@ function DashboardSidebarContent({
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab") || "";
   const { user, activeRole } = useAuth();
+  const t = useTranslations("nav");
 
   // Accordion state for menus with submenus
   const [isExploreOpen, setIsExploreOpen] = useState(
@@ -118,10 +120,10 @@ function DashboardSidebarContent({
 
   const roleDisplay =
     activeRole === "customer"
-      ? "Customer"
+      ? t("customer")
       : activeRole === "artisan"
-      ? "Artisan"
-      : "Talent";
+      ? t("artisan")
+      : t("talent");
 
   const sidebarContent = (
     <div className="w-64 bg-white border-r border-neutral-200/80 min-h-screen flex flex-col justify-between shrink-0 select-none">
@@ -181,7 +183,7 @@ function DashboardSidebarContent({
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
-                <span>Home</span>
+                <span>{t("home")}</span>
               </Link>
 
               {/* 2. Learn (with submenus) */}
@@ -200,7 +202,7 @@ function DashboardSidebarContent({
                       <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                       <path d="M6 12v5c3 3 9 3 12 0v-5" />
                     </svg>
-                    <span>Learn</span>
+                    <span>{t("learn")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -227,7 +229,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Find apprenticeships
+                      {t("findApprenticeships")}
                     </Link>
                     <Link
                       href="/dashboard?view=applications-list"
@@ -238,7 +240,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      My applications
+                      {t("myApplications")}
                     </Link>
                   </div>
                 )}
@@ -260,7 +262,7 @@ function DashboardSidebarContent({
                       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                       <polyline points="17 6 23 6 23 12" />
                     </svg>
-                    <span>Progress</span>
+                    <span>{t("progress")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -287,7 +289,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      My apprenticeship
+                      {t("myApprenticeship")}
                     </Link>
                     <Link
                       href="/dashboard?view=payments-receipts"
@@ -298,7 +300,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Payments & receipts
+                      {t("paymentsAndReceipts")}
                     </Link>
                   </div>
                 )}
@@ -317,7 +319,7 @@ function DashboardSidebarContent({
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                <span>Messages</span>
+                <span>{t("messages")}</span>
               </Link>
 
               {/* 5. Profile */}
@@ -334,7 +336,7 @@ function DashboardSidebarContent({
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
                 </svg>
-                <span>Profile</span>
+                <span>{t("profile")}</span>
               </Link>
             </>
           ) : activeRole === "artisan" ? (
@@ -353,7 +355,7 @@ function DashboardSidebarContent({
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
-                <span>Home</span>
+                <span>{t("home")}</span>
               </Link>
 
               {/* 2. Jobs (with badge '4' and accordion) */}
@@ -372,7 +374,7 @@ function DashboardSidebarContent({
                       <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
                       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                     </svg>
-                    <span>Jobs</span>
+                    <span>{t("jobs")}</span>
                     <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
                       4
                     </span>
@@ -401,7 +403,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Find jobs
+                      {t("findJobs")}
                     </Link>
                     <Link
                       href="/dashboard?view=requests"
@@ -412,7 +414,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Requests
+                      {t("requests")}
                     </Link>
                     <Link
                       href="/dashboard?view=quotes"
@@ -423,7 +425,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      My quotes
+                      {t("quotes")}
                     </Link>
                     <Link
                       href="/dashboard?view=active-jobs"
@@ -434,7 +436,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Active jobs
+                      {t("activeJobs")}
                     </Link>
                     <Link
                       href="/dashboard?view=completed-jobs"
@@ -445,7 +447,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Completed jobs
+                      {t("completedJobs")}
                     </Link>
                   </div>
                 )}
@@ -467,7 +469,7 @@ function DashboardSidebarContent({
                       <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                       <path d="M6 12v5c3 3 9 3 12 0v-5" />
                     </svg>
-                    <span>Talent</span>
+                    <span>{t("talent")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -493,7 +495,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Training programmes
+                      {t("trainingProgrammes")}
                     </Link>
                     <Link
                       href="/dashboard?view=apprentice-applications"
@@ -504,7 +506,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Apprentice applications
+                      {t("apprenticeApplications")}
                     </Link>
                     <Link
                       href="/dashboard?view=active-apprentices"
@@ -515,7 +517,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Active apprentices
+                      {t("activeApprentices")}
                     </Link>
                   </div>
                 )}
@@ -535,7 +537,7 @@ function DashboardSidebarContent({
                   <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  <span>Messages</span>
+                  <span>{t("messages")}</span>
                 </div>
                 <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
                   1
@@ -558,7 +560,7 @@ function DashboardSidebarContent({
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span>Profile</span>
+                    <span>{t("profile")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -584,7 +586,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      My profile
+                      {t("myProfile")}
                     </Link>
                     <Link
                       href="/dashboard?view=verification"
@@ -595,7 +597,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Verification
+                      {t("verification")}
                     </Link>
                     <Link
                       href="/wallet"
@@ -606,7 +608,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Earnings
+                      {t("earnings")}
                     </Link>
                   </div>
                 )}
@@ -628,7 +630,7 @@ function DashboardSidebarContent({
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
-                <span>Home</span>
+                <span>{t("home")}</span>
               </Link>
 
               {/* 2. Explore (with submenus) */}
@@ -647,7 +649,7 @@ function DashboardSidebarContent({
                       <circle cx="12" cy="12" r="10" />
                       <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
                     </svg>
-                    <span>Explore</span>
+                    <span>{t("explore")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -674,7 +676,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Browse services
+                      {t("browseServices")}
                     </Link>
                     <Link
                       href="/post-job"
@@ -685,7 +687,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Post a job
+                      {t("postJob")}
                     </Link>
                   </div>
                 )}
@@ -709,7 +711,7 @@ function DashboardSidebarContent({
                       <line x1="8" y1="2" x2="8" y2="6" />
                       <line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
-                    <span>Bookings</span>
+                    <span>{t("bookings")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -736,7 +738,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Job posts
+                      {t("postJob")}
                     </Link>
                     <Link
                       href="/bookings?tab=active"
@@ -747,7 +749,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Active bookings
+                      {t("activeBookings")}
                     </Link>
                     <Link
                       href="/bookings?tab=completed"
@@ -758,7 +760,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Completed
+                      {t("completed")}
                     </Link>
                   </div>
                 )}
@@ -777,7 +779,7 @@ function DashboardSidebarContent({
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
-                <span>Messages</span>
+                <span>{t("messages")}</span>
               </Link>
 
               {/* 5. Reviews */}
@@ -793,7 +795,7 @@ function DashboardSidebarContent({
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill={isReviewsActive ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                <span>Reviews</span>
+                <span>{t("reviews")}</span>
               </Link>
 
               {/* 6. Profile (with submenus) */}
@@ -812,7 +814,7 @@ function DashboardSidebarContent({
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                       <circle cx="12" cy="7" r="4" />
                     </svg>
-                    <span>Profile</span>
+                    <span>{t("profile")}</span>
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -839,7 +841,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      My profile
+                      {t("myProfile")}
                     </Link>
                     <Link
                       href="/wallet"
@@ -850,7 +852,7 @@ function DashboardSidebarContent({
                           : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                       }`}
                     >
-                      Wallet
+                      {t("wallet")}
                     </Link>
                   </div>
                 )}
@@ -878,7 +880,7 @@ function DashboardSidebarContent({
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
-              <span>Settings</span>
+              <span>{t("settings")}</span>
             </div>
             <svg
               className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -905,7 +907,7 @@ function DashboardSidebarContent({
                     : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                 }`}
               >
-                Account & security
+                {t("accountAndSecurity")}
               </Link>
               <Link
                 href="/settings?tab=notifications"
@@ -916,7 +918,7 @@ function DashboardSidebarContent({
                     : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                 }`}
               >
-                Notifications
+                {t("notifications")}
               </Link>
               <Link
                 href="/settings?tab=language"
@@ -927,7 +929,7 @@ function DashboardSidebarContent({
                     : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                 }`}
               >
-                Language
+                {t("language")}
               </Link>
               <Link
                 href="/settings?tab=support"
@@ -938,7 +940,7 @@ function DashboardSidebarContent({
                     : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                 }`}
               >
-                Safety & support
+                {t("safetyAndSupport")}
               </Link>
               <Link
                 href="/settings?tab=referral"
@@ -949,7 +951,7 @@ function DashboardSidebarContent({
                     : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
                 }`}
               >
-                Invite & earn
+                {t("inviteAndEarn")}
               </Link>
             </div>
           )}
@@ -966,7 +968,7 @@ function DashboardSidebarContent({
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
             <line x1="12" y1="17" x2="12.01" y2="17" />
           </svg>
-          <span>Help & support</span>
+          <span>{t("helpAndSupport")}</span>
         </button>
 
         {/* User Account / Role summary item */}

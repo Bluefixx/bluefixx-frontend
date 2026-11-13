@@ -2,22 +2,23 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { useAuth } from "@/lib/stores/auth-store";
+import { useLanguage, useTranslations, SupportedLocale } from "@/components/shared/LanguageProvider";
 
 interface LanguageSettingsViewProps {
   onBack: () => void;
 }
 
 interface LanguageOption {
-  id: string;
+  id: SupportedLocale;
   name: string;
   nativeName: string;
   flag: string;
 }
 
 export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
-  const { selectedLanguageId, setSelectedLanguageId } = useAuth();
-  const [selectedLang, setSelectedLang] = useState<string>(selectedLanguageId || "en");
+  const t = useTranslations("settings.language");
+  const { locale, setLocale, isSaving } = useLanguage();
+  const [selectedLang, setSelectedLang] = useState<SupportedLocale>(locale);
   const [searchQuery, setSearchQuery] = useState("");
 
   const languages: LanguageOption[] = [
@@ -35,10 +36,13 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
 
   const currentSelectedObj = languages.find((l) => l.id === selectedLang) || languages[0];
 
-  const handleSave = () => {
-    setSelectedLanguageId(selectedLang);
-    toast.success(`Language preference set to ${currentSelectedObj.name}`);
-    onBack();
+  const handleSave = async () => {
+    try {
+      await setLocale(selectedLang);
+      toast.success(t("saved", { language: currentSelectedObj.name }));
+    } catch {
+      toast.error("Failed to update language");
+    }
   };
 
   return (
@@ -56,10 +60,10 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
           <span>Settings</span>
         </button>
         <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40]">
-          Language
+          {t("title")}
         </h1>
         <p className="font-sans text-xs sm:text-sm text-neutral-400 mt-1">
-          Choose your preferred language for Bluefixx.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -69,17 +73,17 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
         <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/80 shadow-xs space-y-6">
           <div>
             <h2 className="font-heading font-bold text-base sm:text-lg text-[#001B40]">
-              Choose the language
+              {t("chooseLabel")}
             </h2>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Select your preferred language below. This changes what you see.
+              {t("changeHint")}
             </p>
           </div>
 
-          {/* Selected Banner Box (matching Figma) */}
+          {/* Selected Banner Box */}
           <div className="p-4 rounded-2xl bg-[#EBF1F7]/80 border border-blue-100 flex items-center justify-between text-xs sm:text-sm">
             <span className="text-neutral-600">
-              You selected <strong className="text-[#001B40] font-bold">{currentSelectedObj.name} ({currentSelectedObj.flag} Nigeria)</strong>
+              {t("youSelected")} <strong className="text-[#001B40] font-bold">{currentSelectedObj.name} ({currentSelectedObj.flag} Nigeria)</strong>
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
           </div>
@@ -87,7 +91,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
           {/* Search and Language List */}
           <div className="space-y-3">
             <label className="block font-heading font-bold text-xs sm:text-sm text-[#001B40]">
-              All Languages
+              {t("allLanguages")}
             </label>
 
             {/* Search Input */}
@@ -100,7 +104,7 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="search languages"
+                placeholder={t("searchPlaceholder")}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-neutral-200 text-xs sm:text-sm placeholder:text-neutral-400 text-neutral-800 focus:outline-hidden focus:border-[#001B40] transition-colors"
               />
             </div>
@@ -154,10 +158,11 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
           <div className="pt-2">
             <button
               type="button"
+              disabled={isSaving}
               onClick={handleSave}
-              className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
+              className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
             >
-              Save changes
+              {isSaving ? "Saving..." : t("saveButton")}
             </button>
           </div>
         </div>
@@ -165,10 +170,10 @@ export function LanguageSettingsView({ onBack }: LanguageSettingsViewProps) {
         {/* Right Info Card */}
         <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-xs space-y-4">
           <h3 className="font-heading font-bold text-sm text-[#001B40]">
-            Your language preference
+            {t("yourPreference")}
           </h3>
           <p className="text-xs text-neutral-500 leading-relaxed">
-            Your selected language is used throughout the Bluefixx app.
+            {t("preferenceDetail")}
           </p>
           <div className="p-3.5 rounded-2xl bg-neutral-50 border border-neutral-200/60 text-xs text-neutral-600">
             <span className="font-bold text-[#001B40]">{currentSelectedObj.name}</span> is currently selected.

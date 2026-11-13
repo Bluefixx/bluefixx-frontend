@@ -3,6 +3,7 @@ import { Montserrat, Poppins } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/shared/AuthProvider";
 import ToastProvider from "@/components/shared/ToastProvider";
+import { LanguageProvider } from "@/components/shared/LanguageProvider";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -55,8 +56,10 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-white text-neutral-1000">
         <AuthProvider>
-          {children}
-          <ToastProvider />
+          <LanguageProvider>
+            {children}
+            <ToastProvider />
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

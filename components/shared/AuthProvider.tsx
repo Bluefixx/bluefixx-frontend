@@ -140,9 +140,15 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     DEFAULT_AUTH_STATE.otpDestination
   );
   const [otpSent, setOtpSent] = useState(DEFAULT_AUTH_STATE.otpSent);
-  const [selectedLanguageId, setSelectedLanguageId] = useState(
-    DEFAULT_AUTH_STATE.selectedLanguageId
-  );
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const fromStorage = localStorage.getItem("bluefixx_lang");
+      if (fromStorage) return fromStorage;
+      const match = document.cookie.match(/(?:^|;\s*)bluefixx_lang=([^;]+)/);
+      if (match?.[1]) return match[1];
+    }
+    return DEFAULT_AUTH_STATE.selectedLanguageId;
+  });
   const [introCompleted, setIntroCompleted] = useState(
     DEFAULT_AUTH_STATE.introCompleted
   );
@@ -217,6 +223,16 @@ export default function AuthProvider({ children }: AuthProviderProps) {
           const activeRoleApi = u.activeRole?.toLowerCase();
           if (activeRoleApi === "customer" || activeRoleApi === "artisan" || activeRoleApi === "apprentice") {
             setActiveRole(activeRoleApi);
+          }
+
+          const langFromProfile = (res as any)?.settings?.language || (res as any)?.language || u.language;
+          if (langFromProfile && typeof document !== "undefined") {
+            const currentCookie = document.cookie.match(/(?:^|;\s*)bluefixx_lang=([^;]+)/)?.[1];
+            if (currentCookie !== langFromProfile) {
+              document.cookie = `bluefixx_lang=${langFromProfile};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+              localStorage.setItem("bluefixx_lang", langFromProfile);
+              setSelectedLanguageId(langFromProfile);
+            }
           }
         }
       })

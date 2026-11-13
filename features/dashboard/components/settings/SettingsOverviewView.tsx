@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { useTranslations } from "@/components/shared/LanguageProvider";
 import { getWalletApi } from "@/lib/api/wallet";
 
 interface SettingsOverviewViewProps {
@@ -23,6 +24,7 @@ export function SettingsOverviewView({
   userData,
 }: SettingsOverviewViewProps) {
   const { walletBalance, setWalletBalance, resetAuth } = useAuth();
+  const t = useTranslations("settings.overview");
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -57,13 +59,13 @@ export function SettingsOverviewView({
           <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          <span>My account</span>
+          <span>{t("myAccount")}</span>
         </Link>
         <h1 className="font-heading font-extrabold text-2xl sm:text-3xl text-[#001B40]">
-          Settings
+          {t("title")}
         </h1>
         <p className="font-sans text-xs sm:text-sm text-neutral-400 mt-1">
-          Manage your profile, preferences and account security.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -124,7 +126,7 @@ export function SettingsOverviewView({
               >
                 <div>
                   <span className="font-bold text-[#001B40] block">
-                    Personal details
+                    {t("personalDetails")}
                   </span>
                   <span className="text-xs text-neutral-400">
                     {userData.phone}
@@ -143,10 +145,10 @@ export function SettingsOverviewView({
               >
                 <div>
                   <span className="font-bold text-[#001B40] block">
-                    Security &amp; transaction PIN
+                    {t("securityAndPin")}
                   </span>
                   <span className="text-xs text-neutral-400">
-                    PIN, login and recovery
+                    {t("securityAndPinSub")}
                   </span>
                 </div>
                 <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -162,10 +164,10 @@ export function SettingsOverviewView({
               >
                 <div>
                   <span className="font-bold text-[#001B40] block">
-                    Notifications
+                    {t("notifications")}
                   </span>
                   <span className="text-xs text-neutral-400">
-                    Push, email and SMS
+                    {t("notificationsSub")}
                   </span>
                 </div>
                 <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -181,7 +183,7 @@ export function SettingsOverviewView({
               >
                 <div>
                   <span className="font-bold text-[#001B40] block">
-                    Language
+                    {t("language")}
                   </span>
                   <span className="text-xs text-neutral-400">
                     English (Nigeria)
@@ -197,7 +199,7 @@ export function SettingsOverviewView({
           {/* Support Card */}
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-xs space-y-4">
             <h3 className="font-heading font-bold text-sm text-[#001B40]">
-              Support
+              {t("supportTitle")}
             </h3>
 
             <div className="divide-y divide-neutral-100 text-xs sm:text-sm">
@@ -209,10 +211,10 @@ export function SettingsOverviewView({
               >
                 <div>
                   <span className="font-bold text-[#001B40] block">
-                    Safety &amp; support
+                    {t("safetyAndSupport")}
                   </span>
                   <span className="text-xs text-neutral-400">
-                    Emergency help and Bluefixx support
+                    {t("safetyAndSupportSub")}
                   </span>
                 </div>
                 <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -228,10 +230,10 @@ export function SettingsOverviewView({
               >
                 <div>
                   <span className="font-bold text-[#001B40] block">
-                    Report a problem
+                    {t("reportProblem")}
                   </span>
                   <span className="text-xs text-neutral-400">
-                    Get help with a payment or an unfinished job
+                    {t("reportProblemSub")}
                   </span>
                 </div>
                 <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -263,7 +265,7 @@ export function SettingsOverviewView({
           {/* Referral Card */}
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-xs space-y-3">
             <h3 className="font-heading font-bold text-sm text-[#001B40]">
-              Referral
+              {t("inviteAndEarn")}
             </h3>
 
             <button
@@ -283,10 +285,10 @@ export function SettingsOverviewView({
                 </div>
                 <div>
                   <span className="font-bold text-xs sm:text-sm text-[#001B40] block">
-                    Invite &amp; earn
+                    {t("inviteAndEarn")}
                   </span>
                   <span className="text-[11px] text-neutral-400 block">
-                    ₦5,000 voucher per friend
+                    {t("inviteSub")}
                   </span>
                 </div>
               </div>

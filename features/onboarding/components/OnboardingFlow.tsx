@@ -51,6 +51,10 @@ export default function OnboardingFlow() {
 
   const handleSaveLanguage = useCallback(
     (newLanguageId: string) => {
+      if (typeof document !== "undefined") {
+        document.cookie = `bluefixx_lang=${newLanguageId};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+        localStorage.setItem("bluefixx_lang", newLanguageId);
+      }
       setSelectedLanguageId(newLanguageId);
       setPhase("welcome");
     },

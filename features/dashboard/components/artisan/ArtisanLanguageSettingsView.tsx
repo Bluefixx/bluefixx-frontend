@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { useLanguage, useTranslations, SupportedLocale } from "@/components/shared/LanguageProvider";
 
 interface ArtisanLanguageSettingsViewProps {
   onBack: () => void;
@@ -9,7 +10,7 @@ interface ArtisanLanguageSettingsViewProps {
 }
 
 interface LanguageOption {
-  id: string;
+  id: SupportedLocale;
   name: string;
   nativeName: string;
 }
@@ -26,15 +27,20 @@ export function ArtisanLanguageSettingsView({
   onBack,
   onLanguageSaved,
 }: ArtisanLanguageSettingsViewProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("en");
+  const t = useTranslations("settings.language");
+  const { locale, setLocale, isSaving } = useLanguage();
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLocale>(locale);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const langObj = LANGUAGES.find((l) => l.id === selectedLanguage);
-    toast.success(`Language set to ${langObj?.name || "English"}`);
-    if (onLanguageSaved) {
-      onLanguageSaved(selectedLanguage);
-    } else {
-      onBack();
+    try {
+      await setLocale(selectedLanguage);
+      toast.success(t("saved", { language: langObj?.name || "English" }));
+      if (onLanguageSaved) {
+        onLanguageSaved(selectedLanguage);
+      }
+    } catch {
+      toast.error("Failed to update language");
     }
   };
 
@@ -54,10 +60,10 @@ export function ArtisanLanguageSettingsView({
         </button>
 
         <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
-          Language
+          {t("title")}
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 mt-1">
-          Choose the language for the app, notifications, and job messages.
+          {t("subtitle")}
         </p>
       </div>
 
@@ -101,10 +107,11 @@ export function ArtisanLanguageSettingsView({
       <div className="pt-2">
         <button
           type="button"
+          disabled={isSaving}
           onClick={handleSave}
-          className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+          className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] disabled:opacity-50 text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
         >
-          Save language
+          {isSaving ? "Saving..." : t("saveButton")}
         </button>
       </div>
     </div>
@@ -112,4 +119,3 @@ export function ArtisanLanguageSettingsView({
 }
 
 export default ArtisanLanguageSettingsView;
-

@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { useTranslations } from "@/components/shared/LanguageProvider";
 import AuthHeroPanel from "./AuthHeroPanel";
 import { SUGGESTED_LANGUAGE, OTHER_LANGUAGES } from "../data/onboarding-data";
 
@@ -17,6 +18,7 @@ export default function LanguageSelection({
   currentLanguageId = "en",
   onSave,
 }: LanguageSelectionProps) {
+  const t = useTranslations("onboarding.language");
   const [selectedLanguage, setSelectedLanguage] = useState<string>(currentLanguageId);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -96,24 +98,24 @@ export default function LanguageSelection({
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 border border-neutral-200/90 sm:card-shadow-mobile w-full max-w-[440px] flex flex-col">
             {/* Header Category Tag */}
             <span className="font-sans font-bold text-[11px] tracking-[0.16em] text-[#001B40] uppercase">
-              LANGUAGE
+              {t("tag")}
             </span>
 
             {/* Headline */}
             <h3 className="font-sans font-bold text-2xl sm:text-[26px] text-[#0F1115] mt-1 tracking-tight">
-              Choose the language
+              {t("title")}
             </h3>
 
             {/* Subtext */}
             <p className="font-sans text-xs sm:text-sm text-neutral-600 mt-1.5 mb-6">
-              Select your preferred language below. This helps us tailor your BlueFixx experience.
+              {t("subtitle")}
             </p>
 
             {/* Suggested Language Section */}
             {!searchQuery && (
               <div className="mb-5">
                 <span className="block font-sans font-bold text-[11px] tracking-wider text-neutral-500 uppercase mb-2">
-                  SUGGESTED LANGUAGE
+                  {t("suggestedLabel")}
                 </span>
 
                 <div
@@ -151,7 +153,7 @@ export default function LanguageSelection({
             {/* All Languages Section */}
             <div className="flex-1">
               <span className="block font-sans font-bold text-[11px] tracking-wider text-neutral-500 uppercase mb-2">
-                ALL LANGUAGES
+                {t("allLabel")}
               </span>
 
               {/* Search languages input */}
@@ -173,7 +175,7 @@ export default function LanguageSelection({
                 </span>
                 <input
                   type="text"
-                  placeholder="Search languages"
+                  placeholder={t("searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-white border border-neutral-300 rounded-xl py-2.5 pl-10 pr-3.5 text-xs sm:text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#001B40] focus:ring-1 focus:ring-[#001B40] transition-colors"
@@ -230,7 +232,7 @@ export default function LanguageSelection({
               onClick={handleSave}
               className="w-full h-12 mt-6 rounded-xl bg-[#001B40] hover:bg-[#052F5F] active:scale-[0.99] text-white font-sans font-semibold text-sm sm:text-base transition-all shadow-sm cursor-pointer select-none"
             >
-              Save changes
+              {t("saveButton")}
             </button>
 
             {/* Footer Notice */}
@@ -249,7 +251,7 @@ export default function LanguageSelection({
                 <line x1="12" y1="16" x2="12" y2="12" />
                 <line x1="12" y1="8" x2="12.01" y2="8" />
               </svg>
-              <span>You can change this later in Settings.</span>
+              <span>{t("changeHint")}</span>
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import { useTranslations } from "@/components/shared/LanguageProvider";
 
 interface AccountMenuDropdownProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export default function AccountMenuDropdown({
 }: AccountMenuDropdownProps) {
   const router = useRouter();
   const { user, activeRole, logout } = useAuth();
+  const t = useTranslations("nav");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,10 +45,10 @@ export default function AccountMenuDropdown({
 
   const roleLabel =
     activeRole === "customer"
-      ? "Customer account"
+      ? t("customerAccount")
       : activeRole === "artisan"
-      ? "Artisan account"
-      : "Talent account";
+      ? t("artisanAccount")
+      : t("talentAccount");
 
   return (
     <div
@@ -75,7 +77,7 @@ export default function AccountMenuDropdown({
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
           <circle cx="12" cy="7" r="4" />
         </svg>
-        <span>My profile</span>
+        <span>{t("myProfile")}</span>
       </button>
 
       <button
@@ -89,7 +91,7 @@ export default function AccountMenuDropdown({
           <circle cx="12" cy="12" r="3" />
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
-        <span>Settings</span>
+        <span>{t("settings")}</span>
       </button>
 
       <div className="h-px bg-neutral-100 my-1.5" />
@@ -104,7 +106,7 @@ export default function AccountMenuDropdown({
           <polyline points="16 17 21 12 16 7" />
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
-        <span>Log out</span>
+        <span>{t("logOut")}</span>
       </button>
     </div>
   );

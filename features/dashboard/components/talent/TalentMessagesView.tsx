@@ -10,9 +10,11 @@ import {
   getTalentConversationsApi,
 } from "@/lib/api/talent";
 import { TalentConversation } from "@/types/talent";
+import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 
 interface MessageItem {
   id: string;
+  clientId?: string;
   sender: "mentor" | "talent";
   text?: string;
   isAudio?: boolean;
@@ -123,11 +125,74 @@ export function TalentMessagesView({
     };
   }, [activeProgramId, user?.id]);
 
+  // Real-time Socket.IO room subscription for active talent programme conversation
+  useEffect(() => {
+    if (!activeProgramId || !user?.id) return;
+    const socket = getSocket();
+    if (!socket) return;
+
+    const joinRoom = () => {
+      emitWithAck(socket, "talent.conversation.join", {
+        programId: activeProgramId,
+        talentId: user.id,
+      }).catch(() => {});
+    };
+
+    if (socket.connected) {
+      joinRoom();
+    }
+    socket.on("connect", joinRoom);
+
+    const onTalentMessageCreated = (payload: { programId?: string; message?: any }) => {
+      if (!payload?.message || payload.programId !== activeProgramId) return;
+      const msg = payload.message;
+      const mapped: MessageItem = {
+        id: msg.id,
+        clientId: msg.clientId,
+        sender: msg.senderId === user.id ? "talent" : "mentor",
+        text: msg.text || "",
+        time: new Date(msg.createdAt || Date.now()).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+
+      setMessagesList((prev) => {
+        if (prev.some((item) => item.id === mapped.id)) return prev;
+        if (mapped.clientId) {
+          const idx = prev.findIndex((item) => item.clientId === mapped.clientId);
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = mapped;
+            return next;
+          }
+        }
+        return [...prev, mapped];
+      });
+
+      if (mapped.sender !== "talent") {
+        markTalentProgramMessagesReadApi(activeProgramId).catch(() => {});
+      }
+    };
+
+    socket.on("talent.message.created", onTalentMessageCreated);
+
+    return () => {
+      socket.off("connect", joinRoom);
+      socket.off("talent.message.created", onTalentMessageCreated);
+      socket.emit("talent.conversation.leave", {
+        programId: activeProgramId,
+        talentId: user.id,
+      });
+    };
+  }, [activeProgramId, user?.id]);
+
   const isLoadingMessages =
     activeProgramId != null && messagesProgramId !== activeProgramId;
 
   const activeConversation = conversations.find((c) => c.programId === activeProgramId);
   const activeName =
+    activeConversation?.peer?.fullName ||
     activeConversation?.participant?.fullName ||
     activeConversation?.programTitle ||
     "Programme conversation";
@@ -144,6 +209,7 @@ export function TalentMessagesView({
       ...prev,
       {
         id: tempId,
+        clientId,
         sender: "talent",
         text: textToSend,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -306,11 +372,14 @@ export function TalentMessagesView({
 
             {conversations.map((conv) => {
               const name =
-                conv.participant?.fullName || conv.programTitle || "Programme conversation";
+                conv.peer?.fullName || conv.participant?.fullName || conv.programTitle || "Programme conversation";
               const isSelected = conv.programId === activeProgramId;
+              const preview = conv.latestMessage?.text || conv.lastMessage || conv.programTitle || "Programme conversation";
+              const timeStr = formatConversationTime(conv.latestMessage?.createdAt || conv.lastMessageAt);
+              const unread = conv.unread ?? conv.unreadCount ?? 0;
               return (
                 <button
-                  key={conv.id}
+                  key={conv.programId}
                   type="button"
                   onClick={() => setActiveProgramId(conv.programId)}
                   className={`w-full p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 text-left ${
@@ -328,14 +397,14 @@ export function TalentMessagesView({
                         {name}
                       </h4>
                       <span className="text-[10px] text-neutral-400">
-                        {formatConversationTime(conv.lastMessageAt)}
+                        {timeStr}
                       </span>
                     </div>
                     <p className="font-sans text-xs text-neutral-500 truncate mt-0.5">
-                      {conv.lastMessage || conv.programTitle || "Programme conversation"}
+                      {preview}
                     </p>
                   </div>
-                  {(conv.unreadCount ?? 0) > 0 && (
+                  {unread > 0 && (
                     <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 shrink-0" />
                   )}
                 </button>

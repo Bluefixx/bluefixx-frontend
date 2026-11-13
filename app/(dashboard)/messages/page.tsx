@@ -15,9 +15,11 @@ import {
 } from "@/lib/api";
 import { ArtisanMessagesView } from "@/features/dashboard/components/artisan/ArtisanMessagesView";
 import { Conversation } from "@/types/customer";
+import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 
 interface ChatMessage {
   id: string;
+  clientId?: string;
   sender: "customer" | "artisan" | "support";
   text?: string;
   image?: string;
@@ -76,14 +78,14 @@ function MessagesPageContent() {
           setActivePeerName(match.peer?.fullName || "Verified Artisan");
           setActivePeerRole(match.status || "Quote Discussion");
           setActivePeerAvatar(match.peer?.photoUrl || "/images/david.jpg");
-          setActiveBookingTitle(`Quote #${match.quoteId.slice(0, 8)} · Negotiation`);
+          setActiveBookingTitle(`Quote with ${match.peer?.fullName || "Verified Artisan"}`);
         } else if (items.length > 0) {
           const first = items[0];
           setActiveConversation(first.quoteId);
           setActivePeerName(first.peer?.fullName || "Verified Artisan");
           setActivePeerRole(first.status || "Quote Discussion");
           setActivePeerAvatar(first.peer?.photoUrl || "/images/david.jpg");
-          setActiveBookingTitle(`Quote #${first.quoteId.slice(0, 8)} · Negotiation`);
+          setActiveBookingTitle(`Quote with ${first.peer?.fullName || "Verified Artisan"}`);
         }
       })
       .catch((err) => {
@@ -105,8 +107,12 @@ function MessagesPageContent() {
         .then((msgs) => {
           if (!mounted) return;
           if (Array.isArray(msgs) && msgs.length > 0) {
-            const mapped: ChatMessage[] = msgs.map((m: any) => ({
+            const sorted = [...msgs].sort(
+              (a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+            );
+            const mapped: ChatMessage[] = sorted.map((m: any) => ({
               id: m.id,
+              clientId: m.clientId,
               sender: m.authorId === user?.id || m.senderId === user?.id ? "customer" : "artisan",
               text: m.text,
               time: m.createdAt
@@ -126,6 +132,69 @@ function MessagesPageContent() {
 
     return () => {
       mounted = false;
+    };
+  }, [activeConversation, user?.id]);
+
+  // Real-time Socket.IO room subscription for active quote conversation
+  useEffect(() => {
+    if (activeConversation === "support" || !user?.id) return;
+    const socket = getSocket();
+    if (!socket) return;
+
+    const joinRoom = () => {
+      emitWithAck(socket, "conversation.join", { quoteId: activeConversation }).catch(() => {});
+    };
+
+    if (socket.connected) {
+      joinRoom();
+    }
+    socket.on("connect", joinRoom);
+
+    const onMessageCreated = (payload: { quoteId?: string; message?: any }) => {
+      if (!payload?.message || payload.quoteId !== activeConversation) return;
+      const m = payload.message;
+      const mapped: ChatMessage = {
+        id: m.id,
+        clientId: m.clientId,
+        sender: m.authorId === user?.id || m.senderId === user?.id ? "customer" : "artisan",
+        text: m.text,
+        time: m.createdAt
+          ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+          : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+
+      setChatMessages((prev) => {
+        if (prev.some((item) => item.id === mapped.id)) return prev;
+        if (mapped.clientId) {
+          const idx = prev.findIndex((item) => item.clientId === mapped.clientId);
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = mapped;
+            return next;
+          }
+        }
+        return [...prev, mapped];
+      });
+
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.quoteId === activeConversation
+            ? { ...c, latestMessage: m }
+            : c
+        )
+      );
+
+      if (mapped.sender !== "customer") {
+        markQuoteMessagesReadApi(activeConversation).catch(() => {});
+      }
+    };
+
+    socket.on("message.created", onMessageCreated);
+
+    return () => {
+      socket.off("connect", joinRoom);
+      socket.off("message.created", onMessageCreated);
+      socket.emit("conversation.leave", { quoteId: activeConversation });
     };
   }, [activeConversation, user?.id]);
 
@@ -158,9 +227,14 @@ function MessagesPageContent() {
 
     const textToSend = inputText.trim();
     setInputText("");
+    const clientId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `client-${Date.now()}`;
 
     const newMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: clientId,
+      clientId,
       sender: "customer",
       text: textToSend,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -169,11 +243,23 @@ function MessagesPageContent() {
     if (activeConversation !== "support") {
       setChatMessages((prev) => [...prev, newMsg]);
 
-      // Dispatch to API
-      sendQuoteMessageApi(activeConversation, {
-        text: textToSend,
-        clientId: `client-${Date.now()}`,
-      }).catch(() => {});
+      const socket = getSocket();
+      if (socket?.connected) {
+        emitWithAck(socket, "message.send", {
+          quoteId: activeConversation,
+          message: { text: textToSend, mediaIds: [], clientId },
+        }).catch(() => {
+          sendQuoteMessageApi(activeConversation, {
+            text: textToSend,
+            clientId,
+          }).catch(() => {});
+        });
+      } else {
+        sendQuoteMessageApi(activeConversation, {
+          text: textToSend,
+          clientId,
+        }).catch(() => {});
+      }
     } else {
       setSupportMessages((prev) => [...prev, newMsg]);
       setTimeout(() => {

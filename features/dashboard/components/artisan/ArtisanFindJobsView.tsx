@@ -247,29 +247,10 @@ export function ArtisanFindJobsView({
     },
   ];
 
-  // Dynamic filter logic
+  // Dynamic filter logic (real API jobs only; no mock fallback)
   const displayedJobs = (() => {
     if (forceEmptyState) return [];
-
-    if (remoteJobs && remoteJobs.length > 0) {
-      return remoteJobs;
-    }
-
-    let list = [...jobsList];
-
-    if (activeFilter === "Highest budget") {
-      // 4 jobs sorted by budget
-      return [jobsList[0], jobsList[1], jobsList[3], jobsList[4]];
-    }
-
-    if (activeFilter === "Urgent") {
-      // Urgent listings matching Screenshot 1 Left
-      return [jobsList[1], jobsList[2], jobsList[3], jobsList[4]];
-    }
-
-    if (activeFilter === "My trade" || activeFilter === "Nearby" || activeFilter === "Newest") {
-      list = [jobsList[1], jobsList[3]];
-    }
+    let list = remoteJobs ? [...remoteJobs] : [];
 
     if (searchQuery.trim()) {
       list = list.filter(

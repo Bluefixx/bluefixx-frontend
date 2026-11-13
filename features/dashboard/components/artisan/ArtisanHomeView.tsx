@@ -323,6 +323,7 @@ function ArtisanHomeViewContent({
   if (currentView === "send-quote") {
     return (
       <ArtisanQuoteFormView
+        jobId={selectedJob?.id}
         jobTitle={selectedJob?.title || "Kitchen Plumbing Repair"}
         customerName={selectedJob?.customerName || "Daniel C."}
         customerBudget={selectedJob?.budget || "₦25,000 - ₦50,000"}

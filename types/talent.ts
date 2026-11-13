@@ -326,14 +326,24 @@ export interface TalentConversationParticipant {
 }
 
 export interface TalentConversation {
-  id: string;
+  id?: string;
   programId: string;
   programTitle?: string;
   talentId?: string;
   participant?: TalentConversationParticipant;
+  peer?: {
+    id: string;
+    fullName: string;
+    photoId?: string | null;
+  };
   lastMessage?: string;
   lastMessageAt?: string;
+  latestMessage?: {
+    text?: string;
+    createdAt?: string;
+  } | null;
   unreadCount?: number;
+  unread?: number;
 }
 
 // ── Refunds ─────────────────────────────────────────────────────

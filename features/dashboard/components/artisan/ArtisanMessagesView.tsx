@@ -1,69 +1,399 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useState, useEffect, useMemo } from "react";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import {
+  getConversationsApi,
+  getQuoteMessagesApi,
+  sendQuoteMessageApi,
+  markQuoteMessagesReadApi,
+} from "@/lib/api/messages";
+import {
+  getTalentConversationsApi,
+  getProgramMessagesApi,
+  sendProgramMessageApi,
+  markTalentProgramMessagesReadApi,
+} from "@/lib/api/talent";
+import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 
-type ConversationType = "chiamaka" | "fatima" | "support" | null;
-type ConversationMode = "booking" | "quote";
+type ThreadKind = "quote" | "talent" | "support";
+
+interface ArtisanThread {
+  key: string;
+  kind: ThreadKind;
+  quoteId?: string;
+  programId?: string;
+  talentId?: string;
+  peerName: string;
+  subtitle: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+}
+
+interface ArtisanMessage {
+  id: string;
+  clientId?: string;
+  sender: "peer" | "artisan" | "support";
+  senderName: string;
+  text: string;
+  time: string;
+}
 
 interface ArtisanMessagesViewProps {
   onBackToDashboard?: () => void;
 }
 
-export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewProps) {
-  const [selectedConversation, setSelectedConversation] = useState<ConversationType>("chiamaka");
-  const [conversationMode, setConversationMode] = useState<ConversationMode>("booking");
+function formatShortTime(value?: string): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: ArtisanMessagesViewProps) {
+  const { user } = useAuth();
+  const [threads, setThreads] = useState<ArtisanThread[]>([]);
+  const [isLoadingThreads, setIsLoadingThreads] = useState(true);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [viewingJobBooking, setViewingJobBooking] = useState(false);
   const [inputText, setInputText] = useState("");
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [audioProgress, setAudioProgress] = useState(0);
+  const [chatMessages, setChatMessages] = useState<ArtisanMessage[]>([]);
+  const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
 
-  // New message sender simulation
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: "msg-1",
-      sender: "customer",
-      text: "Good morning, are you still able to come today? The leak is getting worse.",
-      time: "09:10",
-      isVoice: false,
-    },
-    {
-      id: "msg-2",
-      sender: "artisan",
-      text: "Yes, I have just finished my previous job and I am setting off now. I should be there by 10:30.",
-      time: "09:12",
-      isVoice: false,
-    },
-    {
-      id: "msg-3",
-      sender: "customer",
-      time: "09:14",
-      isVoice: true,
-      duration: "0:24",
-    },
-  ]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages.length, selectedKey]);
 
-  const handleSendMessage = () => {
-    if (!inputText.trim()) return;
-    const newMsg = {
-      id: `msg-${Date.now()}`,
-      sender: "artisan" as const,
-      text: inputText.trim(),
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      isVoice: false,
+  // Load real quote + talent programme conversations
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([getConversationsApi(), getTalentConversationsApi()]).then(
+      ([quoteRes, talentRes]) => {
+        if (!mounted) return;
+        const list: ArtisanThread[] = [];
+
+        if (quoteRes.status === "fulfilled" && Array.isArray(quoteRes.value)) {
+          for (const c of quoteRes.value) {
+            list.push({
+              key: `quote:${c.quoteId}`,
+              kind: "quote",
+              quoteId: c.quoteId,
+              peerName: c.peer?.fullName || "Customer",
+              subtitle: `Quote with ${c.peer?.fullName || "Customer"}`,
+              lastMessage: c.latestMessage?.text || "Quote conversation",
+              time: formatShortTime(c.latestMessage?.createdAt),
+              unread: c.unread || 0,
+            });
+          }
+        }
+
+        if (talentRes.status === "fulfilled" && Array.isArray(talentRes.value)) {
+          for (const t of talentRes.value) {
+            const tId = t.talentId || t.peer?.id || t.participant?.id;
+            list.push({
+              key: `talent:${t.programId}:${tId || "all"}`,
+              kind: "talent",
+              programId: t.programId,
+              talentId: tId,
+              peerName: t.peer?.fullName || t.participant?.fullName || t.programTitle || "Talent Apprentice",
+              subtitle: t.programTitle || "Apprenticeship Programme",
+              lastMessage: t.latestMessage?.text || t.lastMessage || "Programme conversation",
+              time: formatShortTime(t.latestMessage?.createdAt || t.lastMessageAt),
+              unread: t.unread ?? t.unreadCount ?? 0,
+            });
+          }
+        }
+
+        list.push({
+          key: "support",
+          kind: "support",
+          peerName: "BlueFixx Support",
+          subtitle: "Official BlueFixx Safety & Support",
+          lastMessage: "24/7 Safety & Assistance",
+          time: "",
+          unread: 0,
+        });
+
+        setThreads(list);
+        setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
+        setIsLoadingThreads(false);
+      }
+    );
+
+    return () => {
+      mounted = false;
     };
+  }, []);
+
+  const activeThread = useMemo(
+    () => threads.find((t) => t.key === selectedKey) ?? null,
+    [threads, selectedKey]
+  );
+
+  // Load message history for selected thread
+  useEffect(() => {
+    if (!activeThread || !user?.id) return;
+    let mounted = true;
+
+    if (activeThread.kind === "support") {
+      setChatMessages([
+        {
+          id: "support-welcome",
+          sender: "support",
+          senderName: "BlueFixx Support",
+          text: `Hello ${user.fullName ? user.fullName.split(" ")[0] : ""}! BlueFixx Safety & Resolution team is active 24/7.`,
+          time: "Just now",
+        },
+      ]);
+      return;
+    }
+
+    if (activeThread.kind === "quote" && activeThread.quoteId) {
+      const qId = activeThread.quoteId;
+      getQuoteMessagesApi(qId)
+        .then((msgs) => {
+          if (!mounted) return;
+          const sorted = [...(msgs ?? [])].sort(
+            (a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+          );
+          const mapped: ArtisanMessage[] = sorted.map((m: any) => {
+            const isSelf = m.senderId === user.id || m.authorId === user.id;
+            return {
+              id: m.id,
+              clientId: m.clientId,
+              sender: isSelf ? "artisan" : "peer",
+              senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
+              text: m.text || "",
+              time: formatShortTime(m.createdAt) || "Today",
+            };
+          });
+          setChatMessages(mapped);
+          markQuoteMessagesReadApi(qId).catch(() => {});
+        })
+        .catch(() => {
+          if (mounted) setChatMessages([]);
+        });
+    } else if (activeThread.kind === "talent" && activeThread.programId) {
+      const pId = activeThread.programId;
+      const tId = activeThread.talentId;
+      getProgramMessagesApi(pId, { talentId: tId })
+        .then((msgs) => {
+          if (!mounted) return;
+          const sorted = [...(msgs ?? [])].sort(
+            (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+          );
+          const mapped: ArtisanMessage[] = sorted.map((m) => {
+            const isSelf = m.senderId === user.id;
+            return {
+              id: m.id,
+              clientId: (m as { clientId?: string }).clientId,
+              sender: isSelf ? "artisan" : "peer",
+              senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
+              text: m.text || "",
+              time: formatShortTime(m.createdAt) || "Today",
+            };
+          });
+          setChatMessages(mapped);
+          markTalentProgramMessagesReadApi(pId, { talentId: tId }).catch(() => {});
+        })
+        .catch(() => {
+          if (mounted) setChatMessages([]);
+        });
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeThread, user?.id, user?.fullName]);
+
+  // Real-time Socket.IO room subscription for active thread
+  useEffect(() => {
+    if (!activeThread || activeThread.kind === "support" || !user?.id) return;
+    const socket = getSocket();
+    if (!socket) return;
+
+    if (activeThread.kind === "quote" && activeThread.quoteId) {
+      const qId = activeThread.quoteId;
+      const joinRoom = () => {
+        emitWithAck(socket, "conversation.join", { quoteId: qId }).catch(() => {});
+      };
+      if (socket.connected) joinRoom();
+      socket.on("connect", joinRoom);
+
+      const onMessageCreated = (payload: { quoteId?: string; message?: any }) => {
+        if (!payload?.message || payload.quoteId !== qId) return;
+        const m = payload.message;
+        const isSelf = m.senderId === user.id || m.authorId === user.id;
+        const mapped: ArtisanMessage = {
+          id: m.id,
+          clientId: m.clientId,
+          sender: isSelf ? "artisan" : "peer",
+          senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
+          text: m.text || "",
+          time: formatShortTime(m.createdAt) || formatShortTime(new Date().toISOString()),
+        };
+        setChatMessages((prev) => {
+          if (prev.some((item) => item.id === mapped.id)) return prev;
+          if (mapped.clientId) {
+            const idx = prev.findIndex((item) => item.clientId === mapped.clientId);
+            if (idx !== -1) {
+              const next = [...prev];
+              next[idx] = mapped;
+              return next;
+            }
+          }
+          return [...prev, mapped];
+        });
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.key === activeThread.key
+              ? { ...t, lastMessage: mapped.text, time: mapped.time }
+              : t
+          )
+        );
+        if (mapped.sender !== "artisan") {
+          markQuoteMessagesReadApi(qId).catch(() => {});
+        }
+      };
+
+      socket.on("message.created", onMessageCreated);
+      return () => {
+        socket.off("connect", joinRoom);
+        socket.off("message.created", onMessageCreated);
+        socket.emit("conversation.leave", { quoteId: qId });
+      };
+    }
+
+    if (activeThread.kind === "talent" && activeThread.programId && activeThread.talentId) {
+      const pId = activeThread.programId;
+      const tId = activeThread.talentId;
+      const joinRoom = () => {
+        emitWithAck(socket, "talent.conversation.join", {
+          programId: pId,
+          talentId: tId,
+        }).catch(() => {});
+      };
+      if (socket.connected) joinRoom();
+      socket.on("connect", joinRoom);
+
+      const onTalentMessageCreated = (payload: { programId?: string; message?: any }) => {
+        if (!payload?.message || payload.programId !== pId) return;
+        const m = payload.message;
+        const isSelf = m.senderId === user.id;
+        const mapped: ArtisanMessage = {
+          id: m.id,
+          clientId: m.clientId,
+          sender: isSelf ? "artisan" : "peer",
+          senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
+          text: m.text || "",
+          time: formatShortTime(m.createdAt) || formatShortTime(new Date().toISOString()),
+        };
+        setChatMessages((prev) => {
+          if (prev.some((item) => item.id === mapped.id)) return prev;
+          if (mapped.clientId) {
+            const idx = prev.findIndex((item) => item.clientId === mapped.clientId);
+            if (idx !== -1) {
+              const next = [...prev];
+              next[idx] = mapped;
+              return next;
+            }
+          }
+          return [...prev, mapped];
+        });
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.key === activeThread.key
+              ? { ...t, lastMessage: mapped.text, time: mapped.time }
+              : t
+          )
+        );
+        if (mapped.sender !== "artisan") {
+          markTalentProgramMessagesReadApi(pId, { talentId: tId }).catch(() => {});
+        }
+      };
+
+      socket.on("talent.message.created", onTalentMessageCreated);
+      return () => {
+        socket.off("connect", joinRoom);
+        socket.off("talent.message.created", onTalentMessageCreated);
+        socket.emit("talent.conversation.leave", { programId: pId, talentId: tId });
+      };
+    }
+  }, [activeThread, user?.id]);
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim() || !activeThread) return;
+    const textToSend = inputText.trim();
+    const clientId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `client-${Date.now()}`;
+
+    const newMsg: ArtisanMessage = {
+      id: clientId,
+      clientId,
+      sender: "artisan",
+      senderName: user?.fullName || "You",
+      text: textToSend,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
     setChatMessages((prev) => [...prev, newMsg]);
     setInputText("");
-    toast.success("Message sent");
-  };
+    setThreads((prev) =>
+      prev.map((t) =>
+        t.key === activeThread.key
+          ? { ...t, lastMessage: textToSend, time: newMsg.time }
+          : t
+      )
+    );
 
-  const toggleVoicePlayback = () => {
-    setIsPlayingAudio(!isPlayingAudio);
-    if (!isPlayingAudio) {
-      toast("Playing voice note...", { icon: "🔊" });
+    if (activeThread.kind === "quote" && activeThread.quoteId) {
+      const socket = getSocket();
+      if (socket?.connected) {
+        emitWithAck(socket, "message.send", {
+          quoteId: activeThread.quoteId,
+          message: { text: textToSend, mediaIds: [], clientId },
+        }).catch(() => {
+          sendQuoteMessageApi(activeThread.quoteId!, { text: textToSend, clientId }).catch(() => {
+            toast.error("Message could not be sent.");
+          });
+        });
+      } else {
+        sendQuoteMessageApi(activeThread.quoteId, { text: textToSend, clientId }).catch(() => {
+          toast.error("Message could not be sent.");
+        });
+      }
+    } else if (activeThread.kind === "talent" && activeThread.programId) {
+      sendProgramMessageApi(activeThread.programId, {
+        text: textToSend,
+        clientId,
+      }).catch(() => {
+        toast.error("Message could not be sent.");
+      });
+    } else if (activeThread.kind === "support") {
+      setTimeout(() => {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            id: `sup-${Date.now()}`,
+            sender: "support",
+            senderName: "BlueFixx Support",
+            text: "Thank you for contacting BlueFixx Support. An agent will follow up shortly.",
+            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+      }, 1000);
     }
   };
+
+  const filteredThreads = threads.filter((t) =>
+    t.peerName.toLowerCase().includes(searchQuery.trim().toLowerCase()) ||
+    t.subtitle.toLowerCase().includes(searchQuery.trim().toLowerCase())
+  );
 
   // ══════════════════════════════════════════════════════════════
   // SUBVIEW: JOB BOOKING DETAIL (Screenshot 4 Right)
@@ -174,47 +504,30 @@ export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewPr
   // ═══════════════════════════════════════════════════════════
   return (
     <div className="h-[calc(100vh-6rem)] max-w-7xl mx-auto flex flex-col select-none animate-in fade-in duration-200">
-      {/* Top Header & Simulation Controls */}
+      {/* Top Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-neutral-200/80 bg-white shrink-0">
         <div className="flex items-center gap-3">
           <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-[#001B40]">
             Messages
           </h1>
-          {selectedConversation === "chiamaka" && (
-            <div className="hidden sm:flex items-center gap-1.5 bg-neutral-100 p-1 rounded-xl text-[11px] font-semibold text-neutral-600">
-              <button
-                type="button"
-                onClick={() => setConversationMode("booking")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  conversationMode === "booking" ? "bg-white text-[#001B40] shadow-2xs font-bold" : "hover:text-neutral-900"
-                }`}
-              >
-                Booking Chat
-              </button>
-              <button
-                type="button"
-                onClick={() => setConversationMode("quote")}
-                className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
-                  conversationMode === "quote" ? "bg-white text-[#001B40] shadow-2xs font-bold" : "hover:text-neutral-900"
-                }`}
-              >
-                Quote Chat
-              </button>
-            </div>
+          {activeThread && activeThread.kind !== "support" && (
+            <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-xl bg-neutral-100 text-[11px] font-semibold text-neutral-700">
+              {activeThread.kind === "quote" ? "Quote Chat" : "Talent Programme Chat"}
+            </span>
           )}
         </div>
 
         <button
           type="button"
-          onClick={() => setSelectedConversation(null)}
+          onClick={() => setSelectedKey(selectedKey ? null : threads[0]?.key ?? null)}
           className="text-xs font-semibold text-neutral-500 hover:text-neutral-800"
         >
-          {selectedConversation ? "Deselect" : "Select Chiamaka"}
+          {selectedKey ? "Deselect" : "Select conversation"}
         </button>
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        {/* LEFT COLUMN: CONVERSATION LIST (Screenshot 3 Left) */}
+        {/* LEFT COLUMN: CONVERSATION LIST */}
         <div className="w-full sm:w-80 md:w-96 border-r border-neutral-200/80 bg-white flex flex-col shrink-0">
           {/* Search bar */}
           <div className="p-3.5 border-b border-neutral-100">
@@ -225,6 +538,8 @@ export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewPr
               </svg>
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search conversations"
                 className="w-full pl-9 pr-4 py-2 rounded-xl bg-neutral-100 text-xs font-medium text-neutral-900 focus:outline-none focus:ring-1 focus:ring-[#001B40]"
               />
@@ -233,103 +548,56 @@ export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewPr
 
           {/* Conversations */}
           <div className="flex-1 overflow-y-auto divide-y divide-neutral-100">
-            {/* Conversation 1: Chiamaka Obi */}
-            <button
-              type="button"
-              onClick={() => setSelectedConversation("chiamaka")}
-              className={`w-full p-4 flex items-start gap-3 text-left transition-colors cursor-pointer ${
-                selectedConversation === "chiamaka" ? "bg-[#EBF1F7]/70" : "hover:bg-neutral-50"
-              }`}
-            >
-              <div className="relative shrink-0">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-800 font-bold text-sm">
-                  👩
-                </div>
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-heading font-extrabold text-xs sm:text-sm text-[#0F1115] truncate">
-                    Chiamaka Obi
-                  </span>
-                  <span className="text-[11px] text-neutral-400 shrink-0">09:14</span>
-                </div>
-                <p className="text-xs font-semibold text-[#001B40] truncate flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  </svg>
-                  <span>Voice message · 0:17</span>
-                </p>
-                <p className="text-[11px] text-neutral-400 truncate mt-0.5">
-                  Booking #BF-304 · Leak repair
-                </p>
-              </div>
-              <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-1">
-                1
-              </span>
-            </button>
-
-            {/* Conversation 2: Fatima Bello */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedConversation("fatima");
-                setConversationMode("quote");
-              }}
-              className={`w-full p-4 flex items-start gap-3 text-left transition-colors cursor-pointer ${
-                selectedConversation === "fatima" ? "bg-[#EBF1F7]/70" : "hover:bg-neutral-50"
-              }`}
-            >
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-900 font-bold text-sm flex items-center justify-center shrink-0">
-                F
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
-                    Fatima Bello
-                  </span>
-                  <span className="text-[11px] text-neutral-400 shrink-0">Yesterday</span>
-                </div>
-                <p className="text-xs text-neutral-600 truncate">
-                  Can the quote include the DB board too?
-                </p>
-                <p className="text-[11px] text-neutral-400 truncate mt-0.5">
-                  Quote request · Electrical
-                </p>
-              </div>
-            </button>
-
-            {/* Conversation 3: BlueFixx Support */}
-            <button
-              type="button"
-              onClick={() => setSelectedConversation("support")}
-              className={`w-full p-4 flex items-start gap-3 text-left transition-colors cursor-pointer ${
-                selectedConversation === "support" ? "bg-[#EBF1F7]/70" : "hover:bg-neutral-50"
-              }`}
-            >
-              <div className="w-10 h-10 rounded-full bg-[#001B40] text-white font-bold text-sm flex items-center justify-center shrink-0">
-                B
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
-                    BlueFixx Support
-                  </span>
-                  <span className="text-[11px] text-neutral-400 shrink-0">22 Jul</span>
-                </div>
-                <p className="text-xs text-neutral-600 truncate">
-                  Payout for #BF-2785 has been released.
-                </p>
-              </div>
-            </button>
+            {isLoadingThreads && (
+              <div className="p-4 text-xs text-neutral-400">Loading conversations...</div>
+            )}
+            {filteredThreads.map((thread) => {
+              const isSelected = thread.key === selectedKey;
+              const initial = thread.peerName.charAt(0).toUpperCase() || "B";
+              return (
+                <button
+                  key={thread.key}
+                  type="button"
+                  onClick={() => setSelectedKey(thread.key)}
+                  className={`w-full p-4 flex items-start gap-3 text-left transition-colors cursor-pointer ${
+                    isSelected ? "bg-[#EBF1F7]/70" : "hover:bg-neutral-50"
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full font-bold text-sm flex items-center justify-center shrink-0 ${
+                      thread.kind === "support"
+                        ? "bg-[#001B40] text-white"
+                        : thread.kind === "talent"
+                        ? "bg-emerald-100 text-emerald-900"
+                        : "bg-blue-100 text-blue-900"
+                    }`}
+                  >
+                    {initial}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="font-heading font-bold text-xs sm:text-sm text-[#0F1115] truncate">
+                        {thread.peerName}
+                      </span>
+                      <span className="text-[11px] text-neutral-400 shrink-0">{thread.time}</span>
+                    </div>
+                    <p className="text-xs text-neutral-600 truncate">{thread.lastMessage}</p>
+                    <p className="text-[11px] text-neutral-400 truncate mt-0.5">{thread.subtitle}</p>
+                  </div>
+                  {thread.unread > 0 && (
+                    <span className="w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0 mt-1">
+                      {thread.unread}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* RIGHT COLUMN: CHAT PANE OR EMPTY STATE */}
         <div className="flex-1 bg-neutral-50 flex flex-col overflow-hidden">
-          {!selectedConversation ? (
-            /* EMPTY STATE: SELECT A CONVERSATION (Screenshot 3 Left) */
+          {!activeThread ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-sm mx-auto">
               <div className="w-16 h-16 rounded-2xl bg-white border border-neutral-200/80 shadow-2xs flex items-center justify-center text-neutral-400 mb-4">
                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
@@ -340,53 +608,34 @@ export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewPr
                 Select a conversation
               </h3>
               <p className="text-xs text-neutral-500 leading-relaxed">
-                Chats with customers are linked to their jobs so quotes, bookings and payments stay in one place.
+                Chats with customers and talents are linked to your quotes and programmes.
               </p>
             </div>
           ) : (
-            /* ACTIVE CHAT WORKBENCH */
             <div className="flex-1 flex flex-col h-full bg-white">
               {/* Chat Top Bar */}
               <div className="p-4 border-b border-neutral-200/80 bg-white flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-800 font-bold text-sm">
-                      {selectedConversation === "chiamaka" ? "👩" : selectedConversation === "fatima" ? "F" : "B"}
-                    </div>
-                    {selectedConversation === "chiamaka" && (
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0" />
-                    )}
+                  <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-900 flex items-center justify-center font-bold text-sm">
+                    {activeThread.peerName.charAt(0).toUpperCase() || "B"}
                   </div>
                   <div>
                     <h2 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      {selectedConversation === "chiamaka"
-                        ? "Chiamaka Obi"
-                        : selectedConversation === "fatima"
-                        ? "Fatima Bello"
-                        : "BlueFixx Support"}
+                      {activeThread.peerName}
                     </h2>
                     <p className="text-[11px] text-neutral-400 font-medium">
-                      {selectedConversation === "chiamaka"
-                        ? "Online"
-                        : selectedConversation === "fatima"
-                        ? "Active 2h ago"
-                        : "Official BlueFixx Safety & Support"}
+                      {activeThread.subtitle}
                     </p>
                   </div>
                 </div>
 
-                {/* Job Link in Header */}
-                {selectedConversation === "chiamaka" && (
+                {activeThread.kind === "quote" && (
                   <button
                     type="button"
                     onClick={() => setViewingJobBooking(true)}
                     className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer bg-blue-50/60 px-3 py-1.5 rounded-xl border border-blue-100"
                   >
-                    <span>
-                      {conversationMode === "booking"
-                        ? "Booking #BF-304 · Leak repair"
-                        : "Quote request · Independence Layout"}
-                    </span>
+                    <span>{activeThread.subtitle}</span>
                     <span className="text-blue-800 font-extrabold">View job →</span>
                   </button>
                 )}
@@ -394,99 +643,22 @@ export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewPr
 
               {/* Chat Messages Timeline */}
               <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-neutral-50/50">
-                {/* System Divider Pill */}
                 <div className="flex justify-center">
                   <span className="text-[11px] font-medium text-neutral-500 bg-white border border-neutral-200/80 px-3.5 py-1 rounded-full shadow-2xs">
-                    {conversationMode === "booking"
-                      ? "This conversation is linked to Booking #BF-304"
-                      : "Quote request sent · Leak & burst pipe repair"}
+                    {activeThread.subtitle}
                   </span>
                 </div>
 
-                {/* Quote Mode: Customer Photo Preview (Screenshot 4 Left) */}
-                {conversationMode === "quote" && (
-                  <div className="max-w-md bg-white rounded-2xl p-3 border border-neutral-200 shadow-2xs space-y-2">
-                    <div className="relative h-44 rounded-xl overflow-hidden bg-neutral-100">
-                      <Image
-                        src="/images/path1.png"
-                        alt="Pipe leak photo"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <p className="text-xs text-neutral-700 leading-relaxed">
-                      Water has been dripping under the kitchen sink since last night.
-                    </p>
-                    <span className="text-[10px] text-neutral-400 block text-right">09:08</span>
-                  </div>
-                )}
-
-                {/* Message 1: Customer */}
-                <div className="flex flex-col items-start max-w-lg">
-                  <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 border border-neutral-200 shadow-2xs text-xs sm:text-sm text-neutral-800 leading-relaxed">
-                    {conversationMode === "booking"
-                      ? "Good morning, are you still able to come today? The leak is getting worse."
-                      : "Could you please give me an estimate for fixing this as soon as possible?"}
-                  </div>
-                  <span className="text-[10px] text-neutral-400 mt-1 pl-1">09:10</span>
-                </div>
-
-                {/* Message 2: Artisan (Blue Bubble) */}
-                <div className="flex flex-col items-end ml-auto max-w-lg">
-                  <div className="bg-[#001B40] text-white rounded-2xl rounded-tr-sm px-4 py-3 shadow-2xs text-xs sm:text-sm leading-relaxed">
-                    {conversationMode === "booking"
-                      ? "Yes, I have just finished my previous job and I am setting off now. I should be there by 10:30."
-                      : "Good morning, from the photo the joint under the trap has failed. I will need to replace the trap and about 2 metres of pipe. Is the mixer tap also leaking?"}
-                  </div>
-                  <span className="text-[10px] text-neutral-400 mt-1 pr-1">09:12</span>
-                </div>
-
-                {/* Message 3: Customer Voice Note */}
-                <div className="flex flex-col items-start max-w-xs">
-                  <div className="bg-white rounded-2xl rounded-tl-sm p-3.5 border border-neutral-200 shadow-2xs flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={toggleVoicePlayback}
-                      className="w-9 h-9 rounded-full bg-blue-50 text-[#001B40] flex items-center justify-center hover:bg-blue-100 transition-colors shrink-0 cursor-pointer"
-                    >
-                      {isPlayingAudio ? (
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                          <rect x="6" y="4" width="4" height="16" />
-                          <rect x="14" y="4" width="4" height="16" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
-                          <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg>
-                      )}
-                    </button>
-
-                    {/* Waveform bars */}
-                    <div className="flex items-center gap-1 flex-1">
-                      {[12, 24, 16, 32, 20, 14, 28, 18, 10, 22, 16, 26, 14, 8].map((h, i) => (
-                        <div
-                          key={i}
-                          style={{ height: `${h}px` }}
-                          className={`w-1 rounded-full transition-all ${
-                            isPlayingAudio && i < 6 ? "bg-[#001B40]" : "bg-neutral-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-
-                    <span className="text-[11px] font-bold text-neutral-500 shrink-0">0:24</span>
-                  </div>
-                  <span className="text-[10px] text-neutral-400 mt-1 pl-1">09:14</span>
-                </div>
-
-                {/* Dynamically appended messages */}
-                {chatMessages.slice(3).map((m) => (
+                {chatMessages.map((m) => (
                   <div
                     key={m.id}
                     className={`flex flex-col ${
                       m.sender === "artisan" ? "items-end ml-auto max-w-lg" : "items-start max-w-lg"
                     }`}
                   >
+                    <span className="text-[11px] font-semibold text-neutral-500 mb-1 px-1">
+                      {m.senderName}
+                    </span>
                     <div
                       className={`px-4 py-3 rounded-2xl text-xs sm:text-sm leading-relaxed ${
                         m.sender === "artisan"
@@ -499,6 +671,7 @@ export function ArtisanMessagesView({ onBackToDashboard }: ArtisanMessagesViewPr
                     <span className="text-[10px] text-neutral-400 mt-1 px-1">{m.time}</span>
                   </div>
                 ))}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Message Input Bar */}

@@ -6,8 +6,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { SERVICES, CATEGORIES } from "../data/mock-dashboard-data";
-import { createJobApi, getSavedAddressesApi, uploadMediaFile } from "@/lib/api";
+import { createJobApi, getCatalogApi, getSavedAddressesApi, uploadMediaFile } from "@/lib/api";
 import { UrgencyLevel } from "@/types/customer";
 
 export default function PostJobWizard() {
@@ -69,32 +68,17 @@ export default function PostJobWizard() {
   // ════════════════════════════════════════════════════════════
   // STEP 5 STATE: ADDRESS
   // ════════════════════════════════════════════════════════════
-  const [selectedAddressId, setSelectedAddressId] = useState<string>("home");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [accessNotes, setAccessNotes] = useState<string>(
     "Blue gate, second building after the pharmacy"
   );
-  const [savedAddresses, setSavedAddresses] = useState([
-    {
-      id: "home",
-      label: "Home",
-      address: "14B Admiralty Way, Independence Layout, Enugu",
-    },
-    {
-      id: "office",
-      label: "Office",
-      address: "3 Ligali Ayorinde Street, Victoria Island, Lagos",
-    },
-  ]);
+  const [savedAddresses, setSavedAddresses] = useState<Array<{ id: string; label: string; address: string }>>([]);
 
   // ════════════════════════════════════════════════════════════
   // STEP 6 STATE: PREFERRED TIME
   // ════════════════════════════════════════════════════════════
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>("Today 11:00 – 13:00");
   const [customTime, setCustomTime] = useState<string>("");
-
-  // Service lookup
-  const selectedService =
-    SERVICES.find((s) => s.id === selectedServiceId) || SERVICES[0];
 
   const steps = [
     { num: 1, label: "Service" },
@@ -109,6 +93,79 @@ export default function PostJobWizard() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaIds, setMediaIds] = useState<string[]>([]);
+  const [realServices, setRealServices] = useState<Array<{ id: string; name: string; tradeName: string; categoryName: string }>>([]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+
+  // Service lookup
+  const selectedService =
+    realServices.find((s) => s.id === selectedServiceId) ||
+    realServices[0] || { id: "", name: "Service", tradeName: "", categoryName: "Services" };
+
+  const extractCatalogServices = (
+    data: unknown
+  ): Array<{ id: string; name: string; tradeName: string; categoryName: string }> => {
+    const flat: Array<{ id: string; name: string; tradeName: string; categoryName: string }> = [];
+    const obj = data as {
+      services?: Array<{ id: string; name: string; tradeName?: string; category?: string }>;
+      trades?: Array<{ name?: string; category?: string; services?: Array<{ id: string; name: string }> }>;
+    };
+    if (Array.isArray(obj?.services)) {
+      for (const s of obj.services) {
+        flat.push({
+          id: s.id,
+          name: s.name,
+          tradeName: s.tradeName || "",
+          categoryName: s.category || s.tradeName || "Services",
+        });
+      }
+      return flat;
+    }
+    if (Array.isArray(data)) {
+      for (const g of data as Array<{ name?: string; categoryName?: string; services?: Array<{ id: string; name: string }>; trades?: Array<{ name?: string; category?: string; services?: Array<{ id: string; name: string }> }> }>) {
+        for (const s of g.services ?? []) {
+          flat.push({
+            id: s.id,
+            name: s.name,
+            tradeName: g.name || g.categoryName || "",
+            categoryName: g.categoryName || g.name || "Services",
+          });
+        }
+        for (const t of g.trades ?? []) {
+          for (const s of t.services ?? []) {
+            flat.push({
+              id: s.id,
+              name: s.name,
+              tradeName: t.name || "",
+              categoryName: t.category || t.name || "Services",
+            });
+          }
+        }
+      }
+    }
+    return flat;
+  };
+
+  // Load real catalog services from backend
+  useEffect(() => {
+    getCatalogApi()
+      .then((data) => {
+        const flat = extractCatalogServices(data);
+        if (flat.length > 0) {
+          setRealServices(flat);
+          setSelectedServiceId((prev) => {
+            if (flat.some((s) => s.id === prev)) return prev;
+            const match = flat.find(
+              (s) =>
+                s.name.toLowerCase().includes(prev.toLowerCase()) ||
+                s.tradeName.toLowerCase().includes(prev.toLowerCase())
+            );
+            return match ? match.id : flat[0].id;
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingCatalog(false));
+  }, []);
 
   // Load user saved addresses from backend if available
   useEffect(() => {
@@ -164,14 +221,43 @@ export default function PostJobWizard() {
       const preferredStart = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString();
       const preferredEnd = new Date(now.getTime() + 6 * 60 * 60 * 1000).toISOString();
 
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let catalogList = realServices;
+      if (catalogList.length === 0) {
+        try {
+          const data = await getCatalogApi();
+          const flat = extractCatalogServices(data);
+          catalogList = flat;
+          if (flat.length > 0) setRealServices(flat);
+        } catch {}
+      }
+
+      const resolvedServiceId = uuidRe.test(selectedServiceId)
+        ? selectedServiceId
+        : (catalogList.find((s) =>
+            s.name.toLowerCase().includes(selectedService.name.toLowerCase()) ||
+            s.tradeName.toLowerCase().includes(selectedService.name.toLowerCase())
+          )?.id ?? catalogList[0]?.id ?? selectedServiceId);
+
+      let resolvedAddressId = selectedAddressId;
+      if (!uuidRe.test(resolvedAddressId)) {
+        try {
+          const addrs = await getSavedAddressesApi();
+          if (addrs && addrs.length > 0) {
+            resolvedAddressId = addrs[0].id;
+            setSelectedAddressId(resolvedAddressId);
+          }
+        } catch {}
+      }
+
       try {
         await createJobApi(
           {
-            serviceId: selectedServiceId,
+            serviceId: resolvedServiceId,
             title: `${selectedService.name} - ${selectedTask}`,
             description: description || `Request for ${selectedService.name} service.`,
             urgency: mappedUrgency,
-            addressId: selectedAddressId,
+            addressId: resolvedAddressId,
             preferredStart,
             preferredEnd,
             budgetMinimum: budgetKobo,
@@ -186,12 +272,9 @@ export default function PostJobWizard() {
         toast.success("Job published successfully!");
         setCurrentStep(8);
         window.scrollTo({ top: 0, behavior: "smooth" });
-      } catch {
+      } catch (err: any) {
         toast.dismiss(loadingToast);
-        // If local API or offline, show published state seamlessly
-        toast.success("Job published! Artisans in your area are being notified.");
-        setCurrentStep(8);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast.error(err?.message || "Failed to publish job. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
@@ -510,158 +593,76 @@ export default function PostJobWizard() {
             />
           </div>
 
-          {/* Top Row: 3 Categories (Home & Construction, Repairs & Technical, Automotive) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {CATEGORIES.filter((c) =>
-              ["home-construction", "repairs-technical", "automotive"].includes(c.id)
-            ).map((cat) => {
-              const servicesInCat = SERVICES.filter(
-                (s) =>
-                  s.categoryId === cat.id &&
-                  (!searchFilter.trim() ||
-                    s.name.toLowerCase().includes(searchFilter.toLowerCase()))
-              );
+          {/* Live Catalog Categories & Services from Backend */}
+          {isLoadingCatalog ? (
+            <div className="bg-white rounded-2xl p-8 border border-neutral-200/80 text-center text-sm text-neutral-500">
+              Loading services from catalog...
+            </div>
+          ) : realServices.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 border border-neutral-200/80 text-center text-sm text-neutral-500">
+              No active services found in catalog.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from(new Set(realServices.map((s) => s.categoryName))).map((catName) => {
+                const servicesInCat = realServices.filter(
+                  (s) =>
+                    s.categoryName === catName &&
+                    (!searchFilter.trim() ||
+                      s.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+                      s.tradeName.toLowerCase().includes(searchFilter.toLowerCase()))
+                );
+                if (servicesInCat.length === 0 && searchFilter.trim()) return null;
 
-              return (
-                <div
-                  key={cat.id}
-                  className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs space-y-3 flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                    <div className="flex items-center gap-2">
-                      <div className="text-blue-600">
-                        {cat.id === "home-construction" && (
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9" />
-                            <path d="M17.64 15 22 10.64" />
-                            <path d="m20.91 3.26-4 4" />
-                            <path d="m14.82 4.24 3.9 3.9" />
-                            <path d="m11.5 8.5 3-3" />
-                          </svg>
-                        )}
-                        {cat.id === "repairs-technical" && (
+                return (
+                  <div
+                    key={catName}
+                    className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs space-y-3 flex flex-col justify-between"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                      <div className="flex items-center gap-2">
+                        <div className="text-blue-600">
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                           </svg>
-                        )}
-                        {cat.id === "automotive" && (
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect width="16" height="12" x="4" y="5" rx="2" />
-                            <circle cx="8" cy="17" r="2" />
-                            <circle cx="16" cy="17" r="2" />
-                          </svg>
-                        )}
-                      </div>
-                      <h4 className="font-sans font-bold text-sm text-[#0F1115]">
-                        {cat.name}
-                      </h4>
-                    </div>
-                    <span className="text-xs text-neutral-400 font-medium">
-                      {servicesInCat.length}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5 flex-1">
-                    {servicesInCat.map((srv) => {
-                      const isSelected = selectedServiceId === srv.id;
-                      return (
-                        <div
-                          key={srv.id}
-                          onClick={() => setSelectedServiceId(srv.id)}
-                          className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer flex items-center justify-between ${
-                            isSelected
-                              ? "bg-[#001B40] text-white shadow-xs font-semibold"
-                              : "bg-[#F8F9FA] text-neutral-700 hover:bg-neutral-100"
-                          }`}
-                        >
-                          <span>{srv.name}</span>
-                          {isSelected && (
-                            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bottom Row: 2 Categories (Fashion & Beauty, Facility & Property) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {CATEGORIES.filter((c) =>
-              ["fashion-beauty", "facility-property"].includes(c.id)
-            ).map((cat) => {
-              const servicesInCat = SERVICES.filter(
-                (s) =>
-                  s.categoryId === cat.id &&
-                  (!searchFilter.trim() ||
-                    s.name.toLowerCase().includes(searchFilter.toLowerCase()))
-              );
-
-              return (
-                <div
-                  key={cat.id}
-                  className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs space-y-3 flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                    <div className="flex items-center gap-2">
-                      <div className="text-blue-600">
-                        {cat.id === "fashion-beauty" && (
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="6" cy="6" r="3" />
-                            <circle cx="6" cy="18" r="3" />
-                            <line x1="20" y1="4" x2="8.12" y2="15.88" />
-                            <line x1="14.47" y1="14.48" x2="20" y2="20" />
-                            <line x1="8.12" y1="8.12" x2="12" y2="12" />
-                          </svg>
-                        )}
-                        {cat.id === "facility-property" && (
-                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect width="16" height="20" x="4" y="2" rx="2" />
-                            <line x1="9" y1="22" x2="9" y2="18" />
-                            <line x1="15" y1="22" x2="15" y2="18" />
-                          </svg>
-                        )}
+                        <h4 className="font-sans font-bold text-sm text-[#0F1115]">
+                          {catName}
+                        </h4>
                       </div>
-                      <h4 className="font-sans font-bold text-sm text-[#0F1115]">
-                        {cat.name}
-                      </h4>
+                      <span className="text-xs text-neutral-400 font-medium">
+                        {servicesInCat.length}
+                      </span>
                     </div>
-                    <span className="text-xs text-neutral-400 font-medium">
-                      {servicesInCat.length}
-                    </span>
-                  </div>
 
-                  <div className="space-y-1.5 flex-1">
-                    {servicesInCat.map((srv) => {
-                      const isSelected = selectedServiceId === srv.id;
-                      return (
-                        <div
-                          key={srv.id}
-                          onClick={() => setSelectedServiceId(srv.id)}
-                          className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer flex items-center justify-between ${
-                            isSelected
-                              ? "bg-[#001B40] text-white shadow-xs font-semibold"
-                              : "bg-[#F8F9FA] text-neutral-700 hover:bg-neutral-100"
-                          }`}
-                        >
-                          <span>{srv.name}</span>
-                          {isSelected && (
-                            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
-                          )}
-                        </div>
-                      );
-                    })}
+                    <div className="space-y-1.5 flex-1">
+                      {servicesInCat.map((srv) => {
+                        const isSelected = selectedServiceId === srv.id;
+                        return (
+                          <div
+                            key={srv.id}
+                            onClick={() => setSelectedServiceId(srv.id)}
+                            className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer flex items-center justify-between ${
+                              isSelected
+                                ? "bg-[#001B40] text-white shadow-xs font-semibold"
+                                : "bg-[#F8F9FA] text-neutral-700 hover:bg-neutral-100"
+                            }`}
+                          >
+                            <span>{srv.name}</span>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Selected Banner & Sticky Footer */}
           <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">

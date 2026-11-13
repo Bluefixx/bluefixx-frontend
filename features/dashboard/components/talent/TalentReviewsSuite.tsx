@@ -25,7 +25,7 @@ export function TalentReviewsSuite({
   artisanName = "John Obiora",
   duration = "3 months",
   initialState = "form",
-  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
+  enrollmentId,
 }: TalentReviewsSuiteProps) {
   const [viewState, setViewState] = useState<"pending" | "form" | "submitted">(initialState);
   const [rating, setRating] = useState(4);
@@ -64,6 +64,11 @@ export function TalentReviewsSuite({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!enrollmentId) {
+      toast.error("We couldn't find an apprenticeship to review. Please try again later.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await submitArtisanReviewApi(enrollmentId, {
@@ -71,15 +76,13 @@ export function TalentReviewsSuite({
         tags: selectedChips,
         text: reviewText.trim(),
       });
-      setIsSubmitting(false);
       setViewState("submitted");
       toast.success("Review submitted! Thank you for your feedback.");
       onSubmitSuccess?.();
     } catch {
+      toast.error("Could not submit your review. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      setViewState("submitted");
-      toast.success("Review recorded! Thank you for your feedback.");
-      onSubmitSuccess?.();
     }
   };
 

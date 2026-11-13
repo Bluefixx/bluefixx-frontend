@@ -319,6 +319,23 @@ export interface SendTalentMessagePayload {
   mediaIds?: string[];
 }
 
+export interface TalentConversationParticipant {
+  id: string;
+  fullName: string;
+  avatarUrl?: string;
+}
+
+export interface TalentConversation {
+  id: string;
+  programId: string;
+  programTitle?: string;
+  talentId?: string;
+  participant?: TalentConversationParticipant;
+  lastMessage?: string;
+  lastMessageAt?: string;
+  unreadCount?: number;
+}
+
 // ── Refunds ─────────────────────────────────────────────────────
 export type TalentRefundReason =
   | "UNSAFE"

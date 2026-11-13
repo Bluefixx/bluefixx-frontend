@@ -1,6 +1,29 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-10 (Customer Dashboard Dynamic Integration, Authentication & Settings Fixes)*
+*Last updated: 2026-11-13 (Media Upload Contract Fix, Talent Reviews & Messages API Wiring)*
+
+---
+
+## 0. Latest Session — Media Upload Fix & Talent Reviews/Messages Wiring
+
+### A. Media Upload Contract Fix (`types/customer.ts` & `lib/api/media.ts`)
+- **Root cause**: `uploadMediaFile` sent `{ type, filename, mimeType, sizeBytes }` to `POST /media`, but the backend expects `{ purpose, resourceType }`. The API returned `VALIDATION_ERROR` (`Unrecognized keys: "type", "filename", "mimeType", "sizeBytes"`).
+- Replaced `MediaType` with `MediaPurpose` (`PROFILE | PORTFOLIO | IDENTITY | JOB | CHAT | VOICE | COMPLETION | EVIDENCE | REVIEW | ASSESSMENT`) and added `MediaResourceType` (`image | video`).
+- Updated `MediaUploadInitiateRequest` to `{ purpose, resourceType }`; `MediaUploadInitiateResponse` now carries the signed Cloudinary `fields` map plus `maximumBytes`; `MediaUrlResponse` aligned to `{ id?, url, expiresIn? }`.
+- `uploadMediaFile` now derives `resourceType` from the purpose (`mediaResourceTypeFor`: VOICE/EVIDENCE/ASSESSMENT → `video`, else `image`) and uploads the binary to `uploadUrl` as `multipart/form-data` with the returned signed fields, then completes + resolves the URL.
+- All call sites (`TalentEditProfileView`, `TalentApplicationFormView`, `PersonalDetailsView`, `PostJobWizard`, customer `messages/page.tsx`) continue to pass valid purposes (`PROFILE`/`JOB`/`VOICE`).
+
+### B. Talent Reviews Wiring (`TalentReviewsSuite.tsx` & `app/(talent)/talent/reviews/page.tsx`)
+- `app/(talent)/talent/reviews/page.tsx` now fetches the Talent's enrollments via `getTalentHomeApi()` and passes the real `enrollmentId` (preferring a `COMPLETED` enrollment) plus `programmeTitle` and `artisanName` to the suite.
+- Removed the hardcoded placeholder `enrollmentId` default.
+- `TalentReviewsSuite.handleSubmit` no longer masks failures: the `catch` branch now shows an error toast and keeps the form open (previously it faked a success state); an explicit guard blocks submission when no enrollment is resolved.
+
+### C. Talent Messages Wiring (`TalentMessagesView.tsx` & `app/(talent)/talent/messages/page.tsx`)
+- The conversation list is now real: fetched via `getTalentConversationsApi()` (`GET /talent/conversations`) with participant name/initials, last-message preview, timestamp (`formatConversationTime`), and unread dot.
+- Selecting a conversation loads that programme's history via `getProgramMessagesApi(programId)` and marks it read via `markTalentProgramMessagesReadApi`; message ownership is derived from `msg.senderId === user?.id`.
+- Outgoing messages use the active conversation's `programId`; send failures now surface an error toast instead of being silently swallowed.
+- Added loading and empty states for both the conversation list and the message thread. `app/(talent)/talent/messages/page.tsx` simplified to pass only navigation callbacks (the component resolves the first conversation itself).
+- Avoided new `react-hooks/set-state-in-effect` violations by deriving message-loading state instead of setting it synchronously in the effect.
 
 ---
 
@@ -435,10 +458,22 @@ Documented strategy for deploying private GitHub organization repositories on Ve
    - `TalentTrainingProgressView.tsx`: Integrated `getTalentEnrollmentByIdApi()`, `submitAssignmentApi()`, `confirmMilestoneApi()`, and PDF receipt download.
    - `ApprenticeshipCompletedModal.tsx`: Integrated `confirmTalentCompletionApi()` and `getTalentCertificateApi()`.
    - `TalentReviewsSuite.tsx`: Integrated `submitArtisanReviewApi()`.
-   - `TalentMessagesView.tsx`: Integrated `getProgramMessagesApi()` and `sendProgramMessageApi()`.
+   - `TalentMessagesView.tsx`: Integrated `getProgramMessagesApi()`, `sendProgramMessageApi()`, and `markTalentProgramMessagesReadApi()`.
    - `TalentRequestRefundView.tsx`: Integrated `requestTalentRefundApi()`.
    - `TalentReferralView.tsx`: Integrated `getReferralSummaryApi()`.
    - `TalentSafetyCenterView.tsx`: Integrated `createSupportCaseApi()`.
+   - `TalentDiscoveryView.tsx`: Also wired the availability alerts (`getTalentAlertsApi()`, `createTalentAlertApi()`, `deleteTalentAlertApi()`) to the "Get notified" control.
+   - `TalentTransactionPinView.tsx`: Integrated `setTransactionPinApi()` (POST `/account/pin`).
+   - `TalentEditProfileView.tsx`: Integrated `uploadMediaFile(file, "PROFILE")` and passes `photoId` to `updateAccountProfileApi()`.
+
+5. **Dedicated Talent Routes & Navigation Unification**:
+   - `app/(talent)/layout.tsx` now reuses the shared `DashboardHeader` + `DashboardSidebar` (+ `UserRoleSwitcherModal`) exactly like the customer `(dashboard)` layout. The duplicate `TalentLayout.tsx` / `TalentHeader.tsx` / `TalentSidebar.tsx` were retired.
+   - The apprentice sidebar nav now points to `/talent/*` routes (Home, Discover, Applications, Payments & receipts, Messages, Certificates, Reviews, Settings).
+   - Every `/talent/*` page renders its `features/dashboard/components/talent/*` component with real data fetching. New nested routes: `discover/[id]`, `discover/[id]/apply`, `discover/[id]/apply/sent`, `applications/[id]`, `enrollments/[id]/{payment,payment-failed,activated,refund-policy,request-refund,refund-requested}`, `messages`, and `settings/{edit-profile,transaction-pin,notifications,safety-support,referrals}`.
+   - Added the missing `TalentCertificatesView.tsx` component and `/talent/messages` route.
+   - `app/(talent)/layout.tsx` forces `setActiveRole("apprentice")` on mount so the shared `DashboardSidebar` always renders the talent navigation for every `/talent/*` route (the sidebar branches its nav on `activeRole`).
+   - `TalentHomeView` is now prop-less (navigates via `useRouter` to dedicated routes); the legacy `onSwitchToCustomer` / `onOpenRoleSwitcher` props were removed — role switching is handled by the shared header's `UserRoleSwitcherModal`.
+   - Removed the now-orphaned `features/dashboard/components/ApprenticeHomeView.tsx` wrapper and the dead apprentice branch (plus its duplicate `UserRoleSwitcherModal`) from `app/(dashboard)/dashboard/page.tsx`; talent users are redirected to `/talent/home` by middleware.
 
 ---
 

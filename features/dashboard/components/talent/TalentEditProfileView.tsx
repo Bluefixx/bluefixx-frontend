@@ -5,6 +5,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 import { updateAccountProfileApi } from "@/lib/api/account";
+import { uploadMediaFile } from "@/lib/api/media";
 
 interface TalentEditProfileViewProps {
   onBack: () => void;
@@ -41,6 +42,28 @@ export function TalentEditProfileView({
     avatarUrl: initialData?.avatarUrl || user?.avatarUrl,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [avatarMediaId, setAvatarMediaId] = useState<string | undefined>(undefined);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFormData((prev) => ({ ...prev, avatarUrl: URL.createObjectURL(file) }));
+    setIsUploadingPhoto(true);
+    try {
+      const res = await uploadMediaFile(file, "PROFILE");
+      if (res?.id) {
+        setAvatarMediaId(res.id);
+        if (res.url) setFormData((prev) => ({ ...prev, avatarUrl: res.url }));
+        toast.success("Profile photo uploaded");
+      }
+    } catch {
+      toast.error("Could not upload photo. Please try again.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +72,7 @@ export function TalentEditProfileView({
       const updatedFullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
       await updateAccountProfileApi({
         fullName: updatedFullName,
+        ...(avatarMediaId ? { photoId: avatarMediaId } : {}),
       });
       if (user) {
         setUser({
@@ -113,12 +137,12 @@ export function TalentEditProfileView({
             </p>
             <div className="pt-1">
               <label className="inline-block px-4 py-2 rounded-xl bg-white border border-neutral-300 hover:bg-neutral-50 text-neutral-700 font-sans font-semibold text-xs transition-colors cursor-pointer">
-                Change photo
+                {isUploadingPhoto ? "Uploading..." : "Change photo"}
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={() => toast.success("Photo uploaded!")}
+                  onChange={handlePhotoUpload}
                 />
               </label>
             </div>

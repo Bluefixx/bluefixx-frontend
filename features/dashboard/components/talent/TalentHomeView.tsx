@@ -2,73 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 import { getTalentHomeApi, getTalentProgramsApi } from "@/lib/api/talent";
 import { formatNaira } from "@/lib/utils/currency";
 import { TalentProgramListItem } from "@/types/talent";
-import { TalentPaymentsReceiptsView } from "./TalentPaymentsReceiptsView";
-import { TalentTrainingProgressView } from "./TalentTrainingProgressView";
-import { TalentDiscoveryView } from "./TalentDiscoveryView";
-import { MasterArtisanProfileView } from "./MasterArtisanProfileView";
-import { TalentApplicationFormView } from "./TalentApplicationFormView";
-import { ApprenticeshipCompletedModal } from "./ApprenticeshipCompletedModal";
-import { TalentApplicationSentView } from "./TalentApplicationSentView";
-import { TalentApplicationsListView, TalentApplicationItem } from "./TalentApplicationsListView";
-import { TalentApplicationAcceptedDetailView } from "./TalentApplicationAcceptedDetailView";
-import { TalentApplicationDeclinedDetailView } from "./TalentApplicationDeclinedDetailView";
-import { TalentApprenticeshipPaymentView } from "./TalentApprenticeshipPaymentView";
-import { TalentRefundPolicyView } from "./TalentRefundPolicyView";
-import { TalentRequestRefundView } from "./TalentRequestRefundView";
-import { TalentRefundRequestedConfirmationView } from "./TalentRefundRequestedConfirmationView";
-import { TalentApprenticeshipActivatedView } from "./TalentApprenticeshipActivatedView";
-import { TalentPaymentFailedView } from "./TalentPaymentFailedView";
-import { TalentMessagesView } from "./TalentMessagesView";
-import { TalentProfileSettingsView } from "./TalentProfileSettingsView";
-import { TalentEditProfileView } from "./TalentEditProfileView";
-import { TalentTransactionPinView } from "./TalentTransactionPinView";
-import { TalentReferralView } from "./TalentReferralView";
-import { TalentSafetyCenterView } from "./TalentSafetyCenterView";
-import { TalentReviewsSuite } from "./TalentReviewsSuite";
-import { NotificationsSettingsView } from "@/features/dashboard/components/settings/NotificationsSettingsView";
 
-export type TalentSubView =
-  | "home"
-  | "progress"
-  | "discover"
-  | "master-profile"
-  | "apply"
-  | "application-sent"
-  | "applications-list"
-  | "application-accepted"
-  | "application-declined"
-  | "payment"
-  | "payment-failed"
-  | "apprenticeship-activated"
-  | "payments-receipts"
-  | "refund-policy"
-  | "request-refund"
-  | "refund-requested"
-  | "messages"
-  | "settings"
-  | "profile"
-  | "edit-profile"
-  | "transaction-pin"
-  | "referrals"
-  | "safety-support"
-  | "reviews"
-  | "notifications-settings";
-
-interface TalentHomeViewProps {
-  onSwitchToCustomer?: () => void;
-  onOpenRoleSwitcher?: () => void;
-}
-
-function TalentHomeViewContent({
-  onSwitchToCustomer,
-  onOpenRoleSwitcher,
-}: TalentHomeViewProps) {
+function TalentHomeViewContent() {
+  const router = useRouter();
   const { user } = useAuth();
   const userName = user?.fullName ? user.fullName.split(" ")[0] : "Learner";
 
@@ -79,63 +21,6 @@ function TalentHomeViewContent({
     else if (hour < 17) setTimeGreeting("Good afternoon");
     else setTimeGreeting("Good evening");
   }, []);
-
-  const searchParams = useSearchParams();
-  const urlView = searchParams.get("view") as TalentSubView | null;
-
-  const validViews: TalentSubView[] = [
-    "home",
-    "progress",
-    "discover",
-    "master-profile",
-    "apply",
-    "application-sent",
-    "applications-list",
-    "application-accepted",
-    "application-declined",
-    "payment",
-    "payment-failed",
-    "apprenticeship-activated",
-    "payments-receipts",
-    "refund-policy",
-    "request-refund",
-    "refund-requested",
-    "messages",
-    "settings",
-    "profile",
-    "edit-profile",
-    "transaction-pin",
-    "referrals",
-    "safety-support",
-    "reviews",
-    "notifications-settings",
-  ];
-
-  // Subview navigation
-  const [currentView, setCurrentView] = useState<TalentSubView>(
-    urlView && validViews.includes(urlView) ? urlView : "home"
-  );
-
-  useEffect(() => {
-    if (urlView && validViews.includes(urlView)) {
-      setCurrentView(urlView);
-    } else if (!urlView) {
-      setCurrentView("home");
-    }
-  }, [urlView]);
-
-  const [isCompletedModalOpen, setIsCompletedModalOpen] = useState(false);
-  const [activeProgramme, setActiveProgramme] = useState<{
-    id: string;
-    title: string;
-    fee: string;
-    duration: string;
-  }>({
-    id: "",
-    title: "Apprenticeship Programme",
-    fee: "₦0",
-    duration: "Flexible",
-  });
 
   const [homeData, setHomeData] = useState<{
     enrollmentTitle: string;
@@ -175,12 +60,6 @@ function TalentHomeViewContent({
               : "Session schedule to be announced by master artisan",
             escrowHeldText: `${feeNgn} held in escrow and released to ${primary.masterArtisanName || "master artisan"} as you learn.`,
           });
-          setActiveProgramme((prev) => ({
-            ...prev,
-            id: primary.id,
-            title: primary.programTitle || prev.title,
-            fee: feeNgn,
-          }));
         } else {
           setHomeData(null);
         }
@@ -216,370 +95,6 @@ function TalentHomeViewContent({
     };
   }, []);
 
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 1: TRAINING PROGRESS (Screenshot 2 Left)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "progress") {
-    return (
-      <>
-        <TalentTrainingProgressView
-          onBack={() => setCurrentView("home")}
-          onOpenMessages={() => setCurrentView("messages")}
-          onCompleteProgramme={() => setIsCompletedModalOpen(true)}
-          enrollmentId={homeData?.enrollmentId || activeProgramme.id}
-        />
-        <ApprenticeshipCompletedModal
-          isOpen={isCompletedModalOpen}
-          onClose={() => setIsCompletedModalOpen(false)}
-          onReviewMaster={() => {
-            setIsCompletedModalOpen(false);
-            setCurrentView("reviews");
-          }}
-          userName={userName}
-          enrollmentId={homeData?.enrollmentId || activeProgramme.id}
-        />
-      </>
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 2: DISCOVERY (Screenshot 4 Left)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "discover") {
-    return (
-      <TalentDiscoveryView
-        onBack={() => setCurrentView("home")}
-        onSelectProgramme={(prog) => {
-          setActiveProgramme({
-            id: prog.id,
-            title: prog.title,
-            fee: prog.fee,
-            duration: prog.duration,
-          });
-          setCurrentView("master-profile");
-        }}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 3: MASTER ARTISAN PROFILE (Screenshot 4 Right)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "master-profile") {
-    return (
-      <MasterArtisanProfileView
-        onBack={() => setCurrentView("discover")}
-        programId={activeProgramme.id}
-        onApply={(programme) => {
-          setActiveProgramme(programme);
-          setCurrentView("apply");
-        }}
-        onMessage={() => toast.success("Connecting with John Obiora...")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 4: APPLICATION FORM (Screenshot 5)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "apply") {
-    return (
-      <TalentApplicationFormView
-        onBack={() => setCurrentView("master-profile")}
-        programId={activeProgramme.id}
-        programmeTitle={activeProgramme.title}
-        duration={activeProgramme.duration}
-        fee={activeProgramme.fee}
-        onSubmitSuccess={() => {
-          setCurrentView("application-sent");
-        }}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 5: APPLICATION SENT CONFIRMATION
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "application-sent") {
-    return (
-      <TalentApplicationSentView
-        onBack={() => setCurrentView("apply")}
-        onTrackApplication={() => setCurrentView("applications-list")}
-        onFindMore={() => setCurrentView("discover")}
-        trade={activeProgramme.title}
-        duration={activeProgramme.duration}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 6: MY APPLICATIONS LIST
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "applications-list") {
-    return (
-      <TalentApplicationsListView
-        onBack={() => setCurrentView("home")}
-        onSelectApplication={(app) => {
-          if (app.status === "accepted") {
-            setCurrentView("application-accepted");
-          } else if (app.status === "declined") {
-            setCurrentView("application-declined");
-          }
-        }}
-        onMakePayment={(app) => {
-          setActiveProgramme({
-            id: app.id,
-            title: app.programmeTitle,
-            fee: app.fee || "₦150,000",
-            duration: app.duration || "3 months",
-          });
-          setCurrentView("payment");
-        }}
-        onFindMore={() => setCurrentView("discover")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 7: APPLICATION ACCEPTED DETAIL
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "application-accepted") {
-    return (
-      <TalentApplicationAcceptedDetailView
-        onBack={() => setCurrentView("applications-list")}
-        onContinueToPayment={() => setCurrentView("payment")}
-        programmeTitle={activeProgramme.title}
-        fee={activeProgramme.fee}
-        duration={activeProgramme.duration}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 8: APPLICATION DECLINED DETAIL
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "application-declined") {
-    return (
-      <TalentApplicationDeclinedDetailView
-        onBack={() => setCurrentView("applications-list")}
-        onFindOther={() => setCurrentView("discover")}
-        programmeTitle={activeProgramme.title}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 9: PAY FOR APPRENTICESHIP (Payment & Escrow)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "payment") {
-    return (
-      <TalentApprenticeshipPaymentView
-        onBack={() => setCurrentView("applications-list")}
-        onOpenRefundPolicy={() => setCurrentView("refund-policy")}
-        onPaymentSuccess={() => {
-          setCurrentView("apprenticeship-activated");
-        }}
-        onPaymentFailed={() => {
-          setCurrentView("payment-failed");
-        }}
-        enrollmentId={homeData?.enrollmentId || activeProgramme.id}
-        programmeTitle={activeProgramme.title}
-        fee={activeProgramme.fee}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 10: PAYMENTS & RECEIPTS (WITH 30-DAY REFUND POLICY)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "payments-receipts" || currentView === "refund-policy") {
-    return (
-      <TalentPaymentsReceiptsView
-        onBack={() => setCurrentView("home")}
-        onRequestRefund={() => setCurrentView("request-refund")}
-        programmeTitle={homeData?.enrollmentTitle || activeProgramme.title}
-        feePaid={activeProgramme.fee}
-        startDate="Active intake"
-        windowEnd="30 days from start"
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 11: REQUEST A REFUND FORM
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "request-refund") {
-    return (
-      <TalentRequestRefundView
-        onBack={() => setCurrentView("refund-policy")}
-        onSubmitSuccess={() => setCurrentView("refund-requested")}
-        enrollmentId={homeData?.enrollmentId || activeProgramme.id}
-        programmeTitle={activeProgramme.title}
-        heldInEscrow={activeProgramme.fee}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 12: REFUND REQUESTED CONFIRMATION
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "refund-requested") {
-    return (
-      <TalentRefundRequestedConfirmationView
-        onBackToPayments={() => setCurrentView("progress")}
-        onViewRequest={() => toast("Your refund request is being processed by Bluefixx")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 13: APPRENTICESHIP ACTIVATED CONFIRMATION
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "apprenticeship-activated") {
-    return (
-      <TalentApprenticeshipActivatedView
-        onBack={() => setCurrentView("applications-list")}
-        onViewApprenticeship={() => setCurrentView("progress")}
-        onManageArtisan={() => setCurrentView("master-profile")}
-        amount={activeProgramme.fee}
-        programmeTitle={activeProgramme.title}
-        masterArtisan="John Obiora"
-        reference="BFX-TRN-4417202"
-        paymentMethod="Paystack · Debit Card **** 4012"
-        startDate="1 September 2025"
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 14: PAYMENT FAILED STATE
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "payment-failed") {
-    return (
-      <TalentPaymentFailedView
-        onBack={() => setCurrentView("applications-list")}
-        onUseWallet={() => setCurrentView("payment")}
-        onTryAgain={() => setCurrentView("payment")}
-        amount={activeProgramme.fee}
-        holdHours={48}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 15: INBOX & MENTOR CONVERSATION
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "messages") {
-    return (
-      <TalentMessagesView
-        onBack={() => setCurrentView("home")}
-        onOpenTraining={() => setCurrentView("progress")}
-        onFindMore={() => setCurrentView("discover")}
-        programId={activeProgramme.id}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 16: SETTINGS & PROFILE
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "settings" || currentView === "profile") {
-    return (
-      <TalentProfileSettingsView
-        onEditProfile={() => setCurrentView("edit-profile")}
-        onOpenPin={() => setCurrentView("transaction-pin")}
-        onOpenNotifications={() => setCurrentView("notifications-settings")}
-        onOpenCertifications={() => setIsCompletedModalOpen(true)}
-        onOpenWallet={() => setCurrentView("payment")}
-        onOpenSafetySupport={() => setCurrentView("safety-support")}
-        onOpenReportProblem={() => setCurrentView("safety-support")}
-        onOpenReferrals={() => setCurrentView("referrals")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 17: EDIT PROFILE
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "edit-profile") {
-    return (
-      <TalentEditProfileView
-        onBack={() => setCurrentView("profile")}
-        onSaveSuccess={() => setCurrentView("profile")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 18: TRANSACTION PIN (CREATE / CONFIRM)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "transaction-pin") {
-    return (
-      <TalentTransactionPinView
-        onBack={() => setCurrentView("profile")}
-        onSuccessBack={() => setCurrentView("profile")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 19: REFERRAL (INVITE & EARN)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "referrals") {
-    return (
-      <TalentReferralView
-        onBack={() => setCurrentView("profile")}
-        referralCode="BLUE-SIMEON"
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 20: SAFETY SUPPORT & LIVE GPS SHARING
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "safety-support") {
-    return (
-      <TalentSafetyCenterView
-        onBack={() => setCurrentView("home")}
-        programmeTitle={activeProgramme.title}
-        artisanName="John Obiora"
-        workshopAddress="14 Ziks Avenue, Independence Layout, Enugu"
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 21: REVIEWS (PENDING, FORM & SUBMITTED SUITE)
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "reviews") {
-    return (
-      <TalentReviewsSuite
-        onBack={() => setCurrentView("home")}
-        onBackToApprenticeship={() => setCurrentView("progress")}
-        onViewCertificate={() => setIsCompletedModalOpen(true)}
-        onSubmitSuccess={() => {}}
-        programmeTitle={activeProgramme.title}
-        artisanName="John Obiora"
-        duration={activeProgramme.duration}
-        enrollmentId={homeData?.enrollmentId || activeProgramme.id}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // SUBVIEW 22: NOTIFICATIONS SETTINGS
-  // ══════════════════════════════════════════════════════════════
-  if (currentView === "notifications-settings") {
-    return (
-      <NotificationsSettingsView
-        onBack={() => setCurrentView("profile")}
-      />
-    );
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // MAIN VIEW: TALENT HOME (Screenshot 1 Left)
-  // ══════════════════════════════════════════════════════════════
   return (
     <div className="space-y-8 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">
       {/* Top Main Heading */}
@@ -633,7 +148,7 @@ function TalentHomeViewContent({
           {/* Primary CTA */}
           <button
             type="button"
-            onClick={() => setCurrentView("discover")}
+            onClick={() => router.push("/talent/discover")}
             className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
           >
             Find opportunities
@@ -649,7 +164,7 @@ function TalentHomeViewContent({
           </h2>
           <button
             type="button"
-            onClick={() => setCurrentView("progress")}
+            onClick={() => router.push("/talent/progress")}
             className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
           >
             Full progress
@@ -676,7 +191,7 @@ function TalentHomeViewContent({
             <div>
               <button
                 type="button"
-                onClick={() => setCurrentView("discover")}
+                onClick={() => router.push("/talent/discover")}
                 className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs shadow-xs transition-colors cursor-pointer"
               >
                 Find opportunities
@@ -721,7 +236,7 @@ function TalentHomeViewContent({
               {/* Bottom Button */}
               <button
                 type="button"
-                onClick={() => setCurrentView("progress")}
+                onClick={() => router.push("/talent/progress")}
                 className="w-full py-3 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
               >
                 Open My Apprenticeship
@@ -763,7 +278,7 @@ function TalentHomeViewContent({
           </h2>
           <button
             type="button"
-            onClick={() => setCurrentView("discover")}
+            onClick={() => router.push("/talent/discover")}
             className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
           >
             Explore
@@ -799,15 +314,7 @@ function TalentHomeViewContent({
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setActiveProgramme({
-                        id: skill.id,
-                        title: skill.title,
-                        fee: feeFormatted,
-                        duration: durationFormatted,
-                      });
-                      setCurrentView("master-profile");
-                    }}
+                    onClick={() => router.push(`/talent/discover/${skill.id}`)}
                     className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer self-start sm:self-center"
                   >
                     View Programme
@@ -828,7 +335,7 @@ function TalentHomeViewContent({
             </div>
             <button
               type="button"
-              onClick={() => setCurrentView("discover")}
+              onClick={() => router.push("/talent/discover")}
               className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer self-start sm:self-center"
             >
               Explore all
@@ -836,29 +343,12 @@ function TalentHomeViewContent({
           </div>
         )}
       </div>
-
-      {/* Graduation & Certification Completed Modal */}
-      <ApprenticeshipCompletedModal
-        isOpen={isCompletedModalOpen}
-        onClose={() => setIsCompletedModalOpen(false)}
-        userName={userName}
-      />
     </div>
   );
 }
 
-export function TalentHomeView(props: TalentHomeViewProps) {
-  return (
-    <React.Suspense
-      fallback={
-        <div className="max-w-7xl mx-auto py-12 px-4 text-center text-xs text-neutral-400 font-sans">
-          Loading talent dashboard...
-        </div>
-      }
-    >
-      <TalentHomeViewContent {...props} />
-    </React.Suspense>
-  );
+export function TalentHomeView() {
+  return <TalentHomeViewContent />;
 }
 
 export default TalentHomeView;

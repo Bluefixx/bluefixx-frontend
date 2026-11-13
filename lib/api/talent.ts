@@ -21,6 +21,7 @@ import {
   SubmitArtisanReviewResponse,
   TalentMessage,
   SendTalentMessagePayload,
+  TalentConversation,
   RequestTalentRefundPayload,
   RequestTalentRefundResponse,
 } from "@/types/talent";
@@ -205,7 +206,7 @@ export async function submitArtisanReviewApi(
  */
 export async function getProgramMessagesApi(
   programId: string,
-  params?: { cursor?: string; limit?: number }
+  params?: { cursor?: string; limit?: number; talentId?: string }
 ): Promise<TalentMessage[]> {
   return apiClient.get<TalentMessage[]>(`/talent/programs/${programId}/messages`, {
     params,
@@ -222,6 +223,28 @@ export async function sendProgramMessageApi(
   return apiClient.post<TalentMessage, SendTalentMessagePayload>(
     `/talent/programs/${programId}/messages`,
     payload
+  );
+}
+
+/**
+ * List the Talent's programme conversations with latest message and unread count
+ */
+export async function getTalentConversationsApi(params?: {
+  q?: string;
+}): Promise<TalentConversation[]> {
+  return apiClient.get<TalentConversation[]>("/talent/conversations", { params });
+}
+
+/**
+ * Mark a programme conversation's messages as read
+ */
+export async function markTalentProgramMessagesReadApi(
+  programId: string,
+  payload?: { talentId?: string }
+): Promise<{ message?: string }> {
+  return apiClient.post<{ message?: string }>(
+    `/talent/programs/${programId}/messages/read`,
+    payload ?? {}
   );
 }
 

@@ -70,14 +70,17 @@ function DashboardSidebarContent({
   const isMessagesActive = pathname === "/messages" || pathname === "/dashboard/messages";
   const isReviewsActive = pathname === "/reviews" || pathname === "/dashboard/reviews";
   
-  // Talent-specific navigation state
+  // Talent-specific navigation state (dedicated /talent routes)
   const viewParam = searchParams.get("view") || "";
-  const isTalentHomeActive = (pathname === "/dashboard" || pathname === "/") && !viewParam;
-  const isFindApprenticeshipsActive = pathname.includes("/dashboard") && (viewParam === "discover" || viewParam === "master-profile");
-  const isMyApplicationsActive = pathname.includes("/dashboard") && (viewParam === "applications-list" || viewParam === "apply" || viewParam === "application-sent" || viewParam === "application-accepted" || viewParam === "application-declined");
+  const isTalentHomeActive = pathname === "/talent/home";
+  const isFindApprenticeshipsActive = pathname.startsWith("/talent/discover");
+  const isMyApplicationsActive = pathname.startsWith("/talent/applications");
+  const isMyApprenticeshipActive = pathname.startsWith("/talent/progress");
+  const isPaymentsReceiptsActive = pathname.startsWith("/talent/enrollments");
+  const isTalentMessagesActive = pathname.startsWith("/talent/messages");
+  const isTalentCertificatesActive = pathname.startsWith("/talent/certificates");
+  const isTalentReviewsActive = pathname.startsWith("/talent/reviews");
   const isLearnActive = isFindApprenticeshipsActive || isMyApplicationsActive;
-  const isMyApprenticeshipActive = pathname.includes("/dashboard") && viewParam === "progress" && currentTab !== "payments";
-  const isPaymentsReceiptsActive = pathname.includes("/dashboard") && (viewParam === "payments-receipts" || viewParam === "refund-policy" || viewParam === "request-refund" || (viewParam === "progress" && currentTab === "payments"));
   const isProgressActive = isMyApprenticeshipActive || isPaymentsReceiptsActive;
 
   // Artisan-specific navigation state
@@ -111,12 +114,21 @@ function DashboardSidebarContent({
   const isCompletedActive = isBookingsRoot && currentTab === "completed";
 
   // Settings subtabs
-  const isSettingsRoot = pathname === "/settings" || pathname === "/dashboard/settings";
+  const isSettingsRoot =
+    pathname === "/settings" ||
+    pathname === "/dashboard/settings" ||
+    pathname.startsWith("/talent/settings");
   const isAccountActive = isSettingsRoot && (currentTab === "account" || currentTab === "personal-details" || !currentTab);
   const isNotificationsActive = isSettingsRoot && currentTab === "notifications";
   const isLanguageActive = isSettingsRoot && currentTab === "language";
   const isSafetyActive = isSettingsRoot && (currentTab === "support" || currentTab === "safety" || currentTab === "report-problem");
   const isReferralActive = isSettingsRoot && (currentTab === "referral" || currentTab === "invite");
+
+  // Talent settings sub-pages (dedicated /talent/settings routes)
+  const isTalentAccountActive = pathname.startsWith("/talent/settings/edit-profile");
+  const isTalentNotificationsActive = pathname.startsWith("/talent/settings/notifications");
+  const isTalentSafetyActive = pathname.startsWith("/talent/settings/safety-support");
+  const isTalentReferralActive = pathname.startsWith("/talent/settings/referrals");
 
   const roleDisplay =
     activeRole === "customer"
@@ -171,7 +183,7 @@ function DashboardSidebarContent({
             <>
               {/* 1. Home */}
               <Link
-                href="/dashboard"
+                href="/talent/home"
                 onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
                   isTalentHomeActive
@@ -221,7 +233,7 @@ function DashboardSidebarContent({
                 {isLearnOpen && (
                   <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
                     <Link
-                      href="/dashboard?view=discover"
+                      href="/talent/discover"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isFindApprenticeshipsActive
@@ -232,7 +244,7 @@ function DashboardSidebarContent({
                       {t("findApprenticeships")}
                     </Link>
                     <Link
-                      href="/dashboard?view=applications-list"
+                      href="/talent/applications"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isMyApplicationsActive
@@ -281,7 +293,7 @@ function DashboardSidebarContent({
                 {isProgressOpen && (
                   <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
                     <Link
-                      href="/dashboard?view=progress"
+                      href="/talent/progress"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isMyApprenticeshipActive
@@ -292,7 +304,7 @@ function DashboardSidebarContent({
                       {t("myApprenticeship")}
                     </Link>
                     <Link
-                      href="/dashboard?view=payments-receipts"
+                      href="/talent/enrollments"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isPaymentsReceiptsActive
@@ -308,10 +320,10 @@ function DashboardSidebarContent({
 
               {/* 4. Messages */}
               <Link
-                href="/messages"
+                href="/talent/messages"
                 onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
-                  isMessagesActive
+                  isTalentMessagesActive
                     ? "bg-[#001B40] text-white shadow-xs font-bold"
                     : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
                 }`}
@@ -322,19 +334,34 @@ function DashboardSidebarContent({
                 <span>{t("messages")}</span>
               </Link>
 
-              {/* 5. Profile */}
+              {/* 5. Certificates */}
               <Link
-                href="/profile"
+                href="/talent/certificates"
                 onClick={handleLinkClick}
                 className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
-                  isMyProfileActive
+                  isTalentCertificatesActive
                     ? "bg-[#001B40] text-white shadow-xs font-bold"
                     : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
                 }`}
               >
                 <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+                <span>Certificates</span>
+              </Link>
+
+              {/* 6. Reviews */}
+              <Link
+                href="/talent/reviews"
+                onClick={handleLinkClick}
+                className={`flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
+                  isTalentReviewsActive
+                    ? "bg-[#001B40] text-white shadow-xs font-bold"
+                    : "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100/70 font-medium"
+                }`}
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill={isTalentReviewsActive ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
                 <span>{t("profile")}</span>
               </Link>
@@ -896,7 +923,54 @@ function DashboardSidebarContent({
           </button>
 
           {/* Settings Submenu */}
-          {isSettingsOpen && (
+          {isSettingsOpen && activeRole === "apprentice" ? (
+            <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
+              <Link
+                href="/talent/settings/edit-profile"
+                onClick={handleLinkClick}
+                className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                  isTalentAccountActive
+                    ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                }`}
+              >
+                Account & security
+              </Link>
+              <Link
+                href="/talent/settings/notifications"
+                onClick={handleLinkClick}
+                className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                  isTalentNotificationsActive
+                    ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                }`}
+              >
+                Notifications
+              </Link>
+              <Link
+                href="/talent/settings/safety-support"
+                onClick={handleLinkClick}
+                className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                  isTalentSafetyActive
+                    ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                }`}
+              >
+                Safety & support
+              </Link>
+              <Link
+                href="/talent/settings/referrals"
+                onClick={handleLinkClick}
+                className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
+                  isTalentReferralActive
+                    ? "bg-[#EBF1F7] text-[#001B40] font-bold shadow-2xs"
+                    : "text-neutral-500 hover:text-neutral-900 font-medium hover:bg-neutral-50"
+                }`}
+              >
+                Invite & earn
+              </Link>
+            </div>
+          ) : isSettingsOpen ? (
             <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
               <Link
                 href="/settings?tab=account"
@@ -954,7 +1028,7 @@ function DashboardSidebarContent({
                 {t("inviteAndEarn")}
               </Link>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Help & Support */}

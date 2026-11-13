@@ -51,6 +51,27 @@ export async function sendSupportCaseMessageApi(
 }
 
 /**
+ * Load the message history of a support case
+ */
+export async function getSupportCaseMessagesApi(
+  caseId: string,
+  params?: { cursor?: string; limit?: number }
+): Promise<SupportCaseMessage[]> {
+  return apiClient.get<SupportCaseMessage[]>(`/support/cases/${caseId}/messages`, {
+    params,
+  });
+}
+
+/**
+ * Mark a support case conversation as read
+ */
+export async function markSupportCaseReadApi(
+  caseId: string
+): Promise<{ message?: string }> {
+  return apiClient.post<{ message?: string }>(`/support/cases/${caseId}/read`, {});
+}
+
+/**
  * Open or resume the private BlueFixx live support conversation
  */
 export async function openSupportChatApi(): Promise<{ conversationId: string }> {

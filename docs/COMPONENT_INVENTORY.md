@@ -191,18 +191,18 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 
 ### `DashboardSidebar`
 - **File**: `features/dashboard/components/DashboardSidebar.tsx`
-- **Purpose**: Primary dashboard navigation sidebar featuring brand logo, navigation links (`Home`, `Explore`, `Post a Job`, `Bookings`, `Messages`, `Profile`), and bottom user profile card and settings.
-- **Used In**: `app/dashboard/layout.tsx`
+- **Purpose**: Primary dashboard navigation sidebar featuring brand logo, role-aware navigation (customer / artisan / apprentice), and bottom user profile card and settings. Renders the correct nav from the active role.
+- **Used In**: `app/(dashboard)/layout.tsx`, `app/(talent)/layout.tsx`, `app/(artisan)/layout.tsx`
 
 ### `DashboardHeader`
 - **File**: `features/dashboard/components/DashboardHeader.tsx`
 - **Purpose**: Top dashboard header with interactive location selector, user type toggle button (`↕`), notification bell with orange pip, wallet balance display, and avatar dropdown trigger.
-- **Used In**: `app/dashboard/layout.tsx`
+- **Used In**: `app/(dashboard)/layout.tsx`, `app/(talent)/layout.tsx`, `app/(artisan)/layout.tsx`
 
 ### `UserRoleSwitcherModal`
 - **File**: `features/dashboard/components/UserRoleSwitcherModal.tsx`
 - **Purpose**: Modal to switch active profile between Customer, Artisan, and Apprentice. Enforces the rule that an Apprentice account cannot switch to Artisan unless training is completed, while Customer access is always available.
-- **Used In**: `app/dashboard/layout.tsx`, `features/dashboard/components/ApprenticeHomeView.tsx`
+- **Used In**: `app/(dashboard)/layout.tsx`, `app/(talent)/layout.tsx`, `app/(artisan)/layout.tsx`
 
 ### `AccountMenuDropdown`
 - **File**: `features/dashboard/components/AccountMenuDropdown.tsx`
@@ -212,17 +212,12 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
 ### `CustomerHomeView`
 - **File**: `features/dashboard/components/CustomerHomeView.tsx`
 - **Purpose**: Home dashboard for customers featuring search card with popular tags, wallet balance, escrow protection, 7-day warranty cards, quick action banner, categorized service cards, and verified artisan cards.
-- **Used In**: `app/dashboard/page.tsx`
+- **Used In**: `app/(dashboard)/dashboard/page.tsx`
 
 ### `ArtisanHomeView`
 - **File**: `features/dashboard/components/ArtisanHomeView.tsx`
 - **Purpose**: Home dashboard for artisans featuring job lead stats, earnings summary, rating, open customer job requests in their area, and quote submission actions.
-- **Used In**: `app/dashboard/page.tsx`
-
-### `ApprenticeHomeView`
-- **File**: `features/dashboard/components/ApprenticeHomeView.tsx`
-- **Purpose**: Home dashboard for apprentices featuring current curriculum progress, master artisan mentorship info, practical hours tracker, and graduation simulation controller.
-- **Used In**: `app/dashboard/page.tsx`
+- **Used In**: `app/(dashboard)/dashboard/page.tsx`
 
 ### `BrowseServicesView`
 - **File**: `features/dashboard/components/BrowseServicesView.tsx`
@@ -432,8 +427,8 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Your Training Section**: Active apprenticeship card with current module badge ("Advanced Welding"), master artisan credit ("John Obiora"), 65% progress bar, attendance (92%), and "Open My Apprenticeship" CTA.
   - **Next Session & Escrow Payment Cards**: Next scheduled session time and location, and escrow balance status (`₦50,000 held in escrow`).
   - **Learn Another Skill Section**: Explore card with preview of alternative apprenticeships (`Home Electrical Installation · Chinedu Okafor`).
-  - **Subview Routing**: Orchestrates state-driven and URL-synchronized deep-linking between `home`, `progress`, `discover`, `master-profile`, and `apply` views.
-- **Used In**: `features/dashboard/components/ApprenticeHomeView.tsx`
+  - **Route Navigation**: Pure home screen with no internal subview state; CTAs navigate to dedicated routes (`/talent/discover`, `/talent/discover/[id]`, `/talent/progress`).
+- **Used In**: `app/(talent)/talent/home/page.tsx`
 
 ### `TalentTrainingProgressView`
 - **File**: `features/dashboard/components/talent/TalentTrainingProgressView.tsx`
@@ -574,7 +569,15 @@ This document tracks all reusable UI components implemented in `bluefixx-fronten
   - **Master Artisan Conversation**: Direct chat thread with mentor John Obiora displaying apprenticeship status banner, live workshop guidance, and voice note player with waveform animation.
   - **Locked Offer Preview**: Modal displaying the formal Apprenticeship Agreement contract terms with John Obiora.
   - **Empty Inbox Fallback**: Zero-state matching *Talent Web · Messages: no messages (empty state)* with chat illustration and "Find opportunities" trigger.
-- **Used In**: `TalentHomeView` (accessible via sidebar `Messages` or direct links)
+- **Used In**: `/talent/messages` route (`app/(talent)/talent/messages/page.tsx`)
+
+### `TalentCertificatesView`
+- **File**: `features/dashboard/components/talent/TalentCertificatesView.tsx`
+- **Purpose**: Earned training certificate viewer matching Figma *Talent Web · Certificates*:
+  - **Certificate Card**: Programme title, completion date, and certificate code with a "Copy certificate code" action (clipboard).
+  - **Loading Skeleton & Empty State**: Skeleton while fetching, and an empty state with a "Find opportunities" CTA when no certificate exists yet.
+  - **Data**: Resolves the active enrollment via `getTalentHomeApi()` then loads the certificate with `getTalentCertificateApi()`.
+- **Used In**: `/talent/certificates` route (`app/(talent)/talent/certificates/page.tsx`)
 
 ### `TalentProfileSettingsView`
 - **File**: `features/dashboard/components/talent/TalentProfileSettingsView.tsx`

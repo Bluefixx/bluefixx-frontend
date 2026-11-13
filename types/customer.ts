@@ -405,26 +405,41 @@ export interface UserRoleInfo {
 }
 
 // ── Media & Uploads ──────────────────────────────────────────
-export type MediaType = "JOB" | "VOICE" | "PROFILE" | "REVIEW" | "SUPPORT";
+/**
+ * Upload purposes accepted by `POST /media`. Audio-only media (VOICE) and video
+ * evidence (EVIDENCE, ASSESSMENT) are stored as `video` resources.
+ */
+export type MediaPurpose =
+  | "PROFILE"
+  | "PORTFOLIO"
+  | "IDENTITY"
+  | "JOB"
+  | "CHAT"
+  | "VOICE"
+  | "COMPLETION"
+  | "EVIDENCE"
+  | "REVIEW"
+  | "ASSESSMENT";
+
+export type MediaResourceType = "image" | "video";
 
 export interface MediaUploadInitiateRequest {
-  type: MediaType;
-  filename: string;
-  mimeType: string;
-  sizeBytes: number;
+  purpose: MediaPurpose;
+  resourceType: MediaResourceType;
 }
 
 export interface MediaUploadInitiateResponse {
   id: string;
   uploadUrl: string;
-  key: string;
-  expiresInSeconds: number;
+  /** Signed provider fields to submit with the binary as multipart/form-data. */
+  fields: Record<string, string | number | boolean>;
+  maximumBytes?: number;
 }
 
 export interface MediaUrlResponse {
-  id: string;
+  id?: string;
   url: string;
-  expiresAt: string;
+  expiresIn?: number;
 }
 
 // ── Banks & Financial Accounts ───────────────────────────────

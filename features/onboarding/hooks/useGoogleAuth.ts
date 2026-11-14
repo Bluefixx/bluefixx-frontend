@@ -11,6 +11,8 @@ import { LoginResponse } from "@/types/auth";
 interface GooglePromptNotification {
   isNotDisplayed: () => boolean;
   isSkippedMoment: () => boolean;
+  isDismissedMoment?: () => boolean;
+  getDismissedReason?: () => string;
 }
 
 interface GoogleAccountsId {
@@ -176,11 +178,11 @@ export function useGoogleAuth() {
     let clientId = clientIdRef.current;
     if (!clientId) {
       const options = await getAuthOptionsApi();
-      if (!options.providers.google.enabled || !options.providers.google.clientId) {
+      if (!options.google?.enabled || !options.google?.clientId) {
         toast.error("Google sign-in is not configured on the server.");
         return null;
       }
-      clientId = options.providers.google.clientId;
+      clientId = options.google.clientId;
       clientIdRef.current = clientId;
     }
 
@@ -226,6 +228,11 @@ export function useGoogleAuth() {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           setIsGoogleLoading(false);
           setIsFallbackModalOpen(true);
+        } else if (
+          notification.isDismissedMoment?.() &&
+          notification.getDismissedReason?.() !== "credential_returned"
+        ) {
+          setIsGoogleLoading(false);
         }
       });
     } catch {

@@ -51,7 +51,7 @@ function ArtisanHomeViewContent({
   onOpenRoleSwitcher,
   initialVerificationState = "verified",
 }: ArtisanHomeViewProps) {
-  const { user } = useAuth();
+  const { user, refreshRoles } = useAuth();
   const [dashboardData, setDashboardData] = useState<ArtisanDashboardResponse | null>(null);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
 
@@ -145,11 +145,24 @@ function ArtisanHomeViewContent({
       : "dashboard"
   );
 
-  const [customerToRate, setCustomerToRate] = useState({
-    name: "Daniel C.",
-    jobTitle: "Generator repair",
-    date: "Today",
+  const [customerToRate, setCustomerToRate] = useState<{
+    bookingId?: string;
+    name: string;
+    jobTitle: string;
+    date: string;
+  }>({
+    name: "Customer",
+    jobTitle: "Completed job",
+    date: "Recent",
   });
+
+  const [selectedBookingId, setSelectedBookingId] = useState<string | undefined>(undefined);
+  const [selectedQuoteMeta, setSelectedQuoteMeta] = useState<{
+    offerId?: string;
+    quoteAmount?: string;
+    estimatedCompletion?: string;
+    warrantyPeriod?: string;
+  } | null>(null);
 
   const [isQuoteSent, setIsQuoteSent] = useState(false);
 
@@ -189,6 +202,8 @@ function ArtisanHomeViewContent({
           } else if (res.profile.approval === "DRAFT" || res.profile.approval === "REJECTED") {
             setVerificationState("not_verified");
           }
+        } else {
+          setVerificationState("not_verified");
         }
       })
       .catch((err) => {
@@ -301,7 +316,7 @@ function ArtisanHomeViewContent({
           onContinueVerification={() => setCurrentView("verification")}
           onSendQuote={() => setCurrentView("send-quote")}
           onViewQuote={() => setCurrentView("quote-sent")}
-          onAskQuestion={() => toast(`Opening conversation with ${selectedJob.customerName}...`)}
+          onAskQuestion={() => setCurrentView("messages")}
         />
         <ArtisanSendQuoteModal
           isOpen={isQuoteModalOpen}
@@ -331,7 +346,8 @@ function ArtisanHomeViewContent({
           if (selectedJob) setCurrentView("job-detail");
           else setCurrentView("dashboard");
         }}
-        onQuoteSent={() => {
+        onQuoteSent={(summary) => {
+          setSelectedQuoteMeta(summary ?? null);
           setIsQuoteSent(true);
           setCurrentView("quote-sent");
         }}
@@ -345,12 +361,13 @@ function ArtisanHomeViewContent({
   if (currentView === "quote-sent") {
     return (
       <ArtisanQuoteSentView
-        jobTitle={selectedJob?.title || "Kitchen Plumbing Repair"}
-        customerName={selectedJob?.customerName || "Daniel C."}
-        quoteAmount="₦45,000"
-        submittedTime="Today · 11:37"
-        estimatedCompletion="1 week"
-        warrantyPeriod="30 days"
+        offerId={selectedQuoteMeta?.offerId}
+        jobTitle={selectedJob?.title || "Service Request"}
+        customerName={selectedJob?.customerName || "Customer"}
+        quoteAmount={selectedQuoteMeta?.quoteAmount || "—"}
+        submittedTime="Just now"
+        estimatedCompletion={selectedQuoteMeta?.estimatedCompletion || "1 week"}
+        warrantyPeriod={selectedQuoteMeta?.warrantyPeriod || "30 days"}
         onViewJob={() => setCurrentView("job-detail")}
         onFindMoreJobs={() => setCurrentView("find-jobs")}
         onBackToDashboard={() => setCurrentView("dashboard")}
@@ -365,11 +382,17 @@ function ArtisanHomeViewContent({
   if (currentView === "active-job-detail") {
     return (
       <ArtisanActiveJobDetailView
+        bookingId={selectedBookingId}
         onBack={() => {
           setJobsListTab("active");
           setCurrentView("jobs-list");
         }}
-        onOpenMessages={() => toast("Opening messages with Daniel Chukwu...")}
+        onOpenMessages={() => setCurrentView("messages")}
+        onFindMoreJobs={() => setCurrentView("find-jobs")}
+        onRateCustomer={(customer) => {
+          setCustomerToRate(customer);
+          setCurrentView("rate-customer");
+        }}
       />
     );
   }
@@ -385,7 +408,10 @@ function ArtisanHomeViewContent({
           setSelectedJob(job);
           setCurrentView("send-quote");
         }}
-        onManageJob={() => setCurrentView("active-job-detail")}
+        onManageJob={(bookingId) => {
+          setSelectedBookingId(bookingId);
+          setCurrentView("active-job-detail");
+        }}
         onBackToDashboard={() => setCurrentView("dashboard")}
         onRateCustomer={(customer) => {
           setCustomerToRate(customer);
@@ -405,6 +431,7 @@ function ArtisanHomeViewContent({
         onCompleteVerification={() => {
           setVerificationState("in_review");
           setCurrentView("dashboard");
+          void refreshRoles();
         }}
       />
     );
@@ -597,6 +624,7 @@ function ArtisanHomeViewContent({
   if (currentView === "rate-customer") {
     return (
       <ArtisanRateCustomerView
+        bookingId={customerToRate.bookingId}
         customerName={customerToRate.name}
         jobTitle={customerToRate.jobTitle}
         jobDate={customerToRate.date}

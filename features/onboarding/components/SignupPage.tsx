@@ -6,11 +6,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import AuthHeroPanel from "./AuthHeroPanel";
+import OtpChannelModal from "./OtpChannelModal";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { useAuth, RegistrationStep } from "@/lib/stores/auth-store";
 import { registerApi, verifyPhoneApi, resendOtpApi, selectRoleApi } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { toE164 } from "@/lib/utils/phone";
+import { OtpChannel } from "@/types/auth";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -49,7 +51,8 @@ export default function SignupPage() {
 
   // ── Step 2 Form State ─────────────────────────────────────────
   const [phoneForVerify, setPhoneForVerify] = useState(verificationPhone || phone || "");
-  const [selectedChannel, setSelectedChannel] = useState<"EMAIL" | "SMS">(otpChannel || "EMAIL");
+  const [selectedChannel, setSelectedChannel] = useState<OtpChannel>(otpChannel || "EMAIL");
+  const [isChannelModalOpen, setIsChannelModalOpen] = useState(false);
 
   // ── Step 3 Form State (OTP Digits) ────────────────────────────
   const [otpDigits, setOtpDigits] = useState<string[]>(["", "", "", "", "", ""]);
@@ -184,27 +187,25 @@ export default function SignupPage() {
       setRegistrationData({ fullName, phone, email, password });
       setVerificationPhone(phone);
       setPhoneForVerify(phone);
-      setRegistrationStep(2);
+      setIsChannelModalOpen(true);
     },
     [
       fullName, phone, email, password, confirmPassword, agreedToTerms,
-      setRegistrationData, setVerificationPhone, setRegistrationStep,
+      setRegistrationData, setVerificationPhone,
     ]
   );
 
-  // ── Step 2 Handler: Send Code (SMS or Email) ─────────────────────
-  const handleStep2SendCode = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (!phoneForVerify.trim()) {
+  // ── Shared Registration Submission (Modal & Step 2) ───────────
+  const submitRegistration = useCallback(
+    async (rawPhone: string, channel: OtpChannel) => {
+      if (!rawPhone.trim()) {
         toast.error("Please enter your phone number.");
         return;
       }
 
       setIsLoading(true);
       try {
-        const payloadPhone = toE164(phoneForVerify.trim(), countryCode);
+        const payloadPhone = toE164(rawPhone.trim(), countryCode);
         const targetEmail = registrationData.email || email;
         const res = await registerApi({
           fullName: registrationData.fullName || fullName,
@@ -212,26 +213,19 @@ export default function SignupPage() {
           email: targetEmail,
           password: registrationData.password || password,
           acceptedTerms: true,
-          channel: selectedChannel,
+          channel,
         });
 
         if (res.challengeId) {
           setChallengeId(res.challengeId);
         }
-        if (res.channel) {
-          setOtpChannel(res.channel);
-        } else {
-          setOtpChannel(selectedChannel);
-        }
-        if (res.destination) {
-          setOtpDestination(res.destination);
-        } else {
-          setOtpDestination(selectedChannel === "EMAIL" ? targetEmail : payloadPhone);
-        }
+        setOtpChannel(res.channel || channel);
+        setOtpDestination(res.destination || (channel === "EMAIL" ? targetEmail : payloadPhone));
 
         setVerificationPhone(payloadPhone);
+        setIsChannelModalOpen(false);
         setRegistrationStep(3);
-        const destinationText = res.destination || (selectedChannel === "EMAIL" ? targetEmail : payloadPhone);
+        const destinationText = res.destination || (channel === "EMAIL" ? targetEmail : payloadPhone);
         toast.success(res.message || `Verification code sent to ${destinationText}`);
       } catch (err: unknown) {
         if (err instanceof ApiError) {
@@ -256,9 +250,7 @@ export default function SignupPage() {
       }
     },
     [
-      phoneForVerify,
       countryCode,
-      selectedChannel,
       registrationData,
       fullName,
       email,
@@ -270,6 +262,20 @@ export default function SignupPage() {
       setVerificationPhone,
       setRegistrationStep,
     ]
+  );
+
+  // ── Modal Confirm Handler ─────────────────────────────────────
+  const handleModalConfirmChannel = useCallback(() => {
+    void submitRegistration(phone, selectedChannel);
+  }, [submitRegistration, phone, selectedChannel]);
+
+  // ── Step 2 Handler: Send Code (SMS or Email) ─────────────────────
+  const handleStep2SendCode = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      await submitRegistration(phoneForVerify, selectedChannel);
+    },
+    [submitRegistration, phoneForVerify, selectedChannel]
   );
 
   // ── Step 3 Handlers: OTP Entry ────────────────────────────────
@@ -536,8 +542,14 @@ export default function SignupPage() {
           }.`
         );
 
-        // Navigate to dashboard
-        router.push("/dashboard");
+        // Navigate to role-appropriate destination (first-time Artisan/Apprentice onboarding)
+        if (selectedRole === "artisan") {
+          router.push("/artisan?view=verification");
+        } else if (selectedRole === "apprentice") {
+          router.push("/talent/settings/edit-profile?onboarding=1");
+        } else {
+          router.push("/dashboard");
+        }
       } catch (err: unknown) {
         if (err instanceof ApiError) {
           toast.error(err.message || "Failed to complete registration.");
@@ -749,6 +761,17 @@ export default function SignupPage() {
 
           <div className="hidden lg:block h-4" />
         </div>
+
+        <OtpChannelModal
+          isOpen={isChannelModalOpen}
+          email={email.trim()}
+          phone={phone.trim() ? toE164(phone.trim(), countryCode) : ""}
+          selectedChannel={selectedChannel}
+          onSelectChannel={setSelectedChannel}
+          onConfirm={handleModalConfirmChannel}
+          onClose={() => setIsChannelModalOpen(false)}
+          isLoading={isLoading}
+        />
       </div>
     );
   }

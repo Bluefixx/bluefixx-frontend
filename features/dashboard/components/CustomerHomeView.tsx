@@ -17,7 +17,6 @@ import {
   ArtisanListItem,
   WalletSummary,
 } from "@/types/customer";
-import { CATEGORIES, TRUSTED_ARTISANS } from "../data/mock-dashboard-data";
 import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
 
 export default function CustomerHomeView() {

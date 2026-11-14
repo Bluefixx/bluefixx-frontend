@@ -7,6 +7,8 @@ import OnboardingHeader from "./OnboardingHeader";
 import IntroSlide from "./IntroSlide";
 import LanguageSelection from "./LanguageSelection";
 import WelcomeSocialSignIn from "./WelcomeSocialSignIn";
+import GoogleProfileModal from "./GoogleProfileModal";
+import { useGoogleAuth } from "../hooks/useGoogleAuth";
 import { INTRO_SLIDES, SUGGESTED_LANGUAGE, OTHER_LANGUAGES } from "../data/onboarding-data";
 import { useAuth } from "@/lib/stores/auth-store";
 
@@ -15,6 +17,17 @@ type OnboardingPhase = "splash" | "intro" | "language" | "welcome";
 export default function OnboardingFlow() {
   const router = useRouter();
   const { selectedLanguageId, setSelectedLanguageId, setIntroCompleted } = useAuth();
+  const {
+    triggerGoogleSignIn,
+    isGoogleLoading,
+    isProfileModalOpen,
+    initialFullName,
+    submitGoogleProfile,
+    closeProfileModal,
+    isFallbackModalOpen,
+    fallbackContainerRef,
+    closeFallbackModal,
+  } = useGoogleAuth();
 
   const [phase, setPhase] = useState<OnboardingPhase>("splash");
   const [slideIndex, setSlideIndex] = useState(0);
@@ -115,6 +128,54 @@ export default function OnboardingFlow() {
         <WelcomeSocialSignIn
           onContinueWithEmail={handleGoToEmailSignIn}
           onGoToSignUp={handleGoToSignUp}
+          onGoogleSignIn={triggerGoogleSignIn}
+          isGoogleLoading={isGoogleLoading}
+        />
+      )}
+
+      {/* Google Sign-In Fallback Modal (when One Tap is suppressed) */}
+      {isFallbackModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={closeFallbackModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="google-fallback-modal-title"
+        >
+          <div
+            className="bg-white rounded-2xl sm:rounded-3xl p-6 border border-neutral-200/90 shadow-xl w-full max-w-[380px] flex flex-col items-center text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4
+              id="google-fallback-modal-title"
+              className="font-sans font-bold text-lg text-[#0F1115]"
+            >
+              Continue with Google
+            </h4>
+            <p className="font-sans text-xs text-neutral-600 mt-1 mb-5">
+              Click the button below to sign in with your Google account.
+            </p>
+            <div ref={fallbackContainerRef} className="min-h-[44px] flex items-center justify-center" />
+            <button
+              type="button"
+              onClick={closeFallbackModal}
+              className="mt-5 text-xs font-semibold text-neutral-500 hover:text-neutral-800 cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* New Google User Profile Completion Modal */}
+      {isProfileModalOpen && (
+        <GoogleProfileModal
+          key={initialFullName}
+          isOpen={isProfileModalOpen}
+          isLoading={isGoogleLoading}
+          initialFullName={initialFullName}
+          onSubmit={submitGoogleProfile}
+          onClose={closeProfileModal}
         />
       )}
     </div>

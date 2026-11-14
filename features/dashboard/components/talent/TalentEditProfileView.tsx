@@ -4,12 +4,13 @@ import React, { useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { updateAccountProfileApi } from "@/lib/api/account";
+import { updateAccountProfileApi, createSavedAddressApi } from "@/lib/api/account";
 import { uploadMediaFile } from "@/lib/api/media";
 
 interface TalentEditProfileViewProps {
   onBack: () => void;
   onSaveSuccess: () => void;
+  isOnboarding?: boolean;
   initialData?: {
     firstName: string;
     lastName: string;
@@ -24,9 +25,10 @@ interface TalentEditProfileViewProps {
 export function TalentEditProfileView({
   onBack,
   onSaveSuccess,
+  isOnboarding = false,
   initialData,
 }: TalentEditProfileViewProps) {
-  const { user, setUser } = useAuth();
+  const { user, setUser, refreshRoles } = useAuth();
 
   const nameParts = (user?.fullName || "").trim().split(" ");
   const userFirst = nameParts[0] || "";
@@ -70,10 +72,38 @@ export function TalentEditProfileView({
     setIsSaving(true);
     try {
       const updatedFullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      const emergencyRaw = formData.emergencyContact.trim();
+      const phoneMatch = emergencyRaw.match(/(\+?\d[\d\s-]{6,})/);
+      const emergencyPhone = phoneMatch ? phoneMatch[1].replace(/\s+/g, "") : undefined;
+      const emergencyName = emergencyRaw
+        ? (phoneMatch ? emergencyRaw.replace(phoneMatch[1], "") : emergencyRaw)
+            .replace(/^[\s·,-]+|[\s·,-]+$/g, "")
+            .trim() || "Emergency Contact"
+        : undefined;
+
       await updateAccountProfileApi({
         fullName: updatedFullName,
         ...(avatarMediaId ? { photoId: avatarMediaId } : {}),
+        ...(emergencyName ? { emergencyName } : {}),
+        ...(emergencyPhone ? { emergencyPhone } : {}),
       });
+
+      if (formData.address.trim()) {
+        try {
+          await createSavedAddressApi({
+            title: "Home",
+            street: formData.address.trim(),
+            city: "Enugu",
+            state: "Enugu",
+            latitude: 6.4528,
+            longitude: 7.5103,
+            isDefault: true,
+          });
+        } catch {
+          // Non-blocking if address format or offline fallback
+        }
+      }
+
       if (user) {
         setUser({
           ...user,
@@ -82,6 +112,7 @@ export function TalentEditProfileView({
           phone: formData.phone,
         });
       }
+      await refreshRoles();
       toast.success("Personal details updated successfully!");
       onSaveSuccess();
     } catch {
@@ -102,8 +133,15 @@ export function TalentEditProfileView({
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <polyline points="15 18 9 12 15 6" />
         </svg>
-        <span>Profile</span>
+        <span>{isOnboarding ? "Skip for now" : "Profile"}</span>
       </button>
+
+      {isOnboarding && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/70 px-4 py-3 text-xs sm:text-sm text-[#001B40]">
+          <span className="font-bold">Apprentice profile setup:</span> Add your profile photo,
+          home address, and emergency contact before exploring apprenticeship programmes.
+        </div>
+      )}
 
       {/* Header */}
       <div>

@@ -1,9 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import {
+  getBookingByIdApi,
+  decideAdditionApi,
+  confirmBookingApi,
+} from "@/lib/api/bookings";
+import { BookingDetail } from "@/types/customer";
+import { koboToNaira } from "@/lib/utils/currency";
 
 export type TrackerStage =
   | "job_posted"
@@ -25,27 +32,78 @@ interface JobProgressTrackerViewProps {
 }
 
 export default function JobProgressTrackerView({
-  jobId = "BFX-20481",
+  jobId = "",
   onBack,
   onPaymentReleased,
   initialStage = "scheduled",
   initialShowAdditionalCost = false,
 }: JobProgressTrackerViewProps) {
   const router = useRouter();
+  const [booking, setBooking] = useState<BookingDetail | null>(null);
+  const [pendingAdditionId, setPendingAdditionId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Current milestone state in tracker
   const [currentStage, setCurrentStage] = useState<TrackerStage>(initialStage);
-  
-  // Additional Cost Requested state (Screenshot 2)
+
+  // Additional Cost Requested state
   const [hasAdditionalCost, setHasAdditionalCost] = useState(initialShowAdditionalCost);
   const [additionalCostStatus, setAdditionalCostStatus] = useState<"pending" | "approved" | "declined">("pending");
-  
+
+  const mapStatusToStage = (status?: string, funded?: boolean, released?: boolean): TrackerStage => {
+    if (released || status === "COMPLETED") return "payment_released";
+    if (status === "WORK_SUBMITTED") return "completed_by_artisan";
+    if (status === "IN_PROGRESS") return "work_in_progress";
+    if (status === "ARRIVED") return "artisan_arrived";
+    if (status === "ON_THE_WAY" || status === "FUNDED" || status === "ACCEPTED") return "scheduled";
+    if (funded) return "payment_secured";
+    return "quote_accepted";
+  };
+
+  const fetchBookingState = useCallback(async () => {
+    if (!jobId) return;
+    setIsRefreshing(true);
+    try {
+      const detail = await getBookingByIdApi(jobId);
+      setBooking(detail);
+      setCurrentStage(mapStatusToStage(detail.status, detail.funded, detail.released));
+      const detailWithAdditions = detail as BookingDetail & {
+        additions?: Array<{ id: string; status: string }>;
+      };
+      const pendingAdd = (detailWithAdditions.additions || []).find(
+        (a) => a.status === "PROPOSED"
+      );
+      if (pendingAdd) {
+        setPendingAdditionId(pendingAdd.id);
+        setHasAdditionalCost(true);
+        setAdditionalCostStatus("pending");
+      }
+    } catch {
+      // Keep current view state if fetch fails
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) void fetchBookingState();
+    });
+    return () => {
+      active = false;
+    };
+  }, [fetchBookingState]);
+
   // Amounts
-  const baseLabour = 80000;
-  const baseMaterials = 40000;
-  const originalApproved = baseLabour + baseMaterials; // ₦120,000
-  const additionalLabour = 15000;
-  const additionalMaterials = 10000;
-  const newTotal = originalApproved + additionalLabour + additionalMaterials; // ₦145,000
+  const baseLabour = booking?.offer ? koboToNaira(booking.offer.labour) : 0;
+  const baseMaterials = booking?.offer?.materials
+    ? booking.offer.materials.reduce((sum, m) => sum + koboToNaira(m.amount), 0)
+    : 0;
+  const originalApproved = booking ? koboToNaira(booking.base) : baseLabour + baseMaterials;
+  const additionalLabour = 0;
+  const additionalMaterials = 0;
+  const newTotal = originalApproved + additionalLabour + additionalMaterials;
 
   // Modals state
   const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
@@ -74,40 +132,63 @@ export default function JobProgressTrackerView({
 
   const currentIndex = getStageIndex(currentStage);
 
-  // Advance tracker for demonstration / testing purposes
-  const advanceToNextStage = () => {
-    if (currentIndex < milestones.length - 1) {
-      const nextStage = milestones[currentIndex + 1].id;
-      setCurrentStage(nextStage);
-      toast.success(`Milestone updated to "${milestones[currentIndex + 1].title}"`);
-    }
+  const refreshStage = async () => {
+    await fetchBookingState();
+    toast.success("Job status synced.");
   };
 
   // Handle Additional Cost Actions
-  const handleApproveCost = () => {
-    setAdditionalCostStatus("approved");
-    toast.success("Additional cost of ₦25,000 approved! Total updated to ₦145,000.");
+  const handleApproveCost = async () => {
+    if (!pendingAdditionId) {
+      toast.error("No pending addition reference found.");
+      return;
+    }
+    try {
+      await decideAdditionApi(pendingAdditionId, true);
+      setAdditionalCostStatus("approved");
+      toast.success("Additional cost approved.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve additional cost.");
+    }
   };
 
-  const handleDeclineCost = () => {
-    setAdditionalCostStatus("declined");
-    toast("Additional cost declined. Artisan will proceed with original scope.", { icon: "ℹ️" });
+  const handleDeclineCost = async () => {
+    if (!pendingAdditionId) {
+      toast.error("No pending addition reference found.");
+      return;
+    }
+    try {
+      await decideAdditionApi(pendingAdditionId, false);
+      setAdditionalCostStatus("declined");
+      toast("Additional cost declined. Artisan will proceed with original scope.", { icon: "ℹ️" });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to decline additional cost.");
+    }
   };
 
   const handleAskQuestion = () => {
-    router.push("/messages?conversation=emeka");
+    router.push("/messages");
   };
 
   // Handle Release Payment
-  const handleConfirmAndReleasePayment = () => {
-    setIsReleasePaymentModalOpen(false);
-    setIsConfirmCompletionView(false);
-    setCurrentStage("payment_released");
-    toast.success("₦120,000 released to Emeka Okafor. 7-day warranty is now active!", { duration: 5000 });
-    if (onPaymentReleased) {
-      setTimeout(() => {
-        onPaymentReleased();
-      }, 500);
+  const handleConfirmAndReleasePayment = async () => {
+    if (!jobId) {
+      toast.error("Booking reference is missing.");
+      return;
+    }
+    try {
+      await confirmBookingApi(jobId);
+      setIsReleasePaymentModalOpen(false);
+      setIsConfirmCompletionView(false);
+      setCurrentStage("payment_released");
+      toast.success("Payment released to artisan. Warranty is now active!", { duration: 5000 });
+      if (onPaymentReleased) {
+        setTimeout(() => {
+          onPaymentReleased();
+        }, 500);
+      }
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to confirm completion.");
     }
   };
 
@@ -947,22 +1028,22 @@ export default function JobProgressTrackerView({
                 ✓ Job Completed &amp; Escrow Released
               </div>
             ) : (
-              // SCREEN 1: Advance Job Status button
               <button
                 type="button"
-                onClick={advanceToNextStage}
-                className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center shadow-xs"
+                disabled={isRefreshing}
+                onClick={refreshStage}
+                className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center shadow-xs disabled:opacity-60"
               >
-                Advance Job Status
+                {isRefreshing ? "Syncing..." : "Refresh Job Status"}
               </button>
             )}
 
             <button
               type="button"
-              onClick={() => router.push("/messages?conversation=emeka")}
+              onClick={() => router.push("/messages")}
               className="w-full py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
             >
-              Message Emeka
+              Message {booking?.artisan?.fullName || "Artisan"}
             </button>
           </div>
         </div>

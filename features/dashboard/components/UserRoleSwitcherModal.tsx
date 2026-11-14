@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { useAuth } from "@/lib/stores/auth-store";
+import { AppRole, useAuth } from "@/lib/stores/auth-store";
 
 interface UserRoleSwitcherModalProps {
   isOpen: boolean;
@@ -17,14 +17,24 @@ export default function UserRoleSwitcherModal({
   const router = useRouter();
   const {
     activeRole,
-    setActiveRole,
+    switchRole,
+    refreshRoles,
+    roleOnboarding,
     apprenticeTrainingCompleted,
     setApprenticeTrainingCompleted,
   } = useAuth();
+  const [switchingTo, setSwitchingTo] = useState<AppRole | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      void refreshRoles();
+    }
+  }, [isOpen, refreshRoles]);
 
   if (!isOpen) return null;
 
-  const handleSelectRole = (newRole: "customer" | "artisan" | "apprentice") => {
+  const handleSelectRole = async (newRole: AppRole) => {
+    if (switchingTo) return;
     if (newRole === activeRole) {
       onClose();
       return;
@@ -38,24 +48,28 @@ export default function UserRoleSwitcherModal({
       return;
     }
 
-    setActiveRole(newRole);
-    toast.success(
-      `Switched to ${
-        newRole === "customer"
-          ? "Customer"
-          : newRole === "artisan"
-          ? "Artisan"
-          : "Apprentice"
-      } profile`
-    );
-    onClose();
-
-    if (newRole === "artisan") {
-      router.push("/artisan");
-    } else if (newRole === "apprentice") {
-      router.push("/talent/home");
-    } else {
-      router.push("/dashboard");
+    setSwitchingTo(newRole);
+    try {
+      const { onboardingRequired, redirectPath } = await switchRole(newRole);
+      if (onboardingRequired && newRole === "artisan") {
+        toast("Complete your Artisan onboarding to activate your profile.", { icon: "📝" });
+      } else if (onboardingRequired && newRole === "apprentice") {
+        toast("Complete your Apprentice profile details to get started.", { icon: "📝" });
+      } else {
+        toast.success(
+          `Switched to ${
+            newRole === "customer"
+              ? "Customer"
+              : newRole === "artisan"
+              ? "Artisan"
+              : "Apprentice"
+          } profile`
+        );
+      }
+      onClose();
+      router.push(redirectPath);
+    } finally {
+      setSwitchingTo(null);
     }
   };
 
@@ -185,6 +199,19 @@ export default function UserRoleSwitcherModal({
                           ACTIVE
                         </span>
                       )}
+                      {!isLockedForApprentice && roleOnboarding.artisan?.status === "PENDING" && (
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.5 rounded uppercase">
+                          IN REVIEW
+                        </span>
+                      )}
+                      {!isLockedForApprentice &&
+                        activeRole !== "artisan" &&
+                        roleOnboarding.artisan?.required && (
+                          <span className="text-[10px] font-bold text-[#001B40] bg-blue-100/70 px-1.5 py-0.5 rounded uppercase">
+                            SETUP REQUIRED ({roleOnboarding.artisan.completedSteps}/
+                            {roleOnboarding.artisan.totalSteps})
+                          </span>
+                        )}
                       {isLockedForApprentice && (
                         <span className="text-[10px] font-bold text-amber-700 bg-amber-100/70 px-1.5 py-0.5 rounded flex items-center gap-1">
                           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -237,6 +264,11 @@ export default function UserRoleSwitcherModal({
                   {activeRole === "apprentice" && (
                     <span className="text-[10px] font-bold text-blue-700 bg-blue-100/70 px-1.5 py-0.5 rounded uppercase">
                       ACTIVE
+                    </span>
+                  )}
+                  {activeRole !== "apprentice" && roleOnboarding.apprentice?.required && (
+                    <span className="text-[10px] font-bold text-[#001B40] bg-blue-100/70 px-1.5 py-0.5 rounded uppercase">
+                      PROFILE SETUP
                     </span>
                   )}
                 </div>

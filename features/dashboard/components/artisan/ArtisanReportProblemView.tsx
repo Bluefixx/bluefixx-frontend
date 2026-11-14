@@ -2,9 +2,12 @@
 
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { respondToDisputeApi } from "@/lib/api/artisan";
+import { respondToDisputeApi, submitSafetyReportApi } from "@/lib/api/artisan";
+import { SafetyIssueType } from "@/types/artisan";
 
 interface ArtisanReportProblemViewProps {
+  disputeId?: string;
+  bookingId?: string;
   onBack: () => void;
   onViewDispute?: () => void;
   onContactSupport?: () => void;
@@ -21,29 +24,49 @@ const PROBLEM_TAGS = [
 ];
 
 export function ArtisanReportProblemView({
+  disputeId,
+  bookingId,
   onBack,
   onViewDispute,
   onContactSupport,
 }: ArtisanReportProblemViewProps) {
   const [selectedTag, setSelectedTag] = useState<string>("Additional cost refused");
-  const [description, setDescription] = useState<string>(
-    "The customer asked for extra work on the outside tap but will not approve the additional cost."
-  );
-  const [photoCount, setPhotoCount] = useState<number>(1);
+  const [description, setDescription] = useState<string>("");
+  const [photoCount, setPhotoCount] = useState<number>(0);
   const [videoCount, setVideoCount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"report" | "dispute-detail">("report");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!description.trim()) {
+      toast.error("Please describe the problem before submitting.");
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
-      await respondToDisputeApi("mock-dispute-id", {
-        text: `[${selectedTag}] ${description}`,
-      });
-      toast.success("Problem reported. Dispute opened in escrow.");
-    } catch {
-      toast.success("Problem reported. Dispute opened in escrow.");
-    } finally {
+      if (disputeId) {
+        await respondToDisputeApi(disputeId, {
+          text: `[${selectedTag}] ${description.trim()}`,
+        });
+        toast.success("Dispute response submitted.");
+      } else {
+        const issueType: SafetyIssueType =
+          selectedTag === "Safety concern" ? "UNSAFE_HOME" : "OTHER";
+        await submitSafetyReportApi({
+          issue: issueType,
+          bookingId,
+          details: `[${selectedTag}] ${description.trim()}`,
+        });
+        toast.success("Problem reported to support.");
+      }
       setActiveTab("dispute-detail");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit report.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

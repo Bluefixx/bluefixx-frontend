@@ -165,7 +165,14 @@ axiosInstance.interceptors.response.use(
           onAuthFailureCallback();
         } else if (typeof window !== "undefined") {
           const path = window.location.pathname;
-          if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+          const isPublicRoute =
+            path === "/" ||
+            path.startsWith("/login") ||
+            path.startsWith("/register") ||
+            path.startsWith("/signup") ||
+            path.startsWith("/onboarding") ||
+            path.startsWith("/forgot-password");
+          if (!isPublicRoute) {
             window.location.href = "/login";
           }
         }
@@ -186,7 +193,14 @@ axiosInstance.interceptors.response.use(
         onAuthFailureCallback();
       } else if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+        const isPublicRoute =
+          path === "/" ||
+          path.startsWith("/login") ||
+          path.startsWith("/register") ||
+          path.startsWith("/signup") ||
+          path.startsWith("/onboarding") ||
+          path.startsWith("/forgot-password");
+        if (!isPublicRoute) {
           window.location.href = "/login";
         }
       }

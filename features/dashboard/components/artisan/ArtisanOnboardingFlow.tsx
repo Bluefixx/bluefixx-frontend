@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import {
@@ -10,6 +10,7 @@ import {
   submitArtisanIdentityApi,
   getServicesCatalogApi,
 } from "@/lib/api/artisan";
+import { uploadMediaFile } from "@/lib/api/media";
 import { nairaToKobo, koboToNaira } from "@/lib/utils/currency";
 
 interface ArtisanOnboardingFlowProps {
@@ -82,11 +83,41 @@ export function ArtisanOnboardingFlow({
   // -------------------------------------------------------------
   // STEP 2 STATE: Identity check
   // -------------------------------------------------------------
-  const [ninNumber, setNinNumber] = useState("12345678901");
-  const [hasGovId, setHasGovId] = useState(false);
-  const [hasLiveness, setHasLiveness] = useState(false);
+  const [ninNumber, setNinNumber] = useState("");
+  const [govIdMediaId, setGovIdMediaId] = useState<string | null>(null);
+  const [selfieMediaId, setSelfieMediaId] = useState<string | null>(null);
+  const [isUploadingGovId, setIsUploadingGovId] = useState(false);
+  const [isUploadingSelfie, setIsUploadingSelfie] = useState(false);
+  const govIdInputRef = useRef<HTMLInputElement | null>(null);
+  const selfieInputRef = useRef<HTMLInputElement | null>(null);
+  const hasGovId = Boolean(govIdMediaId);
+  const hasLiveness = Boolean(selfieMediaId);
   const [ninError, setNinError] = useState("");
   const [identityIncompleteError, setIdentityIncompleteError] = useState(false);
+
+  const handleUploadIdentityMedia = async (
+    file: File,
+    kind: "govId" | "selfie"
+  ) => {
+    if (kind === "govId") setIsUploadingGovId(true);
+    else setIsUploadingSelfie(true);
+    try {
+      const uploaded = await uploadMediaFile(file, "IDENTITY");
+      if (kind === "govId") {
+        setGovIdMediaId(uploaded.id);
+        toast.success("Government ID uploaded successfully.");
+      } else {
+        setSelfieMediaId(uploaded.id);
+        toast.success("Selfie uploaded successfully.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to upload identity file.";
+      toast.error(msg);
+    } finally {
+      if (kind === "govId") setIsUploadingGovId(false);
+      else setIsUploadingSelfie(false);
+    }
+  };
 
   // -------------------------------------------------------------
   // STEP 3 STATE: Trade & service area
@@ -265,7 +296,7 @@ export function ArtisanOnboardingFlow({
       setNinError("");
     }
 
-    if (!hasGovId || !hasLiveness || hasError) {
+    if (!govIdMediaId || !selfieMediaId || hasError) {
       setIdentityIncompleteError(true);
       toast.error("Complete all three identity checks to continue.");
       return;
@@ -275,14 +306,15 @@ export function ArtisanOnboardingFlow({
     setIsSaving(true);
     try {
       await submitArtisanIdentityApi({
-        nin: ninNumber,
-        mediaIds: ["mock-gov-id-uuid", "mock-selfie-uuid"],
+        nin: ninNumber.trim(),
+        mediaIds: [govIdMediaId, selfieMediaId],
       });
-    } catch (err: any) {
-      console.debug("Saved step 2 identity locally", err);
+      setCurrentStep(3);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit identity check.";
+      toast.error(msg);
     } finally {
       setIsSaving(false);
-      setCurrentStep(3);
     }
   };
 
@@ -652,16 +684,27 @@ export function ArtisanOnboardingFlow({
                     <span>Uploaded</span>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasGovId(true);
-                      toast.success("Government ID attached successfully.");
-                    }}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 text-xs font-bold text-[#001B40] hover:bg-neutral-50 transition-colors"
-                  >
-                    Upload
-                  </button>
+                  <>
+                    <input
+                      ref={govIdInputRef}
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleUploadIdentityMedia(file, "govId");
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isUploadingGovId}
+                      onClick={() => govIdInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl border border-neutral-300 text-xs font-bold text-[#001B40] hover:bg-neutral-50 transition-colors cursor-pointer"
+                    >
+                      {isUploadingGovId ? "Uploading..." : "Upload"}
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -683,7 +726,7 @@ export function ArtisanOnboardingFlow({
                       Liveness selfie
                     </h4>
                     <p className="text-[11px] text-neutral-500">
-                      Blink twice when prompted
+                      Upload a clear selfie photo
                     </p>
                   </div>
                 </div>
@@ -696,16 +739,28 @@ export function ArtisanOnboardingFlow({
                     <span>Verified</span>
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHasLiveness(true);
-                      toast.success("Liveness check completed.");
-                    }}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 text-xs font-bold text-[#001B40] hover:bg-neutral-50 transition-colors"
-                  >
-                    Start
-                  </button>
+                  <>
+                    <input
+                      ref={selfieInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="user"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleUploadIdentityMedia(file, "selfie");
+                        e.target.value = "";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isUploadingSelfie}
+                      onClick={() => selfieInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl border border-neutral-300 text-xs font-bold text-[#001B40] hover:bg-neutral-50 transition-colors cursor-pointer"
+                    >
+                      {isUploadingSelfie ? "Uploading..." : "Upload"}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -738,29 +793,6 @@ export function ArtisanOnboardingFlow({
               </div>
             </div>
 
-            {/* Simulation Helper */}
-            <div className="bg-neutral-50 border border-neutral-200/80 rounded-2xl p-4 text-[11px] text-neutral-600">
-              <p className="font-bold text-neutral-700 mb-1.5">Design QA Shortcuts:</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHasGovId(true);
-                    setHasLiveness(true);
-                  }}
-                  className="px-2.5 py-1 bg-white border border-neutral-300 rounded-lg font-medium hover:bg-neutral-100"
-                >
-                  ✓ Check both
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowIdentityFailed(true)}
-                  className="px-2.5 py-1 bg-white border border-red-200 text-red-600 rounded-lg font-medium hover:bg-red-50"
-                >
-                  View Failed State
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

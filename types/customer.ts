@@ -398,10 +398,28 @@ export interface UserSession {
   isCurrent: boolean;
 }
 
+export interface RoleOnboardingStatus {
+  required: boolean;
+  status: "NOT_STARTED" | "DRAFT" | "PENDING" | "APPROVED" | "REJECTED";
+  completedSteps: number;
+  totalSteps: number;
+  missingSteps: string[];
+  canUpgradeToArtisan?: boolean;
+}
+
 export interface UserRoleInfo {
   role: "CUSTOMER" | "ARTISAN" | "LEARNER";
   enrolledAt: string;
   isActive: boolean;
+  onboarding?: RoleOnboardingStatus;
+}
+
+export interface RoleSwitchResponse {
+  success: boolean;
+  roles: string[];
+  activeRole: string;
+  role: string;
+  onboarding?: RoleOnboardingStatus;
 }
 
 // ── Media & Uploads ──────────────────────────────────────────

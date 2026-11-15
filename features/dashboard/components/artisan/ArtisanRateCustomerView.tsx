@@ -6,6 +6,7 @@ import { submitCustomerReviewApi } from "@/lib/api/artisan";
 import { CustomerReviewTag } from "@/types/artisan";
 
 interface ArtisanRateCustomerViewProps {
+  bookingId?: string;
   customerName?: string;
   jobTitle?: string;
   jobDate?: string;
@@ -23,9 +24,10 @@ const FEEDBACK_TAGS = [
 ];
 
 export function ArtisanRateCustomerView({
-  customerName = "Daniel C.",
-  jobTitle = "Generator repair",
-  jobDate = "21 Aug",
+  bookingId,
+  customerName = "Customer",
+  jobTitle = "Completed job",
+  jobDate = "Recent",
   onBack,
   onDone,
   onFindJobs,
@@ -64,13 +66,21 @@ export function ArtisanRateCustomerView({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!bookingId) {
+      toast.error("Booking reference is missing; cannot submit review.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     const tagMapping: Record<string, CustomerReviewTag> = {
       Punctual: "PAID_ON_TIME",
+      "Paid on time": "PAID_ON_TIME",
       "Clear brief": "CLEAR_BRIEF",
+      "Clear problem": "CLEAR_BRIEF",
       "Easy to find": "EASY_TO_REACH",
       "Safe area": "SAFE_SITE",
+      Respectful: "RESPECTFUL",
       "Help on site": "RESPECTFUL",
     };
 
@@ -79,17 +89,20 @@ export function ArtisanRateCustomerView({
       .filter((t): t is CustomerReviewTag => Boolean(t));
 
     try {
-      await submitCustomerReviewApi("mock-booking-uuid", {
+      await submitCustomerReviewApi(bookingId, {
         stars: rating,
         tags: mappedTags.length > 0 ? mappedTags : ["CLEAR_BRIEF", "RESPECTFUL"],
-        text: reviewText.trim() || "The customer explained the work clearly and was available at the agreed time.",
+        text:
+          reviewText.trim() ||
+          "The customer explained the work clearly and was available at the agreed time.",
       });
       toast.success(`Rating submitted for ${customerName}!`);
-    } catch {
-      toast.success(`Rating submitted for ${customerName}!`);
+      setIsSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit review.";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
-      setIsSubmitted(true);
     }
   };
 

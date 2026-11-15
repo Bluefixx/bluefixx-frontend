@@ -144,6 +144,7 @@ function BookingsPageContent() {
       {activeTab === "active" && (
         isSecuringActiveBooking ? (
           <SecureJobPaymentView
+            bookingId={selectedActiveBookingId ?? undefined}
             onBackToJobs={() => setIsSecuringActiveBooking(false)}
             onViewJobDetail={() => {
               setIsSecuringActiveBooking(false);

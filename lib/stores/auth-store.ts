@@ -1,7 +1,16 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { User, LoginRequest, LoginResponse } from "@/types/auth";
+import { LoginRequest, LoginResponse, GoogleAuthRequest } from "@/types/auth";
+import { RoleOnboardingStatus } from "@/types/customer";
+
+export type AppRole = "customer" | "artisan" | "apprentice";
+
+export interface SwitchRoleResult {
+  onboardingRequired: boolean;
+  redirectPath: string;
+  onboarding?: RoleOnboardingStatus;
+}
 
 // ────────────────────────────────────────────────────────────────
 // Types
@@ -49,7 +58,11 @@ export interface AuthState {
   /** Active in-memory access token */
   accessToken: string | null;
   /** Active role currently viewing the application */
-  activeRole: "customer" | "artisan" | "apprentice";
+  activeRole: AppRole;
+  /** Roles the user is enrolled in on the backend */
+  enrolledRoles: AppRole[];
+  /** Onboarding status per role */
+  roleOnboarding: Partial<Record<AppRole, RoleOnboardingStatus>>;
   /** Whether the user has completed apprentice training (unlocks artisan role) */
   apprenticeTrainingCompleted: boolean;
   /** Available wallet balance */
@@ -81,8 +94,12 @@ export interface AuthState {
 }
 
 export interface AuthActions {
-  /** Update active role */
-  setActiveRole: (role: "customer" | "artisan" | "apprentice") => void;
+  /** Update active role locally */
+  setActiveRole: (role: AppRole) => void;
+  /** Enroll (if needed) and switch active role on backend, returning onboarding redirect info */
+  switchRole: (role: AppRole) => Promise<SwitchRoleResult>;
+  /** Refresh enrolled roles and onboarding status from backend */
+  refreshRoles: () => Promise<void>;
   /** Set whether apprentice training is completed */
   setApprenticeTrainingCompleted: (completed: boolean) => void;
   /** Set wallet balance */
@@ -117,6 +134,8 @@ export interface AuthActions {
   setAccessToken: (token: string | null) => void;
   /** Login with backend API */
   login: (credentials: LoginRequest) => Promise<LoginResponse>;
+  /** Sign in or sign up with Google ID token */
+  loginWithGoogle: (payload: GoogleAuthRequest) => Promise<LoginResponse>;
   /** Logout with backend API */
   logout: () => Promise<void>;
   /** Reset all registration state */
@@ -135,6 +154,8 @@ export const DEFAULT_AUTH_STATE: AuthState = {
   user: null,
   accessToken: null,
   activeRole: "customer",
+  enrolledRoles: ["customer"],
+  roleOnboarding: {},
   apprenticeTrainingCompleted: false,
   walletBalance: 0,
   locationName: "",

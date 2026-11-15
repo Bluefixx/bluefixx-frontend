@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { acceptOfferApi } from "@/lib/api";
+import { acceptOfferApi, getQuotesApi, getJobByIdApi } from "@/lib/api";
+import { koboToNaira } from "@/lib/utils/currency";
+import { generateIdempotencyKey } from "@/lib/utils/idempotency";
+import { QuoteResponse, QuoteOffer } from "@/types/customer";
 
 export interface DetailedQuote {
   id: string;
@@ -28,105 +31,120 @@ export interface DetailedQuote {
   submittedAt: string;
 }
 
-export const DETAILED_QUOTES: DetailedQuote[] = [
-  {
-    id: "q-1",
-    artisanId: "emeka-okafor",
-    artisanName: "Emeka Okafor",
-    avatarUrl: "/images/david.jpg",
-    role: "Verified Plumber",
-    rating: 4.9,
-    completedJobs: 126,
-    distance: "2.4km",
-    totalQuote: 120000,
-    labour: 80000,
-    materials: 40000,
-    duration: "2 days",
-    warranty: "30 days warranty",
-    isRecommended: true,
-    recommendedTag: "RECOMMENDED · Highest rating and closest to you",
-    workDescription:
-      "Isolate the water supply, open the basin wall access, replace the corroded joint and 1.2m of pipe, pressure-test the line and re-seal the wall.",
-    materialsIncluded:
-      "1.2m PPR pipe, elbow joints, thread tape, sealant, replacement tap connector.",
-    materialsNotIncluded: "Wall tiles if the damp section has to be re-tiled.",
-    additionalNotes:
-      "I will send photos of the damaged section before I replace anything.",
-    submittedAt: "Aug 22 · 9:28 AM",
-  },
-  {
-    id: "q-2",
-    artisanId: "chidi-nwosu",
-    artisanName: "Chidi Nwosu",
-    avatarUrl: "/images/james.jpg",
-    role: "Verified Plumbing & Generator Technician",
-    rating: 4.6,
-    completedJobs: 210,
-    distance: "4.1km",
-    totalQuote: 135000,
-    labour: 90000,
-    materials: 45000,
-    duration: "1 day",
-    warranty: "60 days warranty",
-    workDescription:
-      "Full replacement of corroded line with high-gauge brass connector and immediate pressure test.",
-    materialsIncluded:
-      "High-grade copper pipe sections, brass fittings, Teflon thread sealant.",
-    materialsNotIncluded: "Cosmetic plaster work.",
-    additionalNotes: "Arriving in Bluefixx service gear with full testing kit.",
-    submittedAt: "Aug 22 · 10:14 AM",
-  },
-  {
-    id: "q-3",
-    artisanId: "blessing-nwankwo",
-    artisanName: "Blessing Nwankwo",
-    avatarUrl: "/images/sarah.jpg",
-    role: "Verified Plumber & Tiler",
-    rating: 4.7,
-    completedJobs: 74,
-    distance: "3.8km",
-    totalQuote: 87000,
-    labour: 55000,
-    materials: 32000,
-    duration: "3 days",
-    warranty: "14 days warranty",
-    workDescription:
-      "Clean access removal, joint soldering, replacement piping and water line pressure test.",
-    materialsIncluded: "PPR pipes and standard joinery.",
-    materialsNotIncluded: "Wall re-tiling if required.",
-    additionalNotes: "Can work over the weekend if needed.",
-    submittedAt: "Aug 22 · 10:45 AM",
-  },
-];
-
 type FilterType = "recommended" | "lowest-price" | "highest-rated" | "closest" | "fastest";
 
 interface CompareQuotesViewProps {
+  jobId?: string;
   jobTitle?: string;
   onBack: () => void;
   onOpenProfile: (artisanId: string) => void;
   onAcceptSuccess: (quote: DetailedQuote) => void;
 }
 
+function mapOfferToDetailedQuote(
+  quote: QuoteResponse,
+  offer: QuoteOffer,
+  index: number
+): DetailedQuote {
+  const labourNaira = koboToNaira(offer.labour);
+  const materialsNaira = (offer.materials || []).reduce(
+    (sum, m) => sum + koboToNaira(m.amount),
+    0
+  );
+  const totalNaira = koboToNaira(offer.base) || labourNaira + materialsNaira;
+  const warrantyDays = offer.warrantyDays ?? (offer.warrantyMonths ? offer.warrantyMonths * 30 : 0);
+
+  return {
+    id: offer.id,
+    artisanId: quote.artisanId || offer.authorId,
+    artisanName: `Artisan #${(quote.artisanId || offer.authorId).slice(0, 6).toUpperCase()}`,
+    avatarUrl: "/images/workers.png",
+    role: "Verified Artisan",
+    rating: 4.8,
+    completedJobs: 0,
+    distance: "Nearby",
+    totalQuote: totalNaira,
+    labour: labourNaira,
+    materials: materialsNaira,
+    duration: `${offer.durationDays || 1} day${(offer.durationDays || 1) === 1 ? "" : "s"}`,
+    warranty: warrantyDays > 0 ? `${warrantyDays} days warranty` : "Standard warranty",
+    isRecommended: index === 0,
+    recommendedTag: index === 0 ? "RECOMMENDED · Best match" : undefined,
+    workDescription: quote.description || "Service quotation submitted.",
+    materialsIncluded:
+      (offer.materials || []).map((m) => m.name).filter(Boolean).join(", ") || "As quoted",
+    materialsNotIncluded: "Additional unforeseen repairs",
+    additionalNotes: "",
+    submittedAt: new Date(offer.visitStart || quote.expiresAt).toLocaleDateString("en-NG", {
+      day: "numeric",
+      month: "short",
+    }),
+  };
+}
+
 export default function CompareQuotesView({
-  jobTitle = "Bathroom Plumbing Repair",
+  jobId,
+  jobTitle = "Job Quotes",
   onBack,
   onOpenProfile,
   onAcceptSuccess,
 }: CompareQuotesViewProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>("recommended");
+  const [loadedQuotes, setLoadedQuotes] = useState<DetailedQuote[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modals state
   const [viewQuoteModal, setViewQuoteModal] = useState<DetailedQuote | null>(null);
   const [acceptQuoteModal, setAcceptQuoteModal] = useState<DetailedQuote | null>(null);
+  const [isAccepting, setIsAccepting] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.resolve()
+      .then(() => {
+        if (!mounted) return null;
+        setIsLoading(true);
+        setLoadError(null);
+        return Promise.all([
+          getQuotesApi({ view: "customer" }),
+          jobId ? getJobByIdApi(jobId).catch(() => null) : Promise.resolve(null),
+        ]);
+      })
+      .then((res) => {
+        if (!mounted || !res) return;
+        const [quotesRes] = res;
+        const list = Array.isArray(quotesRes) ? quotesRes : [];
+        const mapped: DetailedQuote[] = [];
+        list.forEach((quote) => {
+          const openOffers = (quote.offers || []).filter((o) => o.status === "OPEN");
+          openOffers.forEach((offer) => {
+            mapped.push(mapOfferToDetailedQuote(quote, offer, mapped.length));
+          });
+        });
+        setLoadedQuotes(mapped);
+      })
+      .catch((err: unknown) => {
+        if (mounted) {
+          setLoadError(err instanceof Error ? err.message : "Failed to load quotes.");
+        }
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [jobId]);
 
   // Filtered/sorted quotes
-  const quotes = [...DETAILED_QUOTES].sort((a, b) => {
+  const quotes = [...loadedQuotes].sort((a, b) => {
     if (activeFilter === "lowest-price") return a.totalQuote - b.totalQuote;
     if (activeFilter === "highest-rated") return b.rating - a.rating;
     if (activeFilter === "closest") return parseFloat(a.distance) - parseFloat(b.distance);
-    if (activeFilter === "fastest") return parseInt(a.duration) - parseInt(b.duration);
-    return 0; // "recommended" keeps default
+    if (activeFilter === "fastest") return parseInt(a.duration, 10) - parseInt(b.duration, 10);
+    return 0;
   });
 
   const handleOpenAcceptFromView = (quote: DetailedQuote) => {
@@ -135,17 +153,21 @@ export default function CompareQuotesView({
   };
 
   const handleConfirmAccept = async () => {
-    if (!acceptQuoteModal) return;
+    if (!acceptQuoteModal || isAccepting) return;
     const accepted = acceptQuoteModal;
-    setAcceptQuoteModal(null);
+    setIsAccepting(true);
 
     try {
-      await acceptOfferApi(accepted.id, `accept-${Date.now()}`);
-    } catch {
-      // Graceful fallback for mock mode
+      await acceptOfferApi(accepted.id, generateIdempotencyKey());
+      setAcceptQuoteModal(null);
+      toast.success("Quote accepted!");
+      onAcceptSuccess(accepted);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to accept quote.";
+      toast.error(msg);
+    } finally {
+      setIsAccepting(false);
     }
-
-    onAcceptSuccess(accepted);
   };
 
   return (
@@ -252,7 +274,28 @@ export default function CompareQuotesView({
         </button>
       </div>
 
-      {/* 3 Quote Cards Grid (Matching media_1792437256603.png) */}
+      {loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-xs sm:text-sm text-red-700 font-medium">
+          {loadError}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="h-80 rounded-3xl bg-white border border-neutral-200/80 animate-pulse" />
+          ))}
+        </div>
+      ) : quotes.length === 0 ? (
+        <div className="bg-white rounded-3xl p-10 border border-neutral-200/80 text-center space-y-2">
+          <h3 className="font-heading font-bold text-base text-[#001B40]">
+            No quotes received yet
+          </h3>
+          <p className="text-xs sm:text-sm text-neutral-500">
+            Artisans reviewing your job post will submit their quotations here.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
         {quotes.map((quote) => {
           const isRecommended = quote.isRecommended && activeFilter === "recommended";
@@ -371,6 +414,7 @@ export default function CompareQuotesView({
           );
         })}
       </div>
+      )}
 
       {/* Bottom Assurance Tip */}
       <div className="bg-[#EDF5FF] border border-[#CDE0FF] rounded-2xl p-4 flex items-center gap-3 text-xs text-[#002D62] shadow-2xs">

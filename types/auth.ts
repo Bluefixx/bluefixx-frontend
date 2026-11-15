@@ -149,14 +149,14 @@ export interface LinkGoogleRequest {
 }
 
 export interface AuthProviderOptionsResponse {
-  providers: {
-    google: { enabled: boolean; clientId: string | null };
-    apple: { enabled: boolean; clientId: string | null };
-  };
+  google: { enabled: boolean; clientId: string | null };
+  apple: { enabled: boolean; clientId: string | null };
   password: {
     minimumLength: number;
     maximumLength: number;
   };
+  recoveryIdentifiers?: string[];
+  phoneFormat?: string;
 }
 
 export interface AppleChallengeResponse {

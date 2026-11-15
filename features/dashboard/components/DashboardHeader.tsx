@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 import { useNotifications } from "@/lib/stores/notifications-store";
@@ -20,7 +21,8 @@ export default function DashboardHeader({
   onOpenRoleSwitcher,
   onOpenMobileMenu,
 }: DashboardHeaderProps) {
-  const { user, locationName, setLocationName, walletBalance, activeRole, setActiveRole } = useAuth();
+  const router = useRouter();
+  const { user, locationName, setLocationName, walletBalance, activeRole, switchRole } = useAuth();
   const { unreadCount, setNotifications } = useNotifications();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -258,10 +260,11 @@ export default function DashboardHeader({
             <div className="absolute right-0 top-12 w-48 bg-white rounded-2xl shadow-xl border border-neutral-100 py-2 z-50 animate-in fade-in duration-100 select-none">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveRole("customer");
+                onClick={async () => {
                   setIsRoleMenuOpen(false);
+                  const { redirectPath } = await switchRole("customer");
                   toast.success("Switched to Customer view");
+                  router.push(redirectPath);
                 }}
                 className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-medium transition-colors flex items-center justify-between cursor-pointer ${
                   activeRole === "customer"
@@ -275,10 +278,15 @@ export default function DashboardHeader({
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveRole("artisan");
+                onClick={async () => {
                   setIsRoleMenuOpen(false);
-                  toast.success("Switched to Artisan view");
+                  const { onboardingRequired, redirectPath } = await switchRole("artisan");
+                  if (onboardingRequired) {
+                    toast("Complete your Artisan onboarding to activate your profile.", { icon: "📝" });
+                  } else {
+                    toast.success("Switched to Artisan view");
+                  }
+                  router.push(redirectPath);
                 }}
                 className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-medium transition-colors flex items-center justify-between cursor-pointer ${
                   activeRole === "artisan"
@@ -292,10 +300,15 @@ export default function DashboardHeader({
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveRole("apprentice");
+                onClick={async () => {
                   setIsRoleMenuOpen(false);
-                  toast.success("Switched to Talent view");
+                  const { onboardingRequired, redirectPath } = await switchRole("apprentice");
+                  if (onboardingRequired) {
+                    toast("Complete your Apprentice profile details to get started.", { icon: "📝" });
+                  } else {
+                    toast.success("Switched to Talent view");
+                  }
+                  router.push(redirectPath);
                 }}
                 className={`w-full px-4 py-2 text-left text-xs sm:text-sm font-medium transition-colors flex items-center justify-between cursor-pointer ${
                   activeRole === "apprentice"

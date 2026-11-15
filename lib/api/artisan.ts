@@ -33,7 +33,7 @@ import {
   ProposeAdditionPayload,
   SubmitCompletionPayload,
   SubmitCompletionResponse,
-  ArtisanEarningsSummary,
+  ArtisanEarnings,
   RequestWithdrawalPayload,
   RequestWithdrawalResponse,
   CreateTrainingProgramPayload,
@@ -50,6 +50,15 @@ import {
   RespondDisputePayload,
   NotificationPreferences,
   UpdateNotificationPreferencesPayload,
+  AccountResponse,
+  UpdateAccountPayload,
+  ArtisanOwnProfileResponse,
+  NigerianBank,
+  WithdrawalBeneficiary,
+  ResolvedBankAccount,
+  SaveBeneficiaryPayload,
+  ReferralSummary,
+  ReferralHistoryItem,
 } from "@/types/artisan";
 
 // ── 1. Dashboard & Availability ────────────────────────────────────
@@ -355,8 +364,8 @@ export async function updateBookingNotesApi(
 /**
  * Get available/reserved balance, escrow, monthly/lifetime earnings, and weekly Nigerian chart.
  */
-export async function getArtisanEarningsApi(): Promise<ArtisanEarningsSummary> {
-  return apiClient.get<ArtisanEarningsSummary>("/artisan/earnings");
+export async function getArtisanEarningsApi(): Promise<ArtisanEarnings> {
+  return apiClient.get<ArtisanEarnings>("/artisan/earnings");
 }
 
 /**
@@ -600,8 +609,8 @@ export async function updateArtisanNotificationPreferencesApi(
 /**
  * Get referral invite code, rewards, and total earnings.
  */
-export async function getArtisanReferralsSummaryApi(): Promise<any> {
-  return apiClient.get<any>("/account/referrals");
+export async function getArtisanReferralsSummaryApi(): Promise<ReferralSummary> {
+  return apiClient.get<ReferralSummary>("/account/referrals");
 }
 
 /**
@@ -610,9 +619,80 @@ export async function getArtisanReferralsSummaryApi(): Promise<any> {
 export async function getArtisanReferralsHistoryApi(
   cursor?: string,
   limit = 30
-): Promise<{ items: any[]; nextCursor?: string | null }> {
-  return apiClient.get<{ items: any[]; nextCursor?: string | null }>(
+): Promise<{ items: ReferralHistoryItem[]; nextCursor?: string | null }> {
+  return apiClient.get<{ items: ReferralHistoryItem[]; nextCursor?: string | null }>(
     "/account/referrals/history",
     { params: { cursor, limit } }
   );
 }
+
+/**
+ * Load the authenticated account: user, settings, and support contacts.
+ */
+export async function getAccountApi(): Promise<AccountResponse> {
+  return apiClient.get<AccountResponse>("/account");
+}
+
+/**
+ * Update personal details, language, emergency contact or notification preferences.
+ */
+export async function updateAccountApi(
+  payload: UpdateAccountPayload
+): Promise<AccountResponse> {
+  return apiClient.patch<AccountResponse>("/account", payload);
+}
+
+// ── 10. Profile (own & public) ────────────────────────────────────
+
+/**
+ * Read the authenticated artisan's onboarding progress and services.
+ */
+export async function getArtisanOwnProfileApi(): Promise<ArtisanOwnProfileResponse> {
+  return apiClient.get<ArtisanOwnProfileResponse>("/artisan/profile");
+}
+
+/**
+ * Reply to a customer review.
+ */
+export async function replyToArtisanReviewApi(
+  reviewId: string,
+  reply: string
+): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>(`/reviews/${reviewId}/reply`, { reply });
+}
+
+// ── 11. Banks & Withdrawal Beneficiaries ──────────────────────────
+
+/**
+ * Supported Nigerian banks for beneficiary selection.
+ */
+export async function getNigerianBanksApi(): Promise<NigerianBank[]> {
+  return apiClient.get<NigerianBank[]>("/banks");
+}
+
+/**
+ * List masked withdrawal and payout beneficiaries.
+ */
+export async function getWithdrawalBeneficiariesApi(): Promise<WithdrawalBeneficiary[]> {
+  return apiClient.get<WithdrawalBeneficiary[]>("/account/banks");
+}
+
+/**
+ * Save a bank beneficiary (resolve + verify via PIN & BANK challenge).
+ */
+export async function saveBankBeneficiaryApi(
+  payload: SaveBeneficiaryPayload
+): Promise<WithdrawalBeneficiary> {
+  return apiClient.post<WithdrawalBeneficiary>("/account/banks", payload);
+}
+
+/**
+ * Select a default verified withdrawal account.
+ */
+export async function setDefaultBeneficiaryApi(
+  id: string,
+  pin: string
+): Promise<{ message: string }> {
+  return apiClient.patch<{ message: string }>(`/account/banks/${id}/default`, { pin });
+}
+

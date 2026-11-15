@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import toast from "react-hot-toast";
+import { setTransactionPinApi } from "@/lib/api";
 
 interface ArtisanCreatePinViewProps {
   onBack: () => void;
@@ -13,6 +14,7 @@ export function ArtisanCreatePinView({
   onSuccess,
 }: ArtisanCreatePinViewProps) {
   const [pinDigits, setPinDigits] = useState<string[]>(["", "", "", ""]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -38,14 +40,26 @@ export function ArtisanCreatePinView({
     }
   };
 
-  const handleCreatePin = () => {
-    if (pinDigits.some((d) => !d)) {
+  const handleCreatePin = async () => {
+    const pin = pinDigits.join("");
+    if (pinDigits.some((d) => !d) || !/^(?:\d{4}|\d{6})$/.test(pin)) {
       toast.error("Please enter a 4-digit PIN.");
       return;
     }
-    toast.success("Transaction PIN created successfully!");
-    if (onSuccess) onSuccess();
-    else onBack();
+
+    setIsSubmitting(true);
+    try {
+      const res = await setTransactionPinApi({ pin });
+      toast.success(res?.message || "Transaction PIN created successfully!");
+      if (onSuccess) onSuccess();
+      else onBack();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save transaction PIN. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -103,9 +117,17 @@ export function ArtisanCreatePinView({
           <button
             type="button"
             onClick={handleCreatePin}
-            className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer"
+            disabled={isSubmitting || pinDigits.some((d) => !d)}
+            className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#074292] disabled:opacity-60 text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
           >
-            Create PIN
+            {isSubmitting ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Saving PIN...</span>
+              </>
+            ) : (
+              <span>Create PIN</span>
+            )}
           </button>
         </div>
       </div>

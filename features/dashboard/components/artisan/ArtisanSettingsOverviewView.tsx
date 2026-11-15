@@ -1,9 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
+import {
+  getAccountApi,
+  getArtisanOwnProfileApi,
+  getWithdrawalBeneficiariesApi,
+  getNigerianBanksApi,
+  getArtisanReferralsSummaryApi,
+} from "@/lib/api/artisan";
+import type {
+  AccountResponse,
+  ArtisanOwnProfileResponse,
+  WithdrawalBeneficiary,
+  NigerianBank,
+  ReferralSummary,
+} from "@/types/artisan";
+import { formatNaira } from "@/lib/utils/currency";
 
 interface ArtisanSettingsOverviewViewProps {
   onBack: () => void;
@@ -11,16 +26,82 @@ interface ArtisanSettingsOverviewViewProps {
   onLogout?: () => void;
 }
 
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English (Nigeria)",
+  pcm: "Nigerian Pidgin",
+  ig: "Igbo",
+  ha: "Hausa",
+  yo: "Yoruba",
+};
+
 export function ArtisanSettingsOverviewView({
   onBack,
   onNavigate,
   onLogout,
 }: ArtisanSettingsOverviewViewProps) {
   const { user, locationName, walletBalance } = useAuth();
-  const displayName = user?.fullName || "John Obiora";
-  const displayLocation = locationName || "Independence Layout, Enugu";
-  const displayPhone = user?.phone || "+234 803 555 0142";
-  const displayWallet = walletBalance > 0 ? `₦${walletBalance.toLocaleString()}` : "₦168,000";
+
+  const [account, setAccount] = useState<AccountResponse | null>(null);
+  const [ownProfile, setOwnProfile] = useState<ArtisanOwnProfileResponse | null>(null);
+  const [beneficiary, setBeneficiary] = useState<WithdrawalBeneficiary | null>(null);
+  const [bankName, setBankName] = useState("");
+  const [referral, setReferral] = useState<ReferralSummary | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      const [accountRes, profileRes, beneficiaries, banks, referralRes] = await Promise.all([
+        getAccountApi().catch(() => null),
+        getArtisanOwnProfileApi().catch(() => null),
+        getWithdrawalBeneficiariesApi().catch(() => [] as WithdrawalBeneficiary[]),
+        getNigerianBanksApi().catch(() => [] as NigerianBank[]),
+        getArtisanReferralsSummaryApi().catch(() => null),
+      ]);
+      if (!mounted) return;
+      if (accountRes) setAccount(accountRes);
+      if (profileRes) setOwnProfile(profileRes);
+      if (referralRes) setReferral(referralRes);
+      const primary = Array.isArray(beneficiaries) ? beneficiaries[0] : undefined;
+      if (primary) {
+        setBeneficiary(primary);
+        const match = Array.isArray(banks)
+          ? banks.find((b) => b.code === primary.bankCode)
+          : undefined;
+        if (match) setBankName(match.name);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const displayName = account?.user.fullName || user?.fullName || "—";
+  const displayLocation = ownProfile?.profile.area || locationName || "—";
+  const displayPhone = account?.user.phone || user?.phone || "—";
+  const displayWallet = formatNaira(walletBalance);
+  const avatarUrl = account?.user.avatarUrl || user?.avatarUrl;
+  const initial = (displayName || "?").trim().charAt(0).toUpperCase();
+
+  const pinConfigured = Boolean(account?.settings.pinConfigured);
+  const identityStatus = (ownProfile?.profile.identityStatus || "").toUpperCase();
+  const isIdentityVerified =
+    ownProfile?.profile.approval === "APPROVED" || /(APPROVED|VERIFIED|COMPLETE)/.test(identityStatus);
+  const isIdentityPending =
+    !isIdentityVerified && /(PENDING|REVIEW|SUBMITTED|PROGRESS)/.test(identityStatus);
+
+  const verifiedTradeCount = ownProfile?.services?.length ?? 0;
+  const languageLabel =
+    LANGUAGE_LABELS[account?.settings.language || ""] || "English (Nigeria)";
+  const payoutLabel = beneficiary
+    ? `${bankName || "Bank"} •••• ${beneficiary.last4}`
+    : "No payout account";
+  const emergencyLabel =
+    account?.settings.emergencyName && account?.settings.emergencyPhone
+      ? `${account.settings.emergencyName} · ${account.settings.emergencyPhone}`
+      : "Not set";
+  const referralEarned = referral?.earnedTotal ? formatNaira(referral.earnedTotal, true) : "₦0";
+  const supportPhone = account?.contacts.supportPhone;
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -63,13 +144,12 @@ export function ArtisanSettingsOverviewView({
       {/* User Card */}
       <div className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-xs flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full overflow-hidden relative border-2 border-neutral-100 shrink-0 bg-neutral-200">
-            <Image
-              src="/images/david.jpg"
-              alt={displayName}
-              fill
-              className="object-cover"
-            />
+          <div className="w-14 h-14 rounded-full overflow-hidden relative border-2 border-neutral-100 shrink-0 bg-[#001B40] text-white flex items-center justify-center font-heading font-extrabold text-xl">
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt={displayName} fill className="object-cover" />
+            ) : (
+              <span>{initial}</span>
+            )}
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-heading font-bold text-[#0F1115]">
@@ -108,12 +188,24 @@ export function ArtisanSettingsOverviewView({
                   Identity verification
                 </div>
                 <div className="text-xs text-neutral-500 line-clamp-1">
-                  NIN, government ID and selfie verified
+                  {isIdentityVerified
+                    ? "NIN, government ID and selfie verified"
+                    : isIdentityPending
+                    ? "Your documents are under review"
+                    : "Complete your identity verification"}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Verified
+                <span
+                  className={`px-2 py-0.5 text-[11px] font-bold rounded-md border ${
+                    isIdentityVerified
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : isIdentityPending
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-neutral-100 text-neutral-500 border-neutral-200"
+                  }`}
+                >
+                  {isIdentityVerified ? "Verified" : isIdentityPending ? "In review" : "Not verified"}
                 </span>
                 <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="9 18 15 12 9 6" />
@@ -131,12 +223,14 @@ export function ArtisanSettingsOverviewView({
                   Competence verification
                 </div>
                 <div className="text-xs text-neutral-500 line-clamp-1">
-                  1 verified trade and test · View portfolio/video
+                  {verifiedTradeCount > 0
+                    ? `${verifiedTradeCount} verified ${verifiedTradeCount === 1 ? "trade" : "trades"} · View portfolio/video`
+                    : "No verified trades yet"}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-amber-50 text-amber-700 border border-amber-200">
-                  2 of 4
+                  {verifiedTradeCount > 0 ? `${verifiedTradeCount} verified` : "Not started"}
                 </span>
                 <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="9 18 15 12 9 6" />
@@ -177,10 +271,10 @@ export function ArtisanSettingsOverviewView({
             >
               <div className="space-y-0.5 pr-2">
                 <div className="text-xs sm:text-sm font-bold text-[#0F1115] group-hover:text-[#001B40]">
-                  Security & Transaction PIN
+                  Security &amp; Transaction PIN
                 </div>
                 <div className="text-xs text-neutral-500">
-                  PIN, login, and sessions
+                  {pinConfigured ? "PIN set · Login & sessions" : "Set up your transaction PIN"}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -216,7 +310,7 @@ export function ArtisanSettingsOverviewView({
                   Language
                 </div>
                 <div className="text-xs text-neutral-500">
-                  English (Nigeria)
+                  {languageLabel}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -260,7 +354,7 @@ export function ArtisanSettingsOverviewView({
                   Payout account
                 </div>
                 <div className="text-xs text-neutral-500">
-                  GTBank •••• 6789
+                  {payoutLabel}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -340,7 +434,7 @@ export function ArtisanSettingsOverviewView({
                   Emergency contacts
                 </div>
                 <div className="text-xs text-neutral-500">
-                  Ada Obiora · +234 805 111 2233
+                  {emergencyLabel}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -394,7 +488,9 @@ export function ArtisanSettingsOverviewView({
 
             <button
               type="button"
-              onClick={() => toast("Calling support at 0700 258 3349")}
+              onClick={() =>
+                toast(supportPhone ? `Calling support at ${supportPhone}` : "Support contact unavailable")
+              }
               className="w-full p-4.5 flex items-center justify-between hover:bg-neutral-50/70 transition-colors text-left cursor-pointer group"
             >
               <div className="space-y-0.5 pr-2">
@@ -402,7 +498,7 @@ export function ArtisanSettingsOverviewView({
                   Contact support
                 </div>
                 <div className="text-xs text-neutral-500">
-                  0700 258 3349 · 24/7
+                  {supportPhone ? `${supportPhone} · 24/7` : "Contact details unavailable"}
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -443,10 +539,10 @@ export function ArtisanSettingsOverviewView({
             >
               <div className="space-y-0.5 pr-2">
                 <div className="text-xs sm:text-sm font-bold text-[#0F1115] group-hover:text-[#001B40]">
-                  Invite & earn
+                  Invite &amp; earn
                 </div>
                 <div className="text-xs text-neutral-500">
-                  ₦25,000 earned so far
+                  {referralEarned} earned so far
                 </div>
               </div>
               <svg className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

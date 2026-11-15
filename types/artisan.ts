@@ -98,32 +98,89 @@ export interface ArtisanDashboardProfile {
   avatarUrl?: string;
 }
 
+export interface ArtisanTrainingApprentice {
+  enrollmentId: string;
+  name: string;
+  programTitle: string;
+  progress: number;
+}
+
+export interface ArtisanDashboardTraining {
+  applicationsWaiting: number;
+  activeApprentices: number;
+  apprentices: ArtisanTrainingApprentice[];
+}
+
+export interface BankTransfer {
+  id: string;
+  userId?: string;
+  bankId?: string;
+  bookingId?: string | null;
+  amount: MonetaryString;
+  kind?: "WITHDRAWAL" | "ARTISAN";
+  status?: string;
+  reference?: string;
+  createdAt?: string;
+}
+
+export interface WithdrawalPolicy {
+  enabled?: boolean;
+  minimum?: KoboAmount;
+  maximum?: KoboAmount;
+  dailyMaximum?: KoboAmount;
+}
+
+export interface ArtisanEarning {
+  id: string;
+  kind: "JOB_EARNING" | "TRAINING_EARNING" | "LEGACY_PAYOUT" | "WITHDRAWAL";
+  amount: MonetaryString;
+  createdAt: string;
+  reference: string;
+  status: string;
+  bookingId: string | null;
+  title: string;
+}
+
+export interface ArtisanEarningsPolicies {
+  feePayer: string;
+  withdrawalApproval: string;
+  withdrawalFee: MonetaryString;
+  providerTransferCostPayer: string;
+}
+
+export interface ArtisanEarnings {
+  currency: string;
+  walletScope: "ACCOUNT";
+  available: MonetaryString;
+  withdrawalReserved: MonetaryString;
+  held: MonetaryString;
+  paid: MonetaryString;
+  transfers: BankTransfer[];
+  lifetimeEarnings: MonetaryString;
+  monthlyEarnings: MonetaryString;
+  weekly: Array<{ date: string; amount: MonetaryString }>;
+  recent: ArtisanEarning[];
+  withdrawalPolicy?: WithdrawalPolicy | null;
+  policies: ArtisanEarningsPolicies;
+}
+
 export interface ArtisanDashboardResponse {
-  profile: ArtisanDashboardProfile;
-  requests: any[];
-  activeJobs: any[];
+  profile: ArtisanDashboardProfile | null;
+  requests: ArtisanJobListItem[];
+  activeJobs: ArtisanBookingDetail[];
   completed: number;
+  requestCount: number;
+  activeJobCount: number;
+  rating: number | null;
+  unreadMessages: number;
+  unreadNotifications: number;
+  training: ArtisanDashboardTraining;
   capabilities?: ArtisanCapabilities;
-  recommendations?: any[];
-  earnings?: {
-    available: MonetaryString;
-    escrow: MonetaryString;
-    earnedThisMonth: MonetaryString;
-  };
-  verificationProgress?: {
-    completedSteps: number;
-    totalSteps: number;
-    status: ArtisanApprovalStatus;
-  };
-  trainingApplicationsCount?: number;
-  activeApprenticesCount?: number;
-  unreadNotificationsCount?: number;
-  recentEarnings?: Array<{
-    id: string;
-    description: string;
-    date: string;
-    amount: number | string;
-  }>;
+  onboarding?: ArtisanOnboardingResponse;
+  earnings: ArtisanEarnings;
+  rewards?: Record<string, unknown>;
+  recommendedJobs: ArtisanJobListItem[];
+  recommendationRestriction: string | null;
 }
 
 export interface ArtisanAvailabilityPayload {
@@ -502,31 +559,6 @@ export interface SubmitCompletionResponse {
 }
 
 // ── 6. Earnings & Withdrawals ──────────────────────────────────────
-export interface ArtisanEarningsSummary {
-  available: MonetaryString;
-  reserved: MonetaryString;
-  escrow: MonetaryString;
-  monthlyEarned: MonetaryString;
-  lifetimeEarned: MonetaryString;
-  weeklyActivity: Array<{
-    day: string; // Nigerian date / day label
-    amount: MonetaryString;
-  }>;
-  recentActivity: Array<{
-    id: string;
-    type: "JOB_RELEASE" | "TRAINING_MILESTONE" | "WITHDRAWAL" | "LEGACY_PAYOUT";
-    title: string;
-    amount: MonetaryString;
-    status: string;
-    date: string;
-  }>;
-  withdrawalPolicy: {
-    minimumWithdrawal: MonetaryString;
-    fee: MonetaryString; // BlueFixx pays provider transfer costs (0 fee)
-    financeReviewRequired: boolean;
-  };
-}
-
 export interface RequestWithdrawalPayload {
   bankId: string;
   amount: KoboAmount;
@@ -720,4 +752,126 @@ export interface NotificationPreferences {
 export type UpdateNotificationPreferencesPayload = Partial<
   Record<keyof NotificationPreferences, Partial<CategoryChannelPreference>>
 >;
+
+// ── 10. Account, Settings & Transaction PIN ───────────────────────
+export interface AccountUser {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: string;
+  roles: string[];
+  activeRole: string;
+  avatarUrl?: string;
+}
+
+export interface AccountSettings {
+  photoId: string | null;
+  language: string;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
+  emailNotifications: boolean;
+  smsNotifications?: boolean;
+  pinConfigured: boolean;
+  deletionRequestedAt?: string | null;
+}
+
+export interface AccountContacts {
+  supportPhone: string;
+  supportEmail: string;
+  policePhone: string;
+}
+
+export interface AccountResponse {
+  user: AccountUser;
+  settings: AccountSettings;
+  contacts: AccountContacts;
+}
+
+export interface UpdateAccountPayload {
+  fullName?: string;
+  photoId?: string;
+  language?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emailNotifications?: boolean;
+  smsNotifications?: boolean;
+}
+
+// ── 11. Own Artisan Profile ───────────────────────────────────────
+export interface ArtisanOwnProfile {
+  userId: string;
+  businessName: string;
+  bio?: string;
+  yearsExperience?: number;
+  latitude?: number;
+  longitude?: number;
+  area?: string;
+  radiusKm?: number;
+  approval: ArtisanApprovalStatus;
+  identityStatus: string;
+  identityMediaIds?: string[];
+  portfolioIds?: string[];
+  portfolio?: Array<{ id: string; url?: string; title?: string; description?: string }>;
+  services?: ArtisanPricedServiceResponse[];
+  available: boolean;
+  avatarUrl?: string;
+}
+
+export interface ArtisanOwnProfileResponse {
+  profile: ArtisanOwnProfile;
+  services: ArtisanPricedServiceResponse[];
+  competence: unknown[];
+}
+
+// ── 12. Banks & Withdrawal Beneficiaries ──────────────────────────
+export interface NigerianBank {
+  code: string;
+  name: string;
+}
+
+export interface WithdrawalBeneficiary {
+  id: string;
+  accountName: string;
+  last4: string;
+  bankCode: string;
+  createdAt?: string;
+}
+
+export interface ResolveBankPayload {
+  bankCode: string;
+  accountNumber: string;
+}
+
+export interface ResolvedBankAccount {
+  accountName: string;
+  bankCode?: string;
+  accountNumber?: string;
+}
+
+export interface SaveBeneficiaryPayload {
+  bankCode: string;
+  accountNumber: string;
+  pin: string;
+  challengeId: string;
+  code: string;
+}
+
+// ── 14. Referrals ─────────────────────────────────────────────────
+export interface ReferralSummary {
+  code: string;
+  rewardAmount?: MonetaryString;
+  earnedTotal?: MonetaryString;
+  invitedCount?: number;
+  qualifiedCount?: number;
+}
+
+export interface ReferralHistoryItem {
+  id: string;
+  inviteeName?: string;
+  purpose?: string;
+  status: string;
+  reward?: MonetaryString;
+  createdAt: string;
+}
 

@@ -6,6 +6,8 @@ import {
   getArtisanReferralsSummaryApi,
   getArtisanReferralsHistoryApi,
 } from "@/lib/api/artisan";
+import type { ReferralSummary, ReferralHistoryItem } from "@/types/artisan";
+import { formatNaira } from "@/lib/utils/currency";
 
 type ReferralFilter = "All" | "In progress" | "Reward earned" | "Not qualified";
 
@@ -13,29 +15,95 @@ interface ArtisanReferralViewProps {
   onBackToProfile: () => void;
 }
 
+type ReferralCategory = Exclude<ReferralFilter, "All">;
+
+interface DisplayReferral {
+  id: string;
+  name: string;
+  joinedDate: string;
+  status: string;
+  statusColor: string;
+  amount: string;
+  category: ReferralCategory;
+}
+
+function categorize(status?: string): ReferralCategory {
+  const s = (status || "").toUpperCase();
+  if (/(REWARD|QUALIF|PAID|ACTIVAT|COMPLET)/.test(s)) return "Reward earned";
+  if (/(EXPIRE|REVOKE|DISQUALIF|REJECT|FAIL|NOT_QUALIF)/.test(s)) return "Not qualified";
+  return "In progress";
+}
+
+function statusColor(category: ReferralCategory): string {
+  switch (category) {
+    case "Reward earned":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "Not qualified":
+      return "bg-neutral-100 text-neutral-500 border-neutral-200";
+    default:
+      return "bg-blue-50 text-blue-700 border-blue-100";
+  }
+}
+
+function toDisplayReferral(item: ReferralHistoryItem): DisplayReferral {
+  const category = categorize(item.status);
+  return {
+    id: item.id,
+    name: item.inviteeName || "Invited artisan",
+    joinedDate: item.createdAt
+      ? new Date(item.createdAt).toLocaleDateString("en-NG", {
+          day: "numeric",
+          month: "short",
+          year: "2-digit",
+        })
+      : "",
+    status: item.status
+      ? item.status.replaceAll("_", " ").toLowerCase().replace(/^\w/, (c) => c.toUpperCase())
+      : "In progress",
+    statusColor: statusColor(category),
+    amount: item.reward ? formatNaira(item.reward, true) : "No reward",
+    category,
+  };
+}
+
 export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProps) {
   const [activeFilter, setActiveFilter] = useState<ReferralFilter>("All");
-  const referralCode = "BLUE-JOHN";
-
-  const [referralSummary, setReferralSummary] = useState<any>(null);
+  const [summary, setSummary] = useState<ReferralSummary | null>(null);
+  const [referrals, setReferrals] = useState<DisplayReferral[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
-    getArtisanReferralsSummaryApi()
-      .then((data) => {
-        if (!mounted || !data) return;
-        setReferralSummary(data);
-      })
-      .catch((err) => {
-        console.debug("Referrals API offline or mocked.", err);
-      });
-
+    async function load() {
+      try {
+        const [summaryData, history] = await Promise.all([
+          getArtisanReferralsSummaryApi().catch(() => null),
+          getArtisanReferralsHistoryApi(undefined, 30).catch(() => null),
+        ]);
+        if (!mounted) return;
+        if (summaryData) setSummary(summaryData);
+        const items = history?.items ?? [];
+        setReferrals(items.map(toDisplayReferral));
+      } catch (err) {
+        console.debug("Referrals API unavailable.", err);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+    load();
     return () => {
       mounted = false;
     };
   }, []);
 
+  const referralCode = summary?.code || "";
+  const rewardLabel = summary?.rewardAmount ? formatNaira(summary.rewardAmount, true) : null;
+
   const handleCopyLink = () => {
+    if (!referralCode) {
+      toast.error("Your referral code is not available yet.");
+      return;
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(`https://bluefixx.com/signup?ref=${referralCode}`);
     }
@@ -43,143 +111,26 @@ export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProp
   };
 
   const handleShareCode = () => {
+    if (!referralCode) {
+      toast.error("Your referral code is not available yet.");
+      return;
+    }
     if (navigator.clipboard) {
       navigator.clipboard.writeText(referralCode);
     }
     toast.success("Referral code copied!");
   };
 
-  const referrals = [
-    {
-      id: "ref-1",
-      name: "Daniel James",
-      type: "Artisan",
-      joinedDate: "2 Aug '26",
-      status: "Reward earned",
-      statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      stepsCompleted: "4/4",
-      amount: "₦5,000",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: true },
-        { label: "Got first job", done: true },
-        { label: "Completed first job", done: true },
-      ],
-      filterCategory: "Reward earned" as const,
-    },
-    {
-      id: "ref-2",
-      name: "Chiamaka Okator",
-      type: "Artisan",
-      joinedDate: "4 Aug '26",
-      status: "In progress",
-      statusColor: "bg-blue-50 text-blue-700 border-blue-100",
-      stepsCompleted: "2/4",
-      amount: "₦5,000",
-      note: "Reward unlocks when they complete their first job",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: true },
-        { label: "Got first job", done: false },
-        { label: "Completed first job", done: false },
-      ],
-      filterCategory: "In progress" as const,
-    },
-    {
-      id: "ref-3",
-      name: "Fatima Yusuf",
-      type: "Artisan",
-      joinedDate: "12 Jul '26",
-      status: "In progress",
-      statusColor: "bg-blue-50 text-blue-700 border-blue-100",
-      stepsCompleted: "1/4",
-      amount: "₦5,000",
-      note: "Reward unlocks when they complete their first job",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: false },
-        { label: "Got first job", done: false },
-        { label: "Completed first job", done: false },
-      ],
-      filterCategory: "In progress" as const,
-    },
-    {
-      id: "ref-4",
-      name: "Peter Adelowo",
-      type: "Artisan",
-      joinedDate: "18 Jul '26",
-      status: "Payout pending",
-      statusColor: "bg-amber-50 text-amber-700 border-amber-200",
-      stepsCompleted: "3/4",
-      amount: "₦5,000",
-      note: "Payment is still in escrow. Reward unlocks once complete",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: true },
-        { label: "Got first job", done: true },
-        { label: "Completed first job", done: false },
-      ],
-      filterCategory: "In progress" as const,
-    },
-    {
-      id: "ref-5",
-      name: "+234 803 ••• 47",
-      type: "Artisan",
-      joinedDate: "2 Jul '26",
-      status: "Joined",
-      statusColor: "bg-neutral-100 text-neutral-600 border-neutral-200",
-      stepsCompleted: "1/4",
-      amount: "₦1,500",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: false },
-        { label: "Got first job", done: false },
-        { label: "Completed first job", done: false },
-      ],
-      filterCategory: "In progress" as const,
-    },
-    {
-      id: "ref-6",
-      name: "Sam O.",
-      type: "Artisan",
-      joinedDate: "26 Jun '26",
-      status: "Expired",
-      statusColor: "bg-neutral-100 text-neutral-400 border-neutral-200",
-      stepsCompleted: "1/4",
-      amount: "₦1,500",
-      note: "Invite window closed after 30 days without active booking",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: false },
-        { label: "Got first job", done: false },
-        { label: "Completed first job", done: false },
-      ],
-      filterCategory: "Not qualified" as const,
-    },
-    {
-      id: "ref-7",
-      name: "Solomon Davies",
-      type: "Artisan",
-      joinedDate: "18 Jul '26",
-      status: "Revoked",
-      statusColor: "bg-red-50 text-red-600 border-red-200",
-      stepsCompleted: "1/4",
-      amount: "No reward",
-      note: "Violated terms of service (multiple accounts). Referral bonus disqualified",
-      steps: [
-        { label: "Joined BlueFixx", done: true },
-        { label: "Completed verification", done: false },
-        { label: "Got first job", done: false },
-        { label: "Completed first job", done: false },
-      ],
-      filterCategory: "Not qualified" as const,
-    },
-  ];
-
   const filteredReferrals = referrals.filter((r) => {
     if (activeFilter === "All") return true;
-    return r.filterCategory === activeFilter;
+    return r.category === activeFilter;
   });
+
+  const stats = [
+    { label: "Earned", value: summary?.earnedTotal ? formatNaira(summary.earnedTotal, true) : "₦0" },
+    { label: "Invited", value: String(summary?.invitedCount ?? 0) },
+    { label: "Activated", value: String(summary?.qualifiedCount ?? 0) },
+  ];
 
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 select-none animate-in fade-in duration-200 space-y-6">
@@ -197,117 +148,79 @@ export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProp
         </button>
 
         <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
-          Invite & earn
+          Invite &amp; earn
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
           Invite skilled artisans you trust to join BlueFixx
         </p>
       </div>
 
-      {/* Hero Dual Cards (Screenshot 5) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-        {/* Left Dark Blue Card (8 cols) */}
-        <div className="lg:col-span-8 bg-[#001B40] text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between space-y-5 shadow-xs">
-          <div className="space-y-1.5">
-            <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider block">
-              Refer an Artisan
-            </span>
-            <h2 className="font-heading font-extrabold text-xl sm:text-2xl lg:text-3xl text-white">
-              Earn ₦5,000 when they complete their first job
-            </h2>
-          </div>
-
-          <div className="space-y-3">
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-neutral-300 block">Your referral code</span>
-                <span className="font-heading font-extrabold text-base tracking-widest text-white">
-                  {referralCode}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleShareCode}
-                className="px-6 py-2.5 rounded-xl bg-white text-[#001B40] hover:bg-neutral-100 font-sans font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer"
-              >
-                Share code
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="px-6 py-2.5 rounded-xl border border-white/30 text-white hover:bg-white/10 font-sans font-bold text-xs sm:text-sm transition-colors cursor-pointer"
-              >
-                Copy link
-              </button>
-            </div>
-          </div>
+      {/* Hero Card */}
+      <div className="bg-[#001B40] text-white rounded-3xl p-6 sm:p-8 flex flex-col justify-between space-y-5 shadow-xs">
+        <div className="space-y-1.5">
+          <span className="text-[11px] font-bold text-neutral-300 uppercase tracking-wider block">
+            Refer an Artisan
+          </span>
+          <h2 className="font-heading font-extrabold text-xl sm:text-2xl lg:text-3xl text-white">
+            {rewardLabel ? `Earn ${rewardLabel} when they complete their first job` : "Earn rewards when they complete their first job"}
+          </h2>
         </div>
 
-        {/* Right Light Yellow Card: Double Referral Week (4 cols) */}
-        <div className="lg:col-span-4 bg-[#FFF8EB] border border-[#FDE6B8] rounded-3xl p-6 sm:p-7 flex flex-col justify-between space-y-4 shadow-2xs">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-heading font-extrabold text-base text-[#7A4504]">
-                Double Referral Week
-              </h3>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#FDE6B8] text-[#7A4504]">
-                5 days left
+        <div className="space-y-3">
+          <div className="p-3.5 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] text-neutral-300 block">Your referral code</span>
+              <span className="font-heading font-extrabold text-base tracking-widest text-white">
+                {referralCode || "—"}
               </span>
             </div>
-            <p className="text-xs text-[#925406] leading-relaxed">
-              Refer 3 verified artisans before 15 August and receive an extra ₦10,000.
-            </p>
           </div>
 
-          <div>
-            <span className="text-xs font-bold text-[#7A4504] hover:underline cursor-pointer">
-              Verified Artisans →
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleShareCode}
+              className="px-6 py-2.5 rounded-xl bg-white text-[#001B40] hover:bg-neutral-100 font-sans font-bold text-xs sm:text-sm transition-all shadow-xs cursor-pointer"
+            >
+              Share code
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="px-6 py-2.5 rounded-xl border border-white/30 text-white hover:bg-white/10 font-sans font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+            >
+              Copy link
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stat Metrics */}
+      <div className="grid grid-cols-3 gap-4">
+        {stats.map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1"
+          >
+            <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115] block">
+              {stat.value}
             </span>
+            <span className="text-neutral-400 font-sans text-xs font-medium">{stat.label}</span>
           </div>
-        </div>
+        ))}
       </div>
 
-      {/* 4 Stat Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
-          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115] block">
-            ₦25,000
-          </span>
-          <span className="text-neutral-400 font-sans text-xs font-medium">Earned</span>
-        </div>
-        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
-          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115] block">
-            12
-          </span>
-          <span className="text-neutral-400 font-sans text-xs font-medium">Invited</span>
-        </div>
-        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
-          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115] block">
-            7
-          </span>
-          <span className="text-neutral-400 font-sans text-xs font-medium">Joined</span>
-        </div>
-        <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-2xs space-y-1">
-          <span className="font-heading font-extrabold text-2xl sm:text-3xl text-[#0F1115] block">
-            5
-          </span>
-          <span className="text-neutral-400 font-sans text-xs font-medium">Activated</span>
-        </div>
-      </div>
-
-      {/* Referral Progress Timeline Card */}
+      {/* Referral Progress Explainer */}
       <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-            Referral progress
+            How rewards work
           </h3>
-          <span className="text-xs font-bold text-neutral-400">1/2 activated</span>
+          <span className="text-xs font-bold text-neutral-400">
+            {summary?.qualifiedCount ?? 0}/{summary?.invitedCount ?? 0} activated
+          </span>
         </div>
 
-        {/* 5-Step Progress Row */}
         <div className="grid grid-cols-5 gap-2 pt-2 text-center text-xs">
           <div className="space-y-1.5">
             <div className="w-7 h-7 rounded-full bg-[#001B40] text-white flex items-center justify-center font-bold text-xs mx-auto">
@@ -341,7 +254,9 @@ export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProp
             <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs mx-auto">
               ✓
             </div>
-            <span className="font-bold text-emerald-800 block text-[11px]">Reward paid (₦5,000)</span>
+            <span className="font-bold text-emerald-800 block text-[11px]">
+              Reward paid{rewardLabel ? ` (${rewardLabel})` : ""}
+            </span>
           </div>
         </div>
 
@@ -375,22 +290,37 @@ export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProp
           </div>
         </div>
 
-        {/* Referrals Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredReferrals.map((ref) => (
-            <div
-              key={ref.id}
-              className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
+            <div className="h-32 bg-white rounded-3xl border border-neutral-200/80" />
+            <div className="h-32 bg-white rounded-3xl border border-neutral-200/80" />
+          </div>
+        ) : filteredReferrals.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 border border-neutral-200/80 shadow-2xs text-center space-y-2">
+            <h4 className="font-heading font-bold text-sm text-[#0F1115]">
+              No referrals yet
+            </h4>
+            <p className="text-xs text-neutral-500 max-w-sm mx-auto leading-relaxed">
+              Share your referral code with artisans you trust. Their progress and your rewards will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredReferrals.map((ref) => (
+              <div
+                key={ref.id}
+                className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 flex flex-col justify-between"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
                       {ref.name}
                     </h4>
-                    <p className="text-[11px] text-neutral-400">
-                      {ref.type} · Joined {ref.joinedDate}
-                    </p>
+                    {ref.joinedDate && (
+                      <p className="text-[11px] text-neutral-400">
+                        Artisan · Joined {ref.joinedDate}
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-[11px] font-bold border ${ref.statusColor}`}
@@ -399,49 +329,18 @@ export function ArtisanReferralView({ onBackToProfile }: ArtisanReferralViewProp
                   </span>
                 </div>
 
-                {/* Steps Checkmarks */}
-                <div className="space-y-1.5 text-xs text-neutral-600">
-                  {ref.steps.map((st, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span
-                        className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                          st.done
-                            ? "bg-emerald-600 text-white"
-                            : "border border-neutral-300 text-transparent"
-                        }`}
-                      >
-                        ✓
-                      </span>
-                      <span className={st.done ? "text-neutral-800" : "text-neutral-400"}>
-                        {st.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-neutral-100 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-400 font-medium">
-                    {ref.stepsCompleted} steps complete
-                  </span>
+                <div className="pt-3 border-t border-neutral-100 flex items-center justify-between text-xs">
+                  <span className="text-neutral-400 font-medium">Reward</span>
                   <span className="font-heading font-extrabold text-sm text-[#001B40]">
                     {ref.amount}
                   </span>
                 </div>
-
-                {ref.note && (
-                  <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-100 text-[11px] text-neutral-500 leading-relaxed">
-                    {ref.note}
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 export default ArtisanReferralView;
-

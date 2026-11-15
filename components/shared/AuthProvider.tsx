@@ -5,24 +5,33 @@ import {
   AuthContext,
   AuthStore,
   AuthUser,
+  AppRole,
+  SwitchRoleResult,
   RegistrationData,
   RegistrationStep,
   DEFAULT_AUTH_STATE,
 } from "@/lib/stores/auth-store";
 import {
   loginApi,
+  googleAuthApi,
   logoutApi,
   getCurrentUserApi,
   refreshApi,
 } from "@/lib/api/auth";
-import { getAccountProfileApi } from "@/lib/api/account";
+import {
+  getAccountProfileApi,
+  getAccountRolesApi,
+  enrollAccountRoleApi,
+  switchActiveRoleApi,
+} from "@/lib/api/account";
+import { RoleOnboardingStatus } from "@/types/customer";
 import { getWalletApi } from "@/lib/api/wallet";
 import {
   setAccessToken as setClientAccessToken,
   setOnAuthFailure,
   getAccessToken,
 } from "@/lib/api/client";
-import { LoginRequest, LoginResponse } from "@/types/auth";
+import { LoginRequest, LoginResponse, GoogleAuthRequest } from "@/types/auth";
 
 import { setCookie, deleteCookie } from "@/lib/utils/cookies";
 
@@ -57,6 +66,10 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     return DEFAULT_AUTH_STATE.activeRole;
   });
 
+  const [enrolledRoles, setEnrolledRoles] = useState<AppRole[]>(DEFAULT_AUTH_STATE.enrolledRoles);
+  const [roleOnboarding, setRoleOnboarding] = useState<
+    Partial<Record<AppRole, RoleOnboardingStatus>>
+  >(DEFAULT_AUTH_STATE.roleOnboarding);
   const [apprenticeTrainingCompleted, setApprenticeTrainingCompleted] = useState(
     DEFAULT_AUTH_STATE.apprenticeTrainingCompleted
   );
@@ -177,6 +190,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
     setAccessToken(null);
     setActiveRole("customer");
+    setEnrolledRoles(["customer"]);
+    setRoleOnboarding({});
     setApprenticeTrainingCompleted(false);
     setIsLoading(false);
     resetRegistration();
@@ -184,6 +199,88 @@ export default function AuthProvider({ children }: AuthProviderProps) {
     setIntroCompleted(false);
     deleteCookie("bluefixx_active_role");
   }, [resetRegistration, setAccessToken, setActiveRole, setUser]);
+
+  const toAppRole = useCallback((backendRole: string): AppRole => {
+    const upper = backendRole.toUpperCase();
+    if (upper === "ARTISAN") return "artisan";
+    if (upper === "LEARNER" || upper === "TALENT" || upper === "APPRENTICE") return "apprentice";
+    return "customer";
+  }, []);
+
+  const toBackendRole = useCallback((role: AppRole): "CUSTOMER" | "ARTISAN" | "LEARNER" => {
+    if (role === "artisan") return "ARTISAN";
+    if (role === "apprentice") return "LEARNER";
+    return "CUSTOMER";
+  }, []);
+
+  const refreshRoles = useCallback(async () => {
+    try {
+      const list = await getAccountRolesApi();
+      if (!Array.isArray(list)) return;
+      const nextEnrolled: AppRole[] = [];
+      const nextOnboarding: Partial<Record<AppRole, RoleOnboardingStatus>> = {};
+      for (const item of list) {
+        const mapped = toAppRole(item.role);
+        if (!nextEnrolled.includes(mapped)) nextEnrolled.push(mapped);
+        if (item.onboarding) {
+          nextOnboarding[mapped] = item.onboarding;
+          if (mapped === "apprentice" && item.onboarding.canUpgradeToArtisan) {
+            setApprenticeTrainingCompleted(true);
+          }
+        }
+      }
+      if (nextEnrolled.length > 0) setEnrolledRoles(nextEnrolled);
+      setRoleOnboarding(nextOnboarding);
+    } catch {
+      // Ignore silent role refresh errors when unauthenticated or offline
+    }
+  }, [toAppRole]);
+
+  const switchRole = useCallback(
+    async (targetRole: AppRole): Promise<SwitchRoleResult> => {
+      const backendRole = toBackendRole(targetRole);
+      let onboarding: RoleOnboardingStatus | undefined = roleOnboarding[targetRole];
+
+      try {
+        if (!enrolledRoles.includes(targetRole)) {
+          const enrollRes = await enrollAccountRoleApi(backendRole);
+          if (enrollRes.onboarding) onboarding = enrollRes.onboarding;
+          if (Array.isArray(enrollRes.roles)) {
+            setEnrolledRoles([...new Set(enrollRes.roles.map(toAppRole))]);
+          } else {
+            setEnrolledRoles((prev) => (prev.includes(targetRole) ? prev : [...prev, targetRole]));
+          }
+        }
+
+        const switchRes = await switchActiveRoleApi(backendRole);
+        if (switchRes.onboarding) onboarding = switchRes.onboarding;
+        if (Array.isArray(switchRes.roles)) {
+          setEnrolledRoles([...new Set(switchRes.roles.map(toAppRole))]);
+        }
+      } catch {
+        // Fallback to local state when offline/mocked
+        setEnrolledRoles((prev) => (prev.includes(targetRole) ? prev : [...prev, targetRole]));
+      }
+
+      if (onboarding) {
+        setRoleOnboarding((prev) => ({ ...prev, [targetRole]: onboarding }));
+      }
+      setActiveRole(targetRole);
+
+      const onboardingRequired = Boolean(onboarding?.required);
+      let redirectPath = "/dashboard";
+      if (targetRole === "artisan") {
+        redirectPath = onboardingRequired ? "/artisan?view=verification" : "/artisan";
+      } else if (targetRole === "apprentice") {
+        redirectPath = onboardingRequired
+          ? "/talent/settings/edit-profile?onboarding=1"
+          : "/talent/home";
+      }
+
+      return { onboardingRequired, redirectPath, onboarding };
+    },
+    [enrolledRoles, roleOnboarding, setActiveRole, toAppRole, toBackendRole]
+  );
 
   // Hook into client auth failure
   useEffect(() => {
@@ -256,10 +353,44 @@ export default function AuthProvider({ children }: AuthProviderProps) {
         console.debug("Silent wallet balance hydration failed.", err);
       });
 
+    // 3. Enrolled roles & onboarding progress
+    void refreshRoles();
+
     return () => {
       isMounted = false;
     };
-  }, [setUser, setActiveRole, setWalletBalance]);
+  }, [setUser, setActiveRole, setWalletBalance, refreshRoles]);
+
+  const applySessionResponse = useCallback(
+    (response: LoginResponse): LoginResponse => {
+      setAccessToken(response.accessToken);
+
+      const backendUser = response.user;
+      const normalizedRole: "customer" | "artisan" | "apprentice" =
+        backendUser.role === "ARTISAN"
+          ? "artisan"
+          : backendUser.role === "LEARNER"
+          ? "apprentice"
+          : "customer";
+
+      const mappedUser: AuthUser = {
+        id: backendUser.id,
+        fullName: backendUser.fullName,
+        email: backendUser.email,
+        phone: backendUser.phone,
+        emailVerifiedAt: backendUser.emailVerifiedAt,
+        phoneVerifiedAt: backendUser.phoneVerifiedAt,
+        role: backendUser.role,
+        createdAt: backendUser.createdAt,
+        isVerified: Boolean(backendUser.phoneVerifiedAt || backendUser.emailVerifiedAt),
+      };
+
+      setUser(mappedUser);
+      setActiveRole(normalizedRole);
+      return response;
+    },
+    [setAccessToken, setUser, setActiveRole]
+  );
 
   // Login handler
   const login = useCallback(
@@ -267,36 +398,26 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       setIsLoading(true);
       try {
         const response = await loginApi(credentials);
-        setAccessToken(response.accessToken);
-
-        const backendUser = response.user;
-        const normalizedRole: "customer" | "artisan" | "apprentice" =
-          backendUser.role === "ARTISAN"
-            ? "artisan"
-            : backendUser.role === "LEARNER"
-            ? "apprentice"
-            : "customer";
-
-        const mappedUser: AuthUser = {
-          id: backendUser.id,
-          fullName: backendUser.fullName,
-          email: backendUser.email,
-          phone: backendUser.phone,
-          emailVerifiedAt: backendUser.emailVerifiedAt,
-          phoneVerifiedAt: backendUser.phoneVerifiedAt,
-          role: backendUser.role,
-          createdAt: backendUser.createdAt,
-          isVerified: Boolean(backendUser.phoneVerifiedAt || backendUser.emailVerifiedAt),
-        };
-
-        setUser(mappedUser);
-        setActiveRole(normalizedRole);
-        return response;
+        return applySessionResponse(response);
       } finally {
         setIsLoading(false);
       }
     },
-    [setAccessToken]
+    [applySessionResponse]
+  );
+
+  // Google Sign-In / Sign-Up handler
+  const loginWithGoogle = useCallback(
+    async (payload: GoogleAuthRequest): Promise<LoginResponse> => {
+      setIsLoading(true);
+      try {
+        const response = await googleAuthApi(payload);
+        return applySessionResponse(response);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [applySessionResponse]
   );
 
   // Logout handler
@@ -317,6 +438,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       user,
       accessToken,
       activeRole,
+      enrolledRoles,
+      roleOnboarding,
       apprenticeTrainingCompleted,
       walletBalance,
       locationName,
@@ -334,6 +457,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       setUser,
       setAccessToken,
       setActiveRole,
+      switchRole,
+      refreshRoles,
       setApprenticeTrainingCompleted,
       setWalletBalance,
       setLocationName,
@@ -349,6 +474,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       setSelectedLanguageId,
       setIntroCompleted,
       login,
+      loginWithGoogle,
       logout,
       resetRegistration,
       resetAuth,
@@ -357,6 +483,8 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       user,
       accessToken,
       activeRole,
+      enrolledRoles,
+      roleOnboarding,
       apprenticeTrainingCompleted,
       walletBalance,
       locationName,
@@ -366,12 +494,19 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       registrationStep,
       verificationPhone,
       verificationCode,
+      otpChannel,
+      otpDestination,
       otpSent,
       selectedLanguageId,
       introCompleted,
+      setUser,
       setAccessToken,
+      setActiveRole,
+      switchRole,
+      refreshRoles,
       setRegistrationData,
       login,
+      loginWithGoogle,
       logout,
       resetRegistration,
       resetAuth,

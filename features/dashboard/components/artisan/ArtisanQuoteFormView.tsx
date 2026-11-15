@@ -5,6 +5,13 @@ import toast from "react-hot-toast";
 import { submitArtisanOfferApi, createJobConversationApi } from "@/lib/api/artisan";
 import { nairaToKobo } from "@/lib/utils/currency";
 
+interface QuoteSentSummary {
+  offerId?: string;
+  quoteAmount?: string;
+  estimatedCompletion?: string;
+  warrantyPeriod?: string;
+}
+
 interface ArtisanQuoteFormViewProps {
   jobId?: string;
   quoteId?: string;
@@ -12,7 +19,7 @@ interface ArtisanQuoteFormViewProps {
   customerName?: string;
   customerBudget?: string;
   onBack: () => void;
-  onQuoteSent: () => void;
+  onQuoteSent: (summary?: QuoteSentSummary) => void;
 }
 
 export function ArtisanQuoteFormView({
@@ -66,7 +73,7 @@ export function ArtisanQuoteFormView({
         throw new Error("Missing job or quote reference");
       }
 
-      await submitArtisanOfferApi(resolvedQuoteId, {
+      const offer = await submitArtisanOfferApi(resolvedQuoteId, {
         labour: nairaToKobo(numLabour),
         materials: numMaterials > 0 ? [{ name: "Materials", amount: nairaToKobo(numMaterials), supplier: "ARTISAN" }] : [],
         warrantyDays: 21,
@@ -78,9 +85,15 @@ export function ArtisanQuoteFormView({
         visitEnd,
       });
       toast.success("Quote sent successfully to customer!");
-      onQuoteSent();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to send quote. Please try again.");
+      onQuoteSent({
+        offerId: offer?.id,
+        quoteAmount: `₦${quoteTotal.toLocaleString("en-NG")}`,
+        estimatedCompletion: completionTime,
+        warrantyPeriod: warranty,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send quote. Please try again.";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

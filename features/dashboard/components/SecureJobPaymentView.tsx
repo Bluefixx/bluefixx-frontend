@@ -2,10 +2,14 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
+import { createPaymentApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { confirmBookingScheduleVisitApi } from "@/lib/api/bookings";
+import { nairaToKobo } from "@/lib/utils/currency";
 
 export type PaymentStep = "secure" | "secured-success" | "schedule" | "scheduled-success";
 
 interface SecureJobPaymentViewProps {
+  bookingId?: string;
   jobId?: string;
   jobTitle?: string;
   artisanName?: string;
@@ -19,14 +23,15 @@ interface SecureJobPaymentViewProps {
 }
 
 export default function SecureJobPaymentView({
-  jobId = "BFX-20481",
-  jobTitle = "Bathroom Plumbing Repair",
-  artisanName = "Emeka Okafor",
-  customerName = "Daniel Chukwu",
-  location = "14 Ogui Road, Independence Layout, Enugu",
-  quoteTotal = 120000,
-  labourAmount = 80000,
-  materialsAmount = 40000,
+  bookingId,
+  jobId = "",
+  jobTitle = "Service Booking",
+  artisanName = "Artisan",
+  customerName = "Customer",
+  location = "",
+  quoteTotal = 0,
+  labourAmount = 0,
+  materialsAmount = 0,
   onBackToJobs,
   onViewJobDetail,
 }: SecureJobPaymentViewProps) {
@@ -84,20 +89,43 @@ export default function SecureJobPaymentView({
     pinInputRefs.current[nextIdx]?.focus();
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     const fullPin = pinDigits.join("");
     if (fullPin.length < 4) {
       toast.error("Please enter your complete 4-digit PIN");
       return;
     }
 
+    const targetBookingId = bookingId || jobId;
+    if (!targetBookingId) {
+      toast.error("Booking reference is missing; cannot initialize payment.");
+      return;
+    }
+
     setIsProcessingPayment(true);
-    setTimeout(() => {
-      setIsProcessingPayment(false);
+    try {
+      const payment = await createPaymentApi({
+        amount: nairaToKobo(quoteTotal),
+        bookingId: targetBookingId,
+        source: selectedPaymentSource === "wallet" ? "WALLET" : "PAYSTACK",
+      });
+
+      if (payment.authorizationUrl) {
+        window.open(payment.authorizationUrl, "_blank", "noopener,noreferrer");
+        await verifyPaymentApi(payment.id).catch(() => null);
+      }
+
       setIsPinModalOpen(false);
       setCurrentStep("secured-success");
-      toast.success("₦120,000 secured in Escrow protection!", { icon: "🔒" });
-    }, 700);
+      toast.success(`₦${quoteTotal.toLocaleString("en-NG")} secured in Escrow protection!`, {
+        icon: "🔒",
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Payment failed. Please try again.";
+      toast.error(msg);
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
   return (
@@ -607,9 +635,19 @@ export default function SecureJobPaymentView({
               <div className="pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setCurrentStep("scheduled-success");
-                    toast.success("Job schedule locked in!", { icon: "📅" });
+                  onClick={async () => {
+                    const targetBookingId = bookingId || jobId;
+                    try {
+                      if (targetBookingId) {
+                        await confirmBookingScheduleVisitApi(targetBookingId);
+                      }
+                      setCurrentStep("scheduled-success");
+                      toast.success("Job schedule locked in!", { icon: "📅" });
+                    } catch (err: unknown) {
+                      const msg =
+                        err instanceof Error ? err.message : "Failed to confirm schedule.";
+                      toast.error(msg);
+                    }
                   }}
                   className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer text-center shadow-xs"
                 >

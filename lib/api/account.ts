@@ -6,6 +6,7 @@ import {
   CreateAddressRequest,
   UserSession,
   UserRoleInfo,
+  RoleSwitchResponse,
 } from "@/types/customer";
 
 /**
@@ -140,8 +141,8 @@ export async function getAccountRolesApi(): Promise<UserRoleInfo[]> {
  */
 export async function enrollAccountRoleApi(
   role: "CUSTOMER" | "ARTISAN" | "LEARNER"
-): Promise<{ success: boolean }> {
-  return apiClient.post<{ success: boolean }>("/account/roles", { role });
+): Promise<RoleSwitchResponse> {
+  return apiClient.post<RoleSwitchResponse>("/account/roles", { role });
 }
 
 /**
@@ -149,6 +150,6 @@ export async function enrollAccountRoleApi(
  */
 export async function switchActiveRoleApi(
   role: "CUSTOMER" | "ARTISAN" | "LEARNER"
-): Promise<{ success: boolean }> {
-  return apiClient.patch<{ success: boolean }>("/account/active-role", { role });
+): Promise<RoleSwitchResponse> {
+  return apiClient.patch<RoleSwitchResponse>("/account/active-role", { role });
 }

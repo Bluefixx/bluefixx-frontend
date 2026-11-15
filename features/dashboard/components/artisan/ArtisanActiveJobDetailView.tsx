@@ -1,16 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import {
+  getArtisanBookingsApi,
+  getArtisanBookingByIdApi,
   getBookingUpdatesApi,
   postBookingUpdateApi,
   proposeBookingAdditionApi,
   submitBookingCompletionApi,
 } from "@/lib/api/artisan";
+import { uploadMediaFile } from "@/lib/api/media";
+import { ArtisanBookingDetail } from "@/types/artisan";
 import { generateIdempotencyKey } from "@/lib/utils/idempotency";
-import { nairaToKobo } from "@/lib/utils/currency";
+import { formatNaira, koboToNaira, nairaToKobo } from "@/lib/utils/currency";
 
 interface WorkUpdateItem {
   id: string;
@@ -26,23 +30,36 @@ export type JobLifecycleState =
   | "completed_released";
 
 interface ArtisanActiveJobDetailViewProps {
+  bookingId?: string;
   onBack: () => void;
   onOpenMessages?: () => void;
   onFindMoreJobs?: () => void;
+  onRateCustomer?: (customer: {
+    bookingId?: string;
+    name: string;
+    jobTitle: string;
+    date: string;
+  }) => void;
   initialLifecycleState?: JobLifecycleState;
 }
 
 export function ArtisanActiveJobDetailView({
+  bookingId,
   onBack,
   onOpenMessages,
   onFindMoreJobs,
+  onRateCustomer,
   initialLifecycleState = "in_progress",
 }: ArtisanActiveJobDetailViewProps) {
-  // Lifecycle State: "in_progress" | "awaiting_confirmation" | "completed_released"
+  const [resolvedBookingId, setResolvedBookingId] = useState<string | null>(
+    bookingId ?? null
+  );
+  const [booking, setBooking] = useState<ArtisanBookingDetail | null>(null);
+  const [isLoadingBooking, setIsLoadingBooking] = useState(true);
+
   const [lifecycleState, setLifecycleState] =
     useState<JobLifecycleState>(initialLifecycleState);
 
-  // Side Panel Modes: "default" | "additional-cost" | "completion-checklist"
   const [sidePanelMode, setSidePanelMode] = useState<
     "default" | "additional-cost" | "completion-checklist"
   >("default");
@@ -51,109 +68,241 @@ export function ArtisanActiveJobDetailView({
   // WORK UPDATES COMPOSER STATE
   // -------------------------------------------------------------
   const [updateText, setUpdateText] = useState("");
-  const [updatePhotoAttached, setUpdatePhotoAttached] = useState(false);
-  const [workUpdates, setWorkUpdates] = useState<WorkUpdateItem[]>([
-    {
-      id: "up-1",
-      author: "You",
-      time: "12:14 PM",
-      text: "Arrived on site and started diagnosis.",
-    },
-    {
-      id: "up-2",
-      author: "You",
-      time: "1:02 PM",
-      text: "Carburettor is blocked. Cleaning it now before testing the plug.",
-      photoUrl: "/images/workers.png",
-    },
-  ]);
+  const [uploadedUpdateMedia, setUploadedUpdateMedia] = useState<{
+    mediaId: string;
+    url: string;
+  } | null>(null);
+  const [isUploadingUpdatePhoto, setIsUploadingUpdatePhoto] = useState(false);
+  const [isPostingUpdate, setIsPostingUpdate] = useState(false);
+  const updateFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [workUpdates, setWorkUpdates] = useState<WorkUpdateItem[]>([]);
+
+  // -------------------------------------------------------------
+  // COMPLETION PROOF PHOTOS STATE
+  // -------------------------------------------------------------
+  const [completionPhotos, setCompletionPhotos] = useState<
+    Array<{ mediaId: string; url: string }>
+  >([]);
+  const [isUploadingCompletionPhoto, setIsUploadingCompletionPhoto] =
+    useState(false);
+  const completionFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadBooking() {
+      await Promise.resolve();
+      if (!mounted) return;
+      setIsLoadingBooking(true);
+      try {
+        let targetId = bookingId;
+        if (!targetId) {
+          const activeList = await getArtisanBookingsApi("active", undefined, 1);
+          if (Array.isArray(activeList) && activeList.length > 0) {
+            targetId = activeList[0].id;
+          }
+        }
+
+        if (!targetId) {
+          if (mounted) {
+            setResolvedBookingId(null);
+            setBooking(null);
+          }
+          return;
+        }
+
+        if (mounted) setResolvedBookingId(targetId);
+
+        const [detail, updatesRes] = await Promise.all([
+          getArtisanBookingByIdApi(targetId),
+          getBookingUpdatesApi(targetId).catch(() => ({ items: [] })),
+        ]);
+
+        if (!mounted) return;
+        setBooking(detail);
+
+        if (detail.status === "COMPLETED") {
+          setLifecycleState("completed_released");
+        } else if (detail.status === "WORK_SUBMITTED") {
+          setLifecycleState("awaiting_confirmation");
+        } else {
+          setLifecycleState("in_progress");
+        }
+
+        const mappedUpdates: WorkUpdateItem[] = (updatesRes?.items || []).map((u) => ({
+          id: u.id,
+          author: u.authorId === detail.artisanId ? "You" : detail.customer?.fullName || "Customer",
+          time: new Date(u.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          text: u.text || "",
+          photoUrl: u.media?.[0]?.url,
+        }));
+        setWorkUpdates(mappedUpdates);
+      } catch (err: unknown) {
+        if (mounted) {
+          const msg = err instanceof Error ? err.message : "Failed to load booking details.";
+          toast.error(msg);
+        }
+      } finally {
+        if (mounted) setIsLoadingBooking(false);
+      }
+    }
+
+    loadBooking();
+    return () => {
+      mounted = false;
+    };
+  }, [bookingId]);
+
+  const handleSelectUpdatePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingUpdatePhoto(true);
+    try {
+      const uploaded = await uploadMediaFile(file, "EVIDENCE");
+      setUploadedUpdateMedia({ mediaId: uploaded.id, url: uploaded.url || "" });
+      toast.success("Work photo uploaded");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to upload photo.";
+      toast.error(msg);
+    } finally {
+      setIsUploadingUpdatePhoto(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleSelectCompletionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCompletionPhoto(true);
+    try {
+      const uploaded = await uploadMediaFile(file, "EVIDENCE");
+      setCompletionPhotos((prev) => [
+        ...prev,
+        { mediaId: uploaded.id, url: uploaded.url || "" },
+      ]);
+      toast.success("Proof photo uploaded");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to upload proof photo.";
+      toast.error(msg);
+    } finally {
+      setIsUploadingCompletionPhoto(false);
+      e.target.value = "";
+    }
+  };
 
   const handlePostUpdate = async () => {
-    if (!updateText.trim()) return;
+    if (!updateText.trim() || !resolvedBookingId) return;
     const clientId = generateIdempotencyKey();
-    const newUpdate: WorkUpdateItem = {
-      id: `up-${Date.now()}`,
-      author: "You",
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      text: updateText,
-      photoUrl: updatePhotoAttached ? "/images/workers.png" : undefined,
-    };
-    setWorkUpdates([newUpdate, ...workUpdates]);
-    setUpdateText("");
-    setUpdatePhotoAttached(false);
+    const textToSend = updateText.trim();
+    const mediaIds = uploadedUpdateMedia ? [uploadedUpdateMedia.mediaId] : [];
+    const previewUrl = uploadedUpdateMedia?.url;
 
+    setIsPostingUpdate(true);
     try {
-      await postBookingUpdateApi("mock-booking-id", {
+      const created = await postBookingUpdateApi(resolvedBookingId, {
         clientId,
-        text: newUpdate.text,
-        mediaIds: updatePhotoAttached ? ["photo-mock-uuid"] : [],
+        text: textToSend,
+        mediaIds,
       });
+      const newUpdate: WorkUpdateItem = {
+        id: created?.id || `up-${Date.now()}`,
+        author: "You",
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        text: textToSend,
+        photoUrl: previewUrl,
+      };
+      setWorkUpdates((prev) => [newUpdate, ...prev]);
+      setUpdateText("");
+      setUploadedUpdateMedia(null);
       toast.success("Work update posted to customer!");
-    } catch {
-      toast.success("Work update posted to customer!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to post work update.";
+      toast.error(msg);
+    } finally {
+      setIsPostingUpdate(false);
     }
   };
 
   // -------------------------------------------------------------
   // ADDITIONAL COST STATE
   // -------------------------------------------------------------
-  const [extraReason, setExtraReason] = useState("Additional spare replacement required.");
-  const [extraLabour, setExtraLabour] = useState("10,000");
-  const [extraMaterials, setExtraMaterials] = useState("15,000");
+  const [extraReason, setExtraReason] = useState("");
+  const [extraLabour, setExtraLabour] = useState("");
+  const [extraMaterials, setExtraMaterials] = useState("");
+  const [isSendingExtraCost, setIsSendingExtraCost] = useState(false);
 
   const numExtraLabour = parseInt(extraLabour.replace(/\D/g, ""), 10) || 0;
   const numExtraMaterials = parseInt(extraMaterials.replace(/\D/g, ""), 10) || 0;
   const additionalTotal = numExtraLabour + numExtraMaterials;
-  const originalApprovedAmount = 60000;
+  const originalApprovedAmount = booking ? koboToNaira(booking.base) : 0;
   const newGrandTotal = originalApprovedAmount + additionalTotal;
   const isAdditionalCostReady = extraReason.trim().length > 0 && additionalTotal > 0;
 
+  const customerName = booking?.customer?.fullName || "Customer";
+  const jobTitle = booking?.jobTitle || "Active Job";
+  const bookingCode = resolvedBookingId ? `BF-${resolvedBookingId.slice(0, 6).toUpperCase()}` : "BF-BOOKING";
+  const netPayoutAmount = booking
+    ? Math.max(0, koboToNaira(booking.base) - koboToNaira(booking.fee))
+    : 0;
+
   const handleSendExtraCost = async () => {
+    if (!resolvedBookingId || !isAdditionalCostReady) return;
+    setIsSendingExtraCost(true);
     try {
-      await proposeBookingAdditionApi("mock-booking-id", {
-        description: extraReason,
+      await proposeBookingAdditionApi(resolvedBookingId, {
+        description: extraReason.trim(),
         labour: nairaToKobo(numExtraLabour),
         materials: nairaToKobo(numExtraMaterials),
         base: nairaToKobo(additionalTotal),
       });
-      toast.success("Additional cost request sent to Daniel C. for approval.");
-    } catch {
-      toast.success("Additional cost request sent to Daniel C. for approval.");
-    } finally {
+      toast.success(`Additional cost request sent to ${customerName} for approval.`);
+      setExtraReason("");
+      setExtraLabour("");
+      setExtraMaterials("");
       setSidePanelMode("default");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to send additional cost request.";
+      toast.error(msg);
+    } finally {
+      setIsSendingExtraCost(false);
     }
   };
 
   // -------------------------------------------------------------
-  // COMPLETION CHECKLIST STATE (Screenshot 1 Left & Right)
+  // COMPLETION CHECKLIST STATE
   // -------------------------------------------------------------
   const [checkWorkCompleted, setCheckWorkCompleted] = useState(true);
   const [checkFinalRecord, setCheckFinalRecord] = useState(true);
   const [checkCustomerNotified, setCheckCustomerNotified] = useState(true);
+  const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
   const isCompletionReady = checkWorkCompleted && checkFinalRecord && checkCustomerNotified;
 
   const handleConfirmCompletion = async () => {
+    if (!resolvedBookingId || !isCompletionReady) return;
+    setIsSubmittingCompletion(true);
     try {
-      await submitBookingCompletionApi("mock-booking-id", {
-        mediaIds: ["mock-completion-photo-uuid"],
+      await submitBookingCompletionApi(resolvedBookingId, {
+        mediaIds: completionPhotos.map((p) => p.mediaId),
         checklist: {
           workCompleted: true,
           materialsRecorded: true,
           customerNotified: true,
         },
       });
-      toast.success("Job marked as completed. Waiting for customer confirmation (48h release timer started).");
-    } catch {
-      toast.success("Job marked as completed. Waiting for customer confirmation.");
-    } finally {
+      toast.success(
+        "Job marked as completed. Waiting for customer confirmation (48h release timer started)."
+      );
       setLifecycleState("awaiting_confirmation");
       setSidePanelMode("default");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit completion.";
+      toast.error(msg);
+    } finally {
+      setIsSubmittingCompletion(false);
     }
-  };
-
-  const handleSimulatePaymentReleased = () => {
-    setLifecycleState("completed_released");
-    toast.success("🎉 Payment released to your withdrawable balance!");
   };
 
   return (
@@ -171,46 +320,36 @@ export function ArtisanActiveJobDetailView({
             </svg>
             <span>Jobs</span>
           </button>
-
-          {/* QA Lifecycle State Switcher */}
-          <div className="flex items-center gap-1 bg-neutral-100 p-1 rounded-xl text-[11px] font-semibold text-neutral-600">
-            <button
-              type="button"
-              onClick={() => setLifecycleState("in_progress")}
-              className={`px-2 py-1 rounded-lg ${
-                lifecycleState === "in_progress" ? "bg-[#001B40] text-white" : "hover:bg-neutral-200"
-              }`}
-            >
-              In Progress
-            </button>
-            <button
-              type="button"
-              onClick={() => setLifecycleState("awaiting_confirmation")}
-              className={`px-2 py-1 rounded-lg ${
-                lifecycleState === "awaiting_confirmation" ? "bg-[#001B40] text-white" : "hover:bg-neutral-200"
-              }`}
-            >
-              Awaiting Daniel
-            </button>
-            <button
-              type="button"
-              onClick={() => setLifecycleState("completed_released")}
-              className={`px-2 py-1 rounded-lg ${
-                lifecycleState === "completed_released" ? "bg-[#001B40] text-white" : "hover:bg-neutral-200"
-              }`}
-            >
-              Payment Released
-            </button>
-          </div>
         </div>
+      </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {isLoadingBooking ? (
+        <div className="h-32 rounded-3xl bg-neutral-100 animate-pulse" />
+      ) : !booking ? (
+        <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 text-center space-y-3">
+          <p className="font-heading font-bold text-base text-[#001B40]">
+            No active booking selected
+          </p>
+          <p className="text-xs sm:text-sm text-neutral-500">
+            Select an active job from your Jobs list to manage work updates and completion.
+          </p>
+          <button
+            type="button"
+            onClick={onBack}
+            className="px-5 py-2.5 rounded-xl bg-[#001B40] text-white text-xs font-bold cursor-pointer"
+          >
+            Back to Jobs
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-[#001B40] tracking-tight">
-              Generator repair
+              {jobTitle}
             </h1>
             <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
-              BF-2910 · Daniel C.
+              {bookingCode} · {customerName}
             </p>
           </div>
 
@@ -242,7 +381,6 @@ export function ArtisanActiveJobDetailView({
             </button>
           </div>
         </div>
-      </div>
 
       {/* ═══════════════════════════════════════════════════════════
           STATE 1 BANNER: IN PROGRESS (ESCROW SECURED)
@@ -256,13 +394,13 @@ export function ArtisanActiveJobDetailView({
             </svg>
           </div>
           <p className="text-xs sm:text-sm text-[#001B40] leading-relaxed">
-            The customer&apos;s payment of ₦60,000 is secured in escrow. You receive ₦55,242 after the 7% service fee and 1% job insurance, once they confirm completion.
+            The customer&apos;s payment of {booking ? formatNaira(booking.base) : "₦0"} is secured in escrow. You receive {formatNaira(nairaToKobo(netPayoutAmount))} after platform fees, once they confirm completion.
           </p>
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-          STATE 2 BANNER: AWAITING CONFIRMATION (Screenshot 1 Right)
+          STATE 2 BANNER: AWAITING CONFIRMATION
           ═══════════════════════════════════════════════════════════ */}
       {lifecycleState === "awaiting_confirmation" && (
         <div className="p-4 sm:p-5 rounded-3xl bg-amber-50/90 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -275,26 +413,18 @@ export function ArtisanActiveJobDetailView({
             </div>
             <div>
               <h3 className="font-heading font-bold text-sm sm:text-base text-amber-950">
-                Waiting for Daniel to confirm
+                Waiting for {customerName} to confirm
               </h3>
               <p className="text-xs text-amber-800/90 mt-0.5 leading-relaxed">
-                You marked this job completed on 22 Aug at 3:45pm. Daniel has 48 hrs to confirm. If he does not respond, the payment is released to you automatically on 24 Aug.
+                {customerName} has 48 hrs to confirm completion. If they do not respond, payment is released to you automatically.
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={handleSimulatePaymentReleased}
-            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 self-start sm:self-center transition-colors"
-          >
-            Simulate Release →
-          </button>
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-          STATE 3 BANNERS: PAYMENT RELEASED (Screenshot 2)
+          STATE 3 BANNERS: PAYMENT RELEASED
           ═══════════════════════════════════════════════════════════ */}
       {lifecycleState === "completed_released" && (
         <div className="space-y-3 mb-6">
@@ -310,7 +440,7 @@ export function ArtisanActiveJobDetailView({
                 Job completed · payment released
               </h3>
               <p className="text-xs text-emerald-800/90 mt-0.5 leading-relaxed">
-                Daniel C. confirmed the work on 22 Aug at 4:12pm. ₦55,242 is now in your withdrawable balance. The full payout breakdown is in Approved quote.
+                {customerName} confirmed the work. {formatNaira(nairaToKobo(netPayoutAmount))} is now in your withdrawable balance.
               </p>
             </div>
           </div>
@@ -324,7 +454,7 @@ export function ArtisanActiveJobDetailView({
               </svg>
             </div>
             <p className="text-xs text-neutral-600 leading-relaxed">
-              <span className="font-bold text-[#0F1115]">7-day warranty until 29 Aug.</span> If Daniel reports a problem with the work before then, you agree to fix it at no extra cost.
+              <span className="font-bold text-[#0F1115]">Workmanship warranty applies.</span> If {customerName} reports an issue covered by your warranty, you agree to resolve it at no extra cost.
             </p>
           </div>
         </div>
@@ -340,7 +470,7 @@ export function ArtisanActiveJobDetailView({
               Job details
             </h2>
             <p className="text-xs sm:text-sm text-neutral-700 leading-relaxed">
-              Sumec Firman 6.5kVA generator will not start. It cranks but does not fire. It was last serviced in March.
+              {booking?.jobDescription || booking?.notes || "Active service booking details."}
             </p>
 
             <div className="divide-y divide-neutral-100 text-xs sm:text-sm pt-2">
@@ -385,14 +515,25 @@ export function ArtisanActiveJobDetailView({
                 />
 
                 <div className="flex items-center justify-between pt-1">
+                  <input
+                    ref={updateFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelectUpdatePhoto}
+                    className="hidden"
+                  />
                   <button
                     type="button"
+                    disabled={isUploadingUpdatePhoto}
                     onClick={() => {
-                      setUpdatePhotoAttached(!updatePhotoAttached);
-                      toast.success(updatePhotoAttached ? "Photo removed" : "Work photo attached");
+                      if (uploadedUpdateMedia) {
+                        setUploadedUpdateMedia(null);
+                      } else {
+                        updateFileInputRef.current?.click();
+                      }
                     }}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                      updatePhotoAttached
+                      uploadedUpdateMedia
                         ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                         : "border-neutral-300 text-neutral-700 hover:bg-neutral-100"
                     }`}
@@ -402,20 +543,26 @@ export function ArtisanActiveJobDetailView({
                       <circle cx="9" cy="9" r="2" />
                       <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
                     </svg>
-                    <span>{updatePhotoAttached ? "Photo attached ✓" : "+ Add photo"}</span>
+                    <span>
+                      {isUploadingUpdatePhoto
+                        ? "Uploading..."
+                        : uploadedUpdateMedia
+                        ? "Photo attached ✓ (remove)"
+                        : "+ Add photo"}
+                    </span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handlePostUpdate}
-                    disabled={!updateText.trim()}
+                    disabled={!updateText.trim() || isPostingUpdate}
                     className={`px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs ${
-                      updateText.trim()
+                      updateText.trim() && !isPostingUpdate
                         ? "bg-[#001B40] hover:bg-[#074292] text-white cursor-pointer"
                         : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
                     }`}
                   >
-                    Post update
+                    {isPostingUpdate ? "Posting..." : "Post update"}
                   </button>
                 </div>
               </div>
@@ -628,15 +775,45 @@ export function ArtisanActiveJobDetailView({
 
               {/* Completed Work Photos Preview */}
               <div className="space-y-2">
-                <span className="text-[11px] font-bold text-neutral-500">Proof photos</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200">
-                    <Image src="/images/workers.png" alt="Proof 1" fill className="object-cover" />
-                  </div>
-                  <div className="relative aspect-4/3 rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200">
-                    <Image src="/images/customers.png" alt="Proof 2" fill className="object-cover" />
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-neutral-500">Proof photos</span>
+                  <input
+                    ref={completionFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSelectCompletionPhoto}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    disabled={isUploadingCompletionPhoto}
+                    onClick={() => completionFileInputRef.current?.click()}
+                    className="text-[11px] font-bold text-[#074292] hover:underline cursor-pointer"
+                  >
+                    {isUploadingCompletionPhoto ? "Uploading..." : "+ Upload photo"}
+                  </button>
                 </div>
+                {completionPhotos.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {completionPhotos.map((photo, idx) => (
+                      <div
+                        key={photo.mediaId}
+                        className="relative aspect-4/3 rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200"
+                      >
+                        <Image
+                          src={photo.url}
+                          alt={`Proof ${idx + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-neutral-400">
+                    No proof photos uploaded yet (optional).
+                  </p>
+                )}
               </div>
 
               {/* Submit Action */}
@@ -644,14 +821,14 @@ export function ArtisanActiveJobDetailView({
                 <button
                   type="button"
                   onClick={handleConfirmCompletion}
-                  disabled={!isCompletionReady}
+                  disabled={!isCompletionReady || isSubmittingCompletion}
                   className={`w-full py-3 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-xs ${
-                    isCompletionReady
+                    isCompletionReady && !isSubmittingCompletion
                       ? "bg-[#001B40] hover:bg-[#074292] text-white cursor-pointer"
                       : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
                   }`}
                 >
-                  Confirm Completion
+                  {isSubmittingCompletion ? "Submitting..." : "Confirm Completion"}
                 </button>
                 <button
                   type="button"
@@ -672,14 +849,21 @@ export function ArtisanActiveJobDetailView({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-full bg-[#EBF1F7] text-[#001B40] flex items-center justify-center font-bold text-xs shrink-0">
-                      DC
+                      {customerName
+                        .split(" ")
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((part: string) => part[0]?.toUpperCase())
+                        .join("") || "CU"}
                     </div>
                     <div>
                       <h3 className="font-heading font-bold text-sm text-[#0F1115]">
-                        Daniel Chukwu
+                        {customerName}
                       </h3>
                       <p className="text-[11px] text-neutral-400">
-                        14 Ogui Road, Independence Layout, Enugu
+                        {[booking?.address?.street, booking?.address?.city, booking?.address?.state]
+                          .filter(Boolean)
+                          .join(", ") || "Confirmed location"}
                       </p>
                     </div>
                   </div>
@@ -770,7 +954,7 @@ export function ArtisanActiveJobDetailView({
                         onClick={() => toast.success("Review submitted for Daniel C.!")}
                         className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs sm:text-sm font-bold text-[#001B40] transition-colors"
                       >
-                        Rate Daniel C.
+                        Rate {customerName}
                       </button>
                       <button
                         type="button"
@@ -840,6 +1024,8 @@ export function ArtisanActiveJobDetailView({
           )}
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

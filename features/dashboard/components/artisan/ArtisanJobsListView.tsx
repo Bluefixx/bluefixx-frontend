@@ -3,17 +3,142 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { JobDetailData } from "./ArtisanJobDetailView";
-import { getArtisanRequestsApi, getArtisanBookingsApi } from "@/lib/api/artisan";
+import {
+  getArtisanRequestsApi,
+  getArtisanBookingsApi,
+  getCustomerReviewsEligibleApi,
+} from "@/lib/api/artisan";
+import { ArtisanBookingDetail, ArtisanRequestsResponse } from "@/types/artisan";
 import { formatNaira } from "@/lib/utils/currency";
 
 export type JobsListTab = "requests" | "active" | "completed" | "declined";
 
+interface ActiveJobCardItem {
+  id: string;
+  title: string;
+  customerName: string;
+  badge: string;
+  description: string;
+  distance: string;
+  schedule: string;
+  budget: string;
+}
+
+interface CompletedJobCardItem {
+  id: string;
+  title: string;
+  customerName: string;
+  date: string;
+  payout: string;
+  reviewPending: boolean;
+  rating?: number;
+}
+
+interface DeclinedJobCardItem {
+  id: string;
+  title: string;
+  customerName: string;
+  date: string;
+  tag: string;
+  badge: string;
+  payout: string;
+}
+
 interface ArtisanJobsListViewProps {
   initialTab?: JobsListTab;
   onSelectRequest?: (job: JobDetailData) => void;
-  onManageJob?: (jobId: string) => void;
+  onManageJob?: (bookingId: string) => void;
   onBackToDashboard?: () => void;
-  onRateCustomer?: (customer: { name: string; jobTitle: string; date: string }) => void;
+  onRateCustomer?: (customer: {
+    bookingId?: string;
+    name: string;
+    jobTitle: string;
+    date: string;
+  }) => void;
+}
+
+function formatShortDate(iso?: string | null): string {
+  if (!iso) return "Scheduled";
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatBookingStageLabel(status: string): string {
+  switch (status) {
+    case "AWAITING_PAYMENT":
+      return "Awaiting payment";
+    case "ACCEPTED":
+      return "Scheduled";
+    case "ON_THE_WAY":
+      return "On the way";
+    case "ARRIVED":
+      return "Arrived";
+    case "IN_PROGRESS":
+      return "In progress";
+    case "WORK_SUBMITTED":
+      return "Work submitted";
+    case "COMPLETED":
+      return "Completed";
+    case "DISPUTED":
+      return "Disputed";
+    default:
+      return status.replace(/_/g, " ");
+  }
+}
+
+function mapRequestToJobDetail(
+  item: ArtisanRequestsResponse["items"][number]
+): JobDetailData {
+  const createdLabel = formatShortDate(item.createdAt);
+  const budgetLabel = item.budget ? formatNaira(item.budget) : "Quote requested";
+  const locationLabel = item.area || "Nearby";
+  const isEmergency = item.status?.toUpperCase() === "EMERGENCY";
+
+  return {
+    id: item.jobId || item.id,
+    code: `BFX-${(item.jobId || item.id).slice(0, 6).toUpperCase()}`,
+    title: item.title,
+    category: item.serviceName || "Service",
+    subCategory: item.serviceName || "Request",
+    postedTime: `Posted ${createdLabel}`,
+    isUrgent: isEmergency,
+    status: isEmergency ? "Emergency" : item.status || "Pending",
+    description: `${item.serviceName || "Service"} request from ${item.customer?.displayName || "Customer"}.`,
+    service: item.serviceName || item.title,
+    date: createdLabel,
+    time: "Flexible",
+    budget: budgetLabel,
+    urgency: isEmergency ? "Urgent" : "Standard",
+    customerName: item.customer?.displayName || "Customer",
+    customerLocation: locationLabel,
+    distance: locationLabel,
+    driveTime: "Nearby",
+    photoUrl: "",
+    photoCaption: "",
+    audioDuration: "",
+    questions: [],
+  };
+}
+
+function mapBookingToActiveCard(booking: ArtisanBookingDetail): ActiveJobCardItem {
+  const customerName = booking.customer?.fullName || "Customer";
+  const addressParts = [booking.address?.street, booking.address?.city].filter(Boolean);
+  const scheduleDate = formatShortDate(booking.visitStart);
+
+  return {
+    id: booking.id,
+    title: booking.jobTitle || "Booked job",
+    customerName,
+    badge: formatBookingStageLabel(booking.status),
+    description: booking.jobDescription || booking.notes || "Active service booking.",
+    distance: addressParts.length > 0 ? addressParts.join(", ") : "Confirmed location",
+    schedule: `Visit: ${scheduleDate}`,
+    budget: formatNaira(booking.base),
+  };
 }
 
 export function ArtisanJobsListView({
@@ -24,181 +149,106 @@ export function ArtisanJobsListView({
   onRateCustomer,
 }: ArtisanJobsListViewProps) {
   const [activeTab, setActiveTab] = useState<JobsListTab>(initialTab);
-
-  // -------------------------------------------------------------
-  // DATA MATCHING SCREENSHOTS 3 & 4
-  // -------------------------------------------------------------
-  const requestsData: JobDetailData[] = [
-    {
-      id: "req-1",
-      code: "BFX-51029",
-      title: "AC repair",
-      category: "AC repair",
-      subCategory: "Repair",
-      postedTime: "posted 30 minutes ago",
-      isUrgent: false,
-      status: "New",
-      description: "AC is running but not cooling. It was serviced 5 months ago.",
-      service: "AC repair",
-      date: "Today · 3:00 PM",
-      time: "Afternoon · 3:00 PM",
-      budget: "₦25,000–₦35,000",
-      urgency: "Standard",
-      customerName: "Simeon Nnamdi",
-      customerLocation: "Enugu, Nigeria",
-      distance: "2.5 km away",
-      driveTime: "7 min from your base",
-      photoUrl: "",
-      photoCaption: "",
-      audioDuration: "",
-      questions: [{ question: "Is the outdoor unit spinning?", answer: "Yes" }],
-    },
-    {
-      id: "req-2",
-      code: "BFX-61920",
-      title: "Generator changeover wiring",
-      category: "Electrical",
-      subCategory: "Wiring",
-      postedTime: "posted 1 hour ago",
-      isUrgent: false,
-      status: "New",
-      description: "Need a changeover panel installed for a 5kVA generator.",
-      service: "Electrical · Wiring",
-      date: "Tomorrow · 9:00 AM",
-      time: "Morning · 9:00 AM",
-      budget: "₦30,000–₦45,000",
-      urgency: "Standard",
-      customerName: "Adanna Onyekwere",
-      customerLocation: "Enugu, Nigeria",
-      distance: "4.1 km away",
-      driveTime: "12 min from your base",
-      photoUrl: "",
-      photoCaption: "",
-      audioDuration: "",
-      questions: [{ question: "Is the changeover switch purchased?", answer: "Yes" }],
-    },
-    {
-      id: "req-3",
-      code: "BFX-72819",
-      title: "No power in half the house",
-      category: "Electrical",
-      subCategory: "Emergency",
-      postedTime: "posted 5 minutes ago",
-      isUrgent: true,
-      status: "Emergency",
-      description: "Sockets in the sitting room and two bedrooms stopped working this morning.",
-      service: "Electrical · Emergency",
-      date: "Now",
-      time: "Immediate dispatch",
-      budget: "₦15,000–₦35,000",
-      urgency: "Emergency",
-      customerName: "Uche Mba",
-      customerLocation: "Enugu, Nigeria",
-      distance: "4.2 km away",
-      driveTime: "10 min from your base",
-      photoUrl: "",
-      photoCaption: "",
-      audioDuration: "",
-      questions: [{ question: "Did the main breaker trip?", answer: "No" }],
-    },
-  ];
-
-  const activeJobsData = [
-    {
-      id: "active-1",
-      title: "AC repair - Not cooling",
-      customerName: "Simeon Nnamdi",
-      description: "AC is running but not cooling. It was serviced 5 months ago.",
-      distance: "2.5 km away",
-      schedule: "Today · 3:00 PM",
-      budget: "₦25,000–₦35,000",
-      badge: "In progress",
-    },
-    {
-      id: "active-2",
-      title: "Full house rewiring (day 2 of 3)",
-      customerName: "Adanna Onyekwere",
-      description: "Need a changeover panel installed for a 5kVA generator.",
-      distance: "4.1 km away",
-      schedule: "Tomorrow · 9:00 AM",
-      budget: "₦30,000–₦45,000",
-      badge: "In progress",
-    },
-  ];
-
-  const completedJobsData = [
-    {
-      id: "comp-gen-1",
-      title: "Generator repair",
-      customerName: "Daniel C.",
-      date: "Today",
-      payout: "₦60,000 paid out",
-      reviewPending: true,
-      rating: null,
-    },
-    {
-      id: "comp-bath-2",
-      title: "Bathroom re-piping",
-      customerName: "Chizorom O.",
-      date: "11 Aug",
-      payout: "₦48,000 paid out",
-      reviewPending: false,
-      rating: 5,
-    },
-    {
-      id: "comp-shower-3",
-      title: "Shower line replacement",
-      customerName: "Amayi M.",
-      date: "4 Aug",
-      payout: "₦85,000 paid out",
-      reviewPending: false,
-      rating: 5,
-    },
-  ];
-
-  const declinedJobsData = [
-    {
-      id: "decl-1",
-      title: "Lighting installation",
-      customerName: "Kelechi Nwosu",
-      date: "10 Aug",
-      tag: "Completed",
-      badge: "Declined",
-      payout: "₦28,000 · paid out",
-    },
-  ];
-
+  const [requestsData, setRequestsData] = useState<JobDetailData[]>([]);
+  const [activeJobsData, setActiveJobsData] = useState<ActiveJobCardItem[]>([]);
+  const [completedJobsData, setCompletedJobsData] = useState<CompletedJobCardItem[]>([]);
+  const [declinedJobsData, setDeclinedJobsData] = useState<DeclinedJobCardItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    setIsLoading(true);
 
-    if (activeTab === "requests" || activeTab === "declined") {
-      getArtisanRequestsApi(activeTab === "declined" ? "declined" : "incoming")
-        .then((res) => {
-          if (!mounted || !res || !Array.isArray(res.items)) return;
-          console.debug(`Loaded ${res.items.length} ${activeTab} items`);
-        })
-        .catch((err) => {
-          console.debug(`Requests API offline for tab ${activeTab}.`, err);
-        })
-        .finally(() => {
-          if (mounted) setIsLoading(false);
-        });
-    } else {
-      getArtisanBookingsApi(activeTab === "completed" ? "completed" : "active")
-        .then((items) => {
-          if (!mounted || !Array.isArray(items)) return;
-          console.debug(`Loaded ${items.length} ${activeTab} bookings`);
-        })
-        .catch((err) => {
-          console.debug(`Bookings API offline for tab ${activeTab}.`, err);
-        })
-        .finally(() => {
-          if (mounted) setIsLoading(false);
-        });
+    async function loadTabData() {
+      await Promise.resolve();
+      if (!mounted) return;
+      setIsLoading(true);
+      setLoadError(null);
+
+      if (activeTab === "requests") {
+        getArtisanRequestsApi("incoming")
+          .then((res) => {
+            if (!mounted) return;
+            const items = Array.isArray(res?.items) ? res.items : [];
+            setRequestsData(items.map(mapRequestToJobDetail));
+          })
+          .catch(() => {
+            if (mounted) setLoadError("Unable to load incoming job requests.");
+          })
+          .finally(() => {
+            if (mounted) setIsLoading(false);
+          });
+      } else if (activeTab === "declined") {
+        getArtisanRequestsApi("declined")
+          .then((res) => {
+            if (!mounted) return;
+            const items = Array.isArray(res?.items) ? res.items : [];
+            setDeclinedJobsData(
+              items.map((item) => ({
+                id: item.id,
+                title: item.title,
+                customerName: item.customer?.displayName || "Customer",
+                date: formatShortDate(item.createdAt),
+                tag: item.serviceName || "Request",
+                badge: "Declined",
+                payout: item.budget ? formatNaira(item.budget) : "—",
+              }))
+            );
+          })
+          .catch(() => {
+            if (mounted) setLoadError("Unable to load declined requests.");
+          })
+          .finally(() => {
+            if (mounted) setIsLoading(false);
+          });
+      } else if (activeTab === "active") {
+        getArtisanBookingsApi("active")
+          .then((items) => {
+            if (!mounted) return;
+            const list = Array.isArray(items) ? items : [];
+            setActiveJobsData(list.map(mapBookingToActiveCard));
+          })
+          .catch(() => {
+            if (mounted) setLoadError("Unable to load active jobs.");
+          })
+          .finally(() => {
+            if (mounted) setIsLoading(false);
+          });
+      } else {
+        Promise.all([
+          getArtisanBookingsApi("completed"),
+          getCustomerReviewsEligibleApi().catch(() => []),
+        ])
+          .then(([bookings, eligible]) => {
+            if (!mounted) return;
+            const bookingList = Array.isArray(bookings) ? bookings : [];
+            const eligibleIds = new Set(
+              (Array.isArray(eligible) ? eligible : [])
+                .map((entry: { bookingId?: string; id?: string }) => entry.bookingId || entry.id)
+                .filter((id): id is string => Boolean(id))
+            );
+
+            setCompletedJobsData(
+              bookingList.map((booking) => ({
+                id: booking.id,
+                title: booking.jobTitle || "Completed job",
+                customerName: booking.customer?.fullName || "Customer",
+                date: formatShortDate(booking.completedAt || booking.visitEnd || booking.visitStart),
+                payout: `${formatNaira(booking.base)}${booking.released ? " · paid out" : ""}`,
+                reviewPending: eligibleIds.has(booking.id),
+              }))
+            );
+          })
+          .catch(() => {
+            if (mounted) setLoadError("Unable to load completed jobs.");
+          })
+          .finally(() => {
+            if (mounted) setIsLoading(false);
+          });
+      }
     }
+
+    void loadTabData();
 
     return () => {
       mounted = false;
@@ -228,7 +278,7 @@ export function ArtisanJobsListView({
         </h1>
       </div>
 
-      {/* Tabs Row (Requests [3], Active, Completed, Declined) */}
+      {/* Tabs Row (Requests, Active, Completed, Declined) */}
       <div className="flex items-center gap-4 sm:gap-8 border-b border-neutral-200/90 overflow-x-auto no-scrollbar">
         {/* Requests Tab */}
         <button
@@ -241,9 +291,11 @@ export function ArtisanJobsListView({
           }`}
         >
           <span>Requests</span>
-          <span className="w-4 h-4 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center">
-            3
-          </span>
+          {requestsData.length > 0 && (
+            <span className="min-w-4 h-4 px-1 rounded-full bg-[#EF4444] text-white text-[10px] font-bold flex items-center justify-center">
+              {requestsData.length}
+            </span>
+          )}
           {activeTab === "requests" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#001B40] rounded-full" />
           )}
@@ -298,126 +350,161 @@ export function ArtisanJobsListView({
         </button>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          TAB 1: REQUESTS (Screenshot 3 Left)
-          ═══════════════════════════════════════════════════════════ */}
-      {activeTab === "requests" && (
+      {loadError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-xs sm:text-sm text-red-700 font-medium">
+          {loadError}
+        </div>
+      )}
+
+      {isLoading && (
         <div className="space-y-4">
-          {requestsData.map((req) => (
+          {[1, 2].map((skeleton) => (
             <div
-              key={req.id}
-              className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all space-y-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
-                    {req.title}
-                  </h3>
-                  <p className="font-sans text-xs text-neutral-400 font-medium mt-0.5">
-                    {req.customerName}
-                  </p>
-                </div>
-
-                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                  req.status === "Emergency"
-                    ? "bg-[#FEE2E2] text-[#EF4444]"
-                    : "bg-blue-50 text-blue-700"
-                }`}>
-                  {req.status}
-                </span>
-              </div>
-
-              <p className="font-sans text-xs sm:text-sm text-neutral-600 leading-relaxed">
-                {req.description}
-              </p>
-
-              <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-neutral-500 font-medium">
-                <span>{req.distance}</span>
-                <span>•</span>
-                <span>{req.date}</span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-neutral-100">
-                <span className="font-sans font-bold text-sm sm:text-base text-[#001B40]">
-                  {req.budget}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onSelectRequest) onSelectRequest(req);
-                    else toast.success(`Viewing request: ${req.title}`);
-                  }}
-                  className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto"
-                >
-                  View request
-                </button>
-              </div>
-            </div>
+              key={skeleton}
+              className="bg-white rounded-3xl p-6 border border-neutral-200/80 h-36 animate-pulse"
+            />
           ))}
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          TAB 2: ACTIVE JOBS (Screenshot 3 Right)
-          ═══════════════════════════════════════════════════════════ */}
-      {activeTab === "active" && (
+      {/* TAB 1: REQUESTS */}
+      {!isLoading && activeTab === "requests" && (
         <div className="space-y-4">
-          {activeJobsData.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all space-y-4"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
-                    {job.title}
-                  </h3>
-                  <p className="font-sans text-xs text-neutral-400 font-medium mt-0.5">
-                    {job.customerName}
-                  </p>
+          {requestsData.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 text-center space-y-2">
+              <p className="font-heading font-bold text-base text-[#001B40]">
+                No incoming job requests yet
+              </p>
+              <p className="text-xs sm:text-sm text-neutral-500">
+                New customer requests matching your skills will appear here.
+              </p>
+            </div>
+          ) : (
+            requestsData.map((req) => (
+              <div
+                key={req.id}
+                className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all space-y-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
+                      {req.title}
+                    </h3>
+                    <p className="font-sans text-xs text-neutral-400 font-medium mt-0.5">
+                      {req.customerName}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                      req.status === "Emergency"
+                        ? "bg-[#FEE2E2] text-[#EF4444]"
+                        : "bg-blue-50 text-blue-700"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
                 </div>
 
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700">
-                  {job.badge}
-                </span>
+                <p className="font-sans text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                  {req.description}
+                </p>
+
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-neutral-500 font-medium">
+                  <span>{req.distance}</span>
+                  <span>•</span>
+                  <span>{req.date}</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-neutral-100">
+                  <span className="font-sans font-bold text-sm sm:text-base text-[#001B40]">
+                    {req.budget}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSelectRequest) onSelectRequest(req);
+                      else toast.success(`Viewing request: ${req.title}`);
+                    }}
+                    className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto"
+                  >
+                    View request
+                  </button>
+                </div>
               </div>
-
-              <p className="font-sans text-xs sm:text-sm text-neutral-600 leading-relaxed">
-                {job.description}
-              </p>
-
-              <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-neutral-500 font-medium">
-                <span>{job.distance}</span>
-                <span>•</span>
-                <span>{job.schedule}</span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-neutral-100">
-                <span className="font-sans font-bold text-sm sm:text-base text-[#001B40]">
-                  {job.budget}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onManageJob) onManageJob(job.id);
-                    else toast.success(`Managing job: ${job.title}`);
-                  }}
-                  className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto"
-                >
-                  Manage job
-                </button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          TAB 3: COMPLETED JOBS (Figma Reviews Board)
-          ═══════════════════════════════════════════════════════════ */}
-      {activeTab === "completed" && (
+      {/* TAB 2: ACTIVE JOBS */}
+      {!isLoading && activeTab === "active" && (
+        <div className="space-y-4">
+          {activeJobsData.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 text-center space-y-2">
+              <p className="font-heading font-bold text-base text-[#001B40]">
+                No active jobs
+              </p>
+              <p className="text-xs sm:text-sm text-neutral-500">
+                Accepted and ongoing bookings will appear here.
+              </p>
+            </div>
+          ) : (
+            activeJobsData.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all space-y-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
+                      {job.title}
+                    </h3>
+                    <p className="font-sans text-xs text-neutral-400 font-medium mt-0.5">
+                      {job.customerName}
+                    </p>
+                  </div>
+
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700">
+                    {job.badge}
+                  </span>
+                </div>
+
+                <p className="font-sans text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                  {job.description}
+                </p>
+
+                <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-neutral-500 font-medium">
+                  <span>{job.distance}</span>
+                  <span>•</span>
+                  <span>{job.schedule}</span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1 border-t border-neutral-100">
+                  <span className="font-sans font-bold text-sm sm:text-base text-[#001B40]">
+                    {job.budget}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onManageJob) onManageJob(job.id);
+                      else toast.success(`Managing job: ${job.title}`);
+                    }}
+                    className="px-6 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer self-start sm:self-auto"
+                  >
+                    Manage job
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: COMPLETED JOBS */}
+      {!isLoading && activeTab === "completed" && (
         <div className="space-y-4">
           <div className="px-1">
             <h2 className="text-base sm:text-lg font-heading font-bold text-[#0F1115]">
@@ -428,90 +515,110 @@ export function ArtisanJobsListView({
             </p>
           </div>
 
-          {completedJobsData.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div className="space-y-1">
-                <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
-                  {job.title} · {job.customerName}
-                </h3>
-                <p className="font-sans text-xs text-neutral-400 font-medium">
-                  Completed {job.date} · {job.payout}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0">
-                {job.reviewPending ? (
-                  <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                      Review pending
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onRateCustomer) {
-                          onRateCustomer({
-                            name: job.customerName,
-                            jobTitle: job.title,
-                            date: job.date,
-                          });
-                        } else {
-                          toast.success(`Opening review for ${job.customerName}`);
-                        }
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
-                    >
-                      Rate Customer
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600">
-                    <div className="flex text-amber-400">
-                      {"★".repeat(job.rating || 5)}
-                    </div>
-                    <span>Reviewed</span>
-                  </div>
-                )}
-              </div>
+          {completedJobsData.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 text-center space-y-2">
+              <p className="font-heading font-bold text-base text-[#001B40]">
+                No completed jobs yet
+              </p>
+              <p className="text-xs sm:text-sm text-neutral-500">
+                Finished bookings will show up here once completed.
+              </p>
             </div>
-          ))}
+          ) : (
+            completedJobsData.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
+                    {job.title} · {job.customerName}
+                  </h3>
+                  <p className="font-sans text-xs text-neutral-400 font-medium">
+                    Completed {job.date} · {job.payout}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {job.reviewPending ? (
+                    <div className="flex items-center gap-3">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                        Review pending
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onRateCustomer) {
+                            onRateCustomer({
+                              bookingId: job.id,
+                              name: job.customerName,
+                              jobTitle: job.title,
+                              date: job.date,
+                            });
+                          } else {
+                            toast.success(`Opening review for ${job.customerName}`);
+                          }
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-xs font-bold text-white transition-all shadow-xs cursor-pointer"
+                      >
+                        Rate Customer
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600">
+                      <div className="flex text-amber-400">
+                        {"★".repeat(job.rating || 5)}
+                      </div>
+                      <span>Reviewed</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          TAB 4: DECLINED JOBS (Screenshot 4 Right)
-          ═══════════════════════════════════════════════════════════ */}
-      {activeTab === "declined" && (
+      {/* TAB 4: DECLINED JOBS */}
+      {!isLoading && activeTab === "declined" && (
         <div className="space-y-4">
-          {declinedJobsData.map((job) => (
-            <div
-              key={job.id}
-              className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all flex items-center justify-between gap-4"
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
-                    {job.title}
-                  </h3>
-                </div>
-                <p className="font-sans text-xs text-neutral-400 font-medium">
-                  {job.customerName} · {job.tag} · {job.date}
-                </p>
-                <p className="font-sans font-bold text-sm sm:text-base text-[#001B40] pt-1">
-                  {job.payout}
-                </p>
-              </div>
-
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
-                {job.badge}
-              </span>
+          {declinedJobsData.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 text-center space-y-2">
+              <p className="font-heading font-bold text-base text-[#001B40]">
+                No declined requests
+              </p>
+              <p className="text-xs sm:text-sm text-neutral-500">
+                Requests you decline will appear here for reference.
+              </p>
             </div>
-          ))}
+          ) : (
+            declinedJobsData.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white rounded-3xl p-5 sm:p-6 border border-neutral-200/80 shadow-2xs hover:border-neutral-300 transition-all flex items-center justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-heading font-extrabold text-base sm:text-lg text-[#001B40]">
+                      {job.title}
+                    </h3>
+                  </div>
+                  <p className="font-sans text-xs text-neutral-400 font-medium">
+                    {job.customerName} · {job.tag} · {job.date}
+                  </p>
+                  <p className="font-sans font-bold text-sm sm:text-base text-[#001B40] pt-1">
+                    {job.payout}
+                  </p>
+                </div>
+
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-600">
+                  {job.badge}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
   );
 }
-

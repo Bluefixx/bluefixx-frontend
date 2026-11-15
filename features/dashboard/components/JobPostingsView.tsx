@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import CompareQuotesView, { DetailedQuote, DETAILED_QUOTES } from "./CompareQuotesView";
+import CompareQuotesView, { DetailedQuote } from "./CompareQuotesView";
 import QuoteAcceptedView from "./QuoteAcceptedView";
 import ArtisanPublicProfileView from "./ArtisanPublicProfileView";
 import SecureJobPaymentView from "./SecureJobPaymentView";
@@ -265,6 +265,7 @@ export default function JobPostingsView({ onJobsLoaded }: JobPostingsViewProps =
   if (currentSubView === "compare" && selectedJob) {
     return (
       <CompareQuotesView
+        jobId={selectedJob.id}
         jobTitle={selectedJob.title}
         onBack={() => setCurrentSubView("details")}
         onOpenProfile={(artisanId) => {

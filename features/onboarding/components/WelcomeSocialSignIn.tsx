@@ -11,6 +11,7 @@ interface WelcomeSocialSignInProps {
   onGoToSignUp: () => void;
   onGoogleSignIn?: () => void;
   onAppleSignIn?: () => void;
+  isGoogleLoading?: boolean;
 }
 
 export default function WelcomeSocialSignIn({
@@ -18,6 +19,7 @@ export default function WelcomeSocialSignIn({
   onGoToSignUp,
   onGoogleSignIn,
   onAppleSignIn,
+  isGoogleLoading = false,
 }: WelcomeSocialSignInProps) {
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-white">
@@ -97,8 +99,10 @@ export default function WelcomeSocialSignIn({
 
             {/* Google Button */}
             <button
+              type="button"
+              disabled={isGoogleLoading}
               onClick={onGoogleSignIn || onContinueWithEmail}
-              className="w-full h-12 rounded-xl border border-neutral-800 hover:bg-neutral-50 flex items-center justify-center gap-3 font-sans font-semibold text-xs sm:text-sm text-neutral-800 transition-all cursor-pointer select-none"
+              className="w-full h-12 rounded-xl border border-neutral-800 hover:bg-neutral-50 flex items-center justify-center gap-3 font-sans font-semibold text-xs sm:text-sm text-neutral-800 transition-all cursor-pointer select-none disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {/* Google Color G SVG */}
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
@@ -119,7 +123,7 @@ export default function WelcomeSocialSignIn({
                   d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.61l4.02 3.15c.95-2.85 3.6-4.96 6.73-4.96z"
                 />
               </svg>
-              <span>Continue with Google</span>
+              <span>{isGoogleLoading ? "Connecting to Google..." : "Continue with Google"}</span>
             </button>
 
             {/* Apple Button */}

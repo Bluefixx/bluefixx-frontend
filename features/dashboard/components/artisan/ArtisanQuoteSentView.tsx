@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { withdrawArtisanOfferApi } from "@/lib/api/artisan";
 
 interface ArtisanQuoteSentViewProps {
+  offerId?: string;
   jobTitle?: string;
   customerName?: string;
   quoteAmount?: string;
@@ -17,10 +18,11 @@ interface ArtisanQuoteSentViewProps {
 }
 
 export function ArtisanQuoteSentView({
+  offerId,
   jobTitle = "Kitchen Plumbing Repair",
   customerName = "Daniel C.",
   quoteAmount = "₦45,000",
-  submittedTime = "Today · 11:37",
+  submittedTime = "Just now",
   estimatedCompletion = "1 week",
   warrantyPeriod = "30 days",
   onViewJob,
@@ -32,16 +34,23 @@ export function ArtisanQuoteSentView({
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const handleConfirmWithdraw = async () => {
+    if (!offerId) {
+      toast.error("Offer reference is missing; cannot withdraw quote.");
+      setIsWithdrawModalOpen(false);
+      return;
+    }
+
     setIsWithdrawing(true);
     try {
-      await withdrawArtisanOfferApi("mock-offer-id");
+      await withdrawArtisanOfferApi(offerId);
       toast.success("Quote successfully withdrawn.");
-    } catch {
-      toast.success("Quote successfully withdrawn.");
-    } finally {
-      setIsWithdrawing(false);
       setIsWithdrawModalOpen(false);
       setIsWithdrawn(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to withdraw quote.";
+      toast.error(msg);
+    } finally {
+      setIsWithdrawing(false);
     }
   };
 

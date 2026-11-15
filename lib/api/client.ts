@@ -109,7 +109,9 @@ axiosInstance.interceptors.response.use(
       url.includes("/auth/login") ||
       url.includes("/auth/refresh") ||
       url.includes("/auth/register") ||
-      url.includes("/auth/logout");
+      url.includes("/auth/logout") ||
+      url.includes("/auth/google") ||
+      url.includes("/auth/apple");
 
     if (is401 && !originalRequest._retry && !isAuthRoute) {
       if (isRefreshing) {
@@ -165,7 +167,14 @@ axiosInstance.interceptors.response.use(
           onAuthFailureCallback();
         } else if (typeof window !== "undefined") {
           const path = window.location.pathname;
-          if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+          const isPublicRoute =
+            path === "/" ||
+            path.startsWith("/login") ||
+            path.startsWith("/register") ||
+            path.startsWith("/signup") ||
+            path.startsWith("/onboarding") ||
+            path.startsWith("/forgot-password");
+          if (!isPublicRoute) {
             window.location.href = "/login";
           }
         }
@@ -186,7 +195,14 @@ axiosInstance.interceptors.response.use(
         onAuthFailureCallback();
       } else if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+        const isPublicRoute =
+          path === "/" ||
+          path.startsWith("/login") ||
+          path.startsWith("/register") ||
+          path.startsWith("/signup") ||
+          path.startsWith("/onboarding") ||
+          path.startsWith("/forgot-password");
+        if (!isPublicRoute) {
           window.location.href = "/login";
         }
       }

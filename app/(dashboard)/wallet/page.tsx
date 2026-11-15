@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { getWalletApi, getWalletTransactionsApi } from "@/lib/api/wallet";
+import { getWalletApi, getWalletTransactionsApi, verifyPaymentApi } from "@/lib/api/wallet";
 import { FundWalletView } from "@/features/dashboard/components/FundWalletView";
 import { WithdrawWalletView } from "@/features/dashboard/components/WithdrawWalletView";
 
@@ -43,8 +43,9 @@ export default function WalletPage() {
   useEffect(() => {
     let mounted = true;
 
-    getWalletApi()
-      .then((data) => {
+    const loadWalletData = async () => {
+      try {
+        const data = await getWalletApi();
         if (!mounted || !data) return;
         const rawAvail = (data as any).availableBalanceKobo ?? data.available;
         if (rawAvail !== undefined && rawAvail !== null) {
@@ -62,13 +63,12 @@ export default function WalletPage() {
             setHeldBalance(Math.round(kobo / 100));
           }
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.debug("Wallet API unavailable:", err);
-      });
+      }
 
-    getWalletTransactionsApi()
-      .then((items) => {
+      try {
+        const items = await getWalletTransactionsApi();
         if (!mounted) return;
         if (Array.isArray(items) && items.length > 0) {
           const mapped: WalletTransaction[] = items.map((it: any) => ({
@@ -90,12 +90,61 @@ export default function WalletPage() {
           }));
           setTransactions(mapped);
         }
-        setIsLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.debug("Transactions API offline:", err);
-        setIsLoading(false);
-      });
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    const verifyReturningTopup = async () => {
+      if (typeof window === "undefined") {
+        await loadWalletData();
+        return;
+      }
+      const params = new URLSearchParams(window.location.search);
+      const urlRef = params.get("reference") || params.get("trxref");
+      const rawPending = sessionStorage.getItem("bluefixx_pending_topup");
+
+      if (rawPending) {
+        try {
+          const pending = JSON.parse(rawPending) as {
+            paymentId?: string;
+            reference?: string;
+            amount?: number;
+          };
+          if (pending.paymentId && (!urlRef || !pending.reference || urlRef === pending.reference)) {
+            const verified = await verifyPaymentApi(pending.paymentId);
+            if (!mounted) return;
+            if (verified?.status === "SUCCEEDED") {
+              sessionStorage.removeItem("bluefixx_pending_topup");
+              toast.success(
+                pending.amount
+                  ? `Wallet funded with ₦${pending.amount.toLocaleString()}!`
+                  : "Wallet funded successfully!"
+              );
+            } else if (verified?.status === "FAILED") {
+              sessionStorage.removeItem("bluefixx_pending_topup");
+              toast.error("Paystack payment failed or was cancelled.");
+            } else {
+              toast("Payment is still pending confirmation.");
+            }
+          }
+        } catch (err: any) {
+          if (mounted) {
+            toast.error(err?.message || "Could not verify Paystack payment yet.");
+          }
+        }
+      }
+
+      if (urlRef) {
+        window.history.replaceState({}, "", "/wallet");
+      }
+
+      await loadWalletData();
+    };
+
+    void verifyReturningTopup();
 
     return () => {
       mounted = false;

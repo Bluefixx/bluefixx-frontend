@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { payTalentEnrollmentApi } from "@/lib/api/talent";
 import { getWalletApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { openPaystackInline } from "@/lib/paystack";
 import { formatNaira } from "@/lib/utils/currency";
 
 interface TalentApprenticeshipPaymentViewProps {
@@ -74,44 +75,70 @@ export function TalentApprenticeshipPaymentView({
         onPaymentSuccess();
       } catch (err: unknown) {
         setIsProcessing(false);
-        // Fallback simulation or error report
         const message = err instanceof Error ? err.message : "Payment declined";
-        if (pin === "0000") {
-          toast.error("Payment declined by bank.");
-          onPaymentFailed?.();
-        } else {
-          toast.success(`Payment completed! ${fee} safely held in escrow.`);
-          onPaymentSuccess();
-        }
+        toast.error(message);
+        onPaymentFailed?.();
       }
     } else {
-      setIsPaystackModalOpen(true);
+      await handlePaystackPay();
     }
   };
 
-  const handlePaystackPay = async (type: "card" | "transfer") => {
+  const handlePaystackPay = async () => {
     setIsPaystackModalOpen(false);
     setIsProcessing(true);
-    const paymentKey = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `pay-${Date.now()}`;
+    const paymentKey =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `pay-${Date.now()}`;
 
     try {
-      const res = await payTalentEnrollmentApi(
+      const res = (await payTalentEnrollmentApi(
         enrollmentId,
         { source: "PAYSTACK" },
         paymentKey
-      );
+      )) as { id?: string; checkoutUrl?: string; authorizationUrl?: string };
 
-      if (res?.id) {
-        await verifyPaymentApi(res.id).catch(() => {});
+      const checkoutUrl = res?.checkoutUrl || res?.authorizationUrl;
+      if (!checkoutUrl || !res?.id) {
+        throw new Error("Paystack checkout URL was not returned");
       }
 
+      const paymentId = res.id;
+      await openPaystackInline({
+        checkoutUrl,
+        onSuccess: async () => {
+          try {
+            const verified = await verifyPaymentApi(paymentId);
+            setIsProcessing(false);
+            if (verified?.status === "SUCCEEDED") {
+              toast.success(`Payment completed! ${fee} safely held in escrow.`);
+              onPaymentSuccess();
+            } else if (verified?.status === "FAILED") {
+              toast.error("Paystack payment failed or was cancelled.");
+              onPaymentFailed?.();
+            } else {
+              toast("Payment is pending confirmation.");
+            }
+          } catch (err: unknown) {
+            setIsProcessing(false);
+            toast.error(err instanceof Error ? err.message : "Could not verify Paystack payment.");
+          }
+        },
+        onCancel: () => {
+          setIsProcessing(false);
+          toast("Payment cancelled.");
+        },
+        onError: (msg) => {
+          setIsProcessing(false);
+          toast.error(msg);
+          onPaymentFailed?.();
+        },
+      });
+    } catch (err: unknown) {
       setIsProcessing(false);
-      toast.success(`Paystack payment with ${type} confirmed!`);
-      onPaymentSuccess();
-    } catch {
-      setIsProcessing(false);
-      toast.success(`Paystack payment with ${type} confirmed!`);
-      onPaymentSuccess();
+      toast.error(err instanceof Error ? err.message : "Unable to start Paystack payment.");
+      onPaymentFailed?.();
     }
   };
 
@@ -361,14 +388,14 @@ export function TalentApprenticeshipPaymentView({
             <div className="space-y-3 pt-2">
               <button
                 type="button"
-                onClick={() => handlePaystackPay("card")}
+                onClick={() => handlePaystackPay()}
                 className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white font-sans font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
               >
                 Pay with Card
               </button>
               <button
                 type="button"
-                onClick={() => handlePaystackPay("transfer")}
+                onClick={() => handlePaystackPay()}
                 className="w-full py-3 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs sm:text-sm transition-colors cursor-pointer"
               >
                 Pay with Transfer

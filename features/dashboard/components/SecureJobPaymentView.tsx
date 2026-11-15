@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { createPaymentApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { openPaystackInline } from "@/lib/paystack";
 import { confirmBookingScheduleVisitApi } from "@/lib/api/bookings";
 import { nairaToKobo } from "@/lib/utils/currency";
 
@@ -90,8 +91,9 @@ export default function SecureJobPaymentView({
   };
 
   const handleConfirmPayment = async () => {
+    const source = selectedPaymentSource === "wallet" ? "WALLET" : "PAYSTACK";
     const fullPin = pinDigits.join("");
-    if (fullPin.length < 4) {
+    if (source === "WALLET" && fullPin.length < 4) {
       toast.error("Please enter your complete 4-digit PIN");
       return;
     }
@@ -105,14 +107,45 @@ export default function SecureJobPaymentView({
     setIsProcessingPayment(true);
     try {
       const payment = await createPaymentApi({
-        amount: nairaToKobo(quoteTotal),
+        purpose: "BOOKING",
         bookingId: targetBookingId,
-        source: selectedPaymentSource === "wallet" ? "WALLET" : "PAYSTACK",
+        source,
+        ...(source === "WALLET" ? { pin: fullPin } : {}),
       });
 
-      if (payment.authorizationUrl) {
-        window.open(payment.authorizationUrl, "_blank", "noopener,noreferrer");
-        await verifyPaymentApi(payment.id).catch(() => null);
+      if (source === "PAYSTACK") {
+        const checkoutUrl = payment.checkoutUrl || payment.authorizationUrl;
+        if (!checkoutUrl) {
+          throw new Error("Paystack checkout URL was not returned");
+        }
+        setIsPinModalOpen(false);
+        await openPaystackInline({
+          checkoutUrl,
+          onSuccess: async () => {
+            try {
+              const verified = await verifyPaymentApi(payment.id);
+              if (verified?.status === "SUCCEEDED") {
+                setCurrentStep("secured-success");
+                toast.success(`₦${quoteTotal.toLocaleString("en-NG")} secured in Escrow protection!`, {
+                  icon: "🔒",
+                });
+              } else if (verified?.status === "FAILED") {
+                toast.error("Paystack payment failed or was cancelled.");
+              } else {
+                toast("Payment is pending confirmation.");
+              }
+            } catch (err: unknown) {
+              toast.error(err instanceof Error ? err.message : "Could not verify Paystack payment.");
+            }
+          },
+          onCancel: () => {
+            toast("Payment cancelled.");
+          },
+          onError: (msg) => {
+            toast.error(msg);
+          },
+        });
+        return;
       }
 
       setIsPinModalOpen(false);

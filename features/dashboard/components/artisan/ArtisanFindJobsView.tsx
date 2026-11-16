@@ -84,6 +84,7 @@ export function ArtisanFindJobsView({
           photoCaption: "",
           audioDuration: "",
           questions: [],
+          ownOffer: (it as any).ownOffer ?? null,
         }));
         setRemoteJobs(mapped);
       })

@@ -16,6 +16,9 @@ import {
   markTalentProgramMessagesReadApi,
 } from "@/lib/api/talent";
 import { getSocket, emitWithAck } from "@/lib/realtime/socket";
+import { uploadMediaFile } from "@/lib/api/media";
+import { ChatAttachments, extractChatAttachments } from "@/components/chat/ChatAttachments";
+import type { ChatMessageAttachment } from "@/types/customer";
 
 type ThreadKind = "quote" | "talent" | "support";
 
@@ -38,6 +41,7 @@ interface ArtisanMessage {
   sender: "peer" | "artisan" | "support";
   senderName: string;
   text: string;
+  attachments?: ChatMessageAttachment[];
   time: string;
 }
 
@@ -62,6 +66,12 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
   const [inputText, setInputText] = useState("");
   const [chatMessages, setChatMessages] = useState<ArtisanMessage[]>([]);
   const messagesEndRef = React.useRef<HTMLDivElement | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
+  const recordTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -167,6 +177,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
               sender: isSelf ? "artisan" : "peer",
               senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
               text: m.text || "",
+              attachments: extractChatAttachments(m),
               time: formatShortTime(m.createdAt) || "Today",
             };
           });
@@ -193,6 +204,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
               sender: isSelf ? "artisan" : "peer",
               senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
               text: m.text || "",
+              attachments: extractChatAttachments(m),
               time: formatShortTime(m.createdAt) || "Today",
             };
           });
@@ -233,6 +245,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
           sender: isSelf ? "artisan" : "peer",
           senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
           text: m.text || "",
+          attachments: extractChatAttachments(m),
           time: formatShortTime(m.createdAt) || formatShortTime(new Date().toISOString()),
         };
         setChatMessages((prev) => {
@@ -289,6 +302,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
           sender: isSelf ? "artisan" : "peer",
           senderName: isSelf ? (user.fullName || "You") : activeThread.peerName,
           text: m.text || "",
+          attachments: extractChatAttachments(m),
           time: formatShortTime(m.createdAt) || formatShortTime(new Date().toISOString()),
         };
         setChatMessages((prev) => {
@@ -388,6 +402,141 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
         ]);
       }, 1000);
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !activeThread) return;
+    if (activeThread.kind !== "quote" || !activeThread.quoteId) {
+      toast.error("File attachments are only supported in quote conversations.");
+      return;
+    }
+
+    const clientId = crypto.randomUUID();
+    const localUrl = URL.createObjectURL(file);
+    const isImage = file.type.startsWith("image/");
+    const newMsg: ArtisanMessage = {
+      id: clientId,
+      clientId,
+      sender: "artisan",
+      senderName: user?.fullName || "You",
+      text: file.name,
+      attachments: [
+        {
+          id: clientId,
+          purpose: "CHAT",
+          resourceType: isImage ? "image" : "raw",
+          bytes: file.size,
+          localUrl,
+          fileName: file.name,
+        },
+      ],
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    setChatMessages((prev) => [...prev, newMsg]);
+    try {
+      const res = await uploadMediaFile(file, "CHAT");
+      await sendQuoteMessageApi(activeThread.quoteId, {
+        text: file.name,
+        mediaIds: [res.id],
+        clientId,
+      });
+      toast.success(isImage ? "Photo sent" : "File sent");
+    } catch {
+      toast.error("Failed to send attachment");
+    }
+  };
+
+  const startRecording = async () => {
+    if (!activeThread || activeThread.kind !== "quote" || !activeThread.quoteId) {
+      toast.error("Voice notes are only supported in quote conversations.");
+      return;
+    }
+    const quoteId = activeThread.quoteId;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const mimeType = mediaRecorder.mimeType || "audio/webm";
+        const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        const durationSecondsSnapshot = recordingSeconds;
+        const durationStr = `0:${durationSecondsSnapshot < 10 ? "0" : ""}${durationSecondsSnapshot}`;
+        const clientId = crypto.randomUUID();
+
+        stream.getTracks().forEach((track) => track.stop());
+
+        const voiceMsg: ArtisanMessage = {
+          id: clientId,
+          clientId,
+          sender: "artisan",
+          senderName: user?.fullName || "You",
+          text: `Voice note (${durationStr})`,
+          attachments: [
+            {
+              id: clientId,
+              purpose: "VOICE",
+              resourceType: "video",
+              duration: durationSecondsSnapshot || 1,
+              localUrl: audioUrl,
+            },
+          ],
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        };
+
+        setChatMessages((prev) => [...prev, voiceMsg]);
+        try {
+          const audioFile = new File([audioBlob], `voicenote-${Date.now()}.${ext}`, {
+            type: mimeType,
+          });
+          const res = await uploadMediaFile(audioFile, "VOICE");
+          await sendQuoteMessageApi(quoteId, {
+            text: `Voice note (${durationStr})`,
+            mediaIds: [res.id],
+            clientId,
+          });
+          toast.success("Voice note sent");
+        } catch {
+          toast.error("Failed to send voice note");
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordTimerRef.current = setInterval(() => {
+        setRecordingSeconds((sec) => sec + 1);
+      }, 1000);
+    } catch {
+      toast.error("Microphone permission denied");
+    }
+  };
+
+  const stopAndSendRecording = () => {
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const cancelRecording = () => {
+    if (recordTimerRef.current) clearInterval(recordTimerRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stream.getTracks().forEach((track) => track.stop());
+    }
+    setIsRecording(false);
+    setRecordingSeconds(0);
   };
 
   const filteredThreads = threads.filter((t) =>
@@ -666,7 +815,16 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
                           : "bg-white text-neutral-800 rounded-tl-sm border border-neutral-200 shadow-2xs"
                       }`}
                     >
-                      {m.text}
+                      <ChatAttachments
+                        attachments={m.attachments}
+                        fallbackName={m.text}
+                        isSelf={m.sender === "artisan"}
+                      />
+                      {m.text &&
+                        !(m.attachments?.some((a) => a.purpose === "VOICE") &&
+                          m.text.toLowerCase().startsWith("voice note")) && (
+                          <p>{m.text}</p>
+                        )}
                     </div>
                     <span className="text-[10px] text-neutral-400 mt-1 px-1">{m.time}</span>
                   </div>
@@ -675,53 +833,91 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
               </div>
 
               {/* Chat Message Input Bar */}
-              <div className="p-3 sm:p-4 border-t border-neutral-200/80 bg-white flex items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => toast("Photo / file attachment triggered", { icon: "📎" })}
-                  className="p-2.5 rounded-xl text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 transition-colors cursor-pointer"
-                  title="Attach file"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx,.zip"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              {isRecording ? (
+                <div className="p-3 sm:p-4 border-t border-rose-100 bg-rose-50/60 flex items-center justify-between gap-3 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600" />
+                    </span>
+                    <span className="text-xs font-bold text-rose-700">Recording audio...</span>
+                    <span className="text-xs font-mono font-semibold text-rose-600 bg-rose-100 px-2 py-0.5 rounded-md">
+                      0:{recordingSeconds < 10 ? "0" : ""}{recordingSeconds}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={cancelRecording}
+                      className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-100 text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={stopAndSendRecording}
+                      className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-2xs cursor-pointer transition-colors"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 sm:p-4 border-t border-neutral-200/80 bg-white flex items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2.5 rounded-xl text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 transition-colors cursor-pointer"
+                    title="Attach file"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                    </svg>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => toast("Recording voice note...", { icon: "🎙️" })}
-                  className="p-2.5 rounded-xl text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 transition-colors cursor-pointer"
-                  title="Record voice note"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                    <line x1="12" y1="19" x2="12" y2="23" />
-                    <line x1="8" y1="23" x2="16" y2="23" />
-                  </svg>
-                </button>
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    className="p-2.5 rounded-xl text-neutral-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                    title="Record voice note"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="23" />
+                      <line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                  </button>
 
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-                  placeholder="Write a message..."
-                  className="flex-1 px-4 py-3 rounded-xl bg-neutral-100 text-xs sm:text-sm font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-[#001B40]"
-                />
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                    placeholder="Write a message..."
+                    className="flex-1 px-4 py-3 rounded-xl bg-neutral-100 text-xs sm:text-sm font-medium text-neutral-900 focus:outline-none focus:ring-2 focus:ring-[#001B40]"
+                  />
 
-                <button
-                  type="button"
-                  onClick={handleSendMessage}
-                  className="p-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white transition-all shadow-xs shrink-0 cursor-pointer"
-                  title="Send message"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={handleSendMessage}
+                    className="p-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white transition-all shadow-xs shrink-0 cursor-pointer"
+                    title="Send message"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

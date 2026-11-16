@@ -17,9 +17,16 @@ const VIDEO_PURPOSES: ReadonlySet<MediaPurpose> = new Set<MediaPurpose>([
   "ASSESSMENT",
 ]);
 
-/** Map an upload purpose to the Cloudinary resource type the backend expects. */
-export function mediaResourceTypeFor(purpose: MediaPurpose): MediaResourceType {
-  return VIDEO_PURPOSES.has(purpose) ? "video" : "image";
+/** Map an upload purpose (and optional file) to the Cloudinary resource type the backend expects. */
+export function mediaResourceTypeFor(
+  purpose: MediaPurpose,
+  file?: File
+): MediaResourceType {
+  if (VIDEO_PURPOSES.has(purpose)) return "video";
+  if (purpose === "CHAT" && file && !file.type.startsWith("image/")) {
+    return "raw";
+  }
+  return "image";
 }
 
 /**
@@ -54,11 +61,12 @@ export async function getMediaUrlApi(id: string): Promise<MediaUrlResponse> {
 export async function uploadMediaFile(
   file: File,
   purpose: MediaPurpose
-): Promise<{ id: string; url?: string }> {
+): Promise<{ id: string; url?: string; resourceType: MediaResourceType }> {
+  const resourceType = mediaResourceTypeFor(purpose, file);
   try {
     const initRes = await initiateMediaUploadApi({
       purpose,
-      resourceType: mediaResourceTypeFor(purpose),
+      resourceType,
     });
 
     // Upload the binary to the signed provider URL using the returned fields.
@@ -81,15 +89,15 @@ export async function uploadMediaFile(
 
     try {
       const urlRes = await getMediaUrlApi(initRes.id);
-      return { id: initRes.id, url: urlRes.url };
+      return { id: initRes.id, url: urlRes.url, resourceType };
     } catch {
-      return { id: initRes.id };
+      return { id: initRes.id, resourceType };
     }
   } catch (error) {
     // When mocks are active or storage is unavailable locally, generate mock media ID
     if (process.env.NEXT_PUBLIC_ENABLE_MOCKS === "true") {
       const mockId = `media-${Date.now()}`;
-      return { id: mockId, url: URL.createObjectURL(file) };
+      return { id: mockId, url: URL.createObjectURL(file), resourceType };
     }
     throw error;
   }

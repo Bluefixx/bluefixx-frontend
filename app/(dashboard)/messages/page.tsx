@@ -14,7 +14,8 @@ import {
   uploadMediaFile,
 } from "@/lib/api";
 import { ArtisanMessagesView } from "@/features/dashboard/components/artisan/ArtisanMessagesView";
-import { Conversation } from "@/types/customer";
+import { ChatAttachments, extractChatAttachments } from "@/components/chat/ChatAttachments";
+import { ChatMessageAttachment, Conversation } from "@/types/customer";
 import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 
 interface ChatMessage {
@@ -26,6 +27,7 @@ interface ChatMessage {
   isVoice?: boolean;
   voiceDuration?: string;
   audioUrl?: string;
+  attachments?: ChatMessageAttachment[];
   time: string;
 }
 
@@ -111,6 +113,7 @@ function CustomerMessagesView() {
               clientId: m.clientId,
               sender: m.authorId === user?.id || m.senderId === user?.id ? "customer" : "artisan",
               text: m.text,
+              attachments: extractChatAttachments(m),
               time: m.createdAt
                 ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                 : "Today",
@@ -154,6 +157,7 @@ function CustomerMessagesView() {
         clientId: m.clientId,
         sender: m.authorId === user?.id || m.senderId === user?.id ? "customer" : "artisan",
         text: m.text,
+        attachments: extractChatAttachments(m),
         time: m.createdAt
           ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
           : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -273,41 +277,51 @@ function CustomerMessagesView() {
   };
 
   // ══════════════════════════════════════════════════════════════
-  // FUNCTIONAL PHOTO ATTACHMENT
+  // FUNCTIONAL FILE / PHOTO ATTACHMENT
   // ══════════════════════════════════════════════════════════════
-  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
 
     const dataUrl = URL.createObjectURL(file);
+    const isImage = file.type.startsWith("image/");
+    const clientId = crypto.randomUUID();
     const photoMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: clientId,
+      clientId,
       sender: "customer",
-      image: dataUrl,
       text: file.name,
+      attachments: [
+        {
+          id: clientId,
+          purpose: "CHAT",
+          resourceType: isImage ? "image" : "raw",
+          bytes: file.size,
+          localUrl: dataUrl,
+          fileName: file.name,
+        },
+      ],
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
     if (activeConversation !== "support") {
       setChatMessages((prev) => [...prev, photoMsg]);
-
-      // Upload image to media storage and dispatch message with mediaId
-      uploadMediaFile(file, "JOB")
-        .then((res) => {
-          if (res?.id) {
-            sendQuoteMessageApi(activeConversation, {
-              text: file.name,
-              mediaIds: [res.id],
-              clientId: `client-${Date.now()}`,
-            }).catch(() => {});
-          }
-        })
-        .catch(() => {});
+      try {
+        const res = await uploadMediaFile(file, "CHAT");
+        await sendQuoteMessageApi(activeConversation, {
+          text: file.name,
+          mediaIds: [res.id],
+          clientId,
+        });
+        toast.success(isImage ? "Photo sent" : "File sent");
+      } catch {
+        toast.error("Failed to send attachment");
+      }
     } else {
       setSupportMessages((prev) => [...prev, photoMsg]);
+      toast.success("Attachment added");
     }
-    toast.success("Photo attached & sent");
-    e.target.value = "";
   };
 
   // ══════════════════════════════════════════════════════════════
@@ -326,45 +340,55 @@ function CustomerMessagesView() {
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      mediaRecorder.onstop = async () => {
+        const mimeType = mediaRecorder.mimeType || "audio/webm";
+        const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
-        const durationStr = `0:${recordingSeconds < 10 ? "0" : ""}${recordingSeconds}`;
+        const durationSecondsSnapshot = recordingSeconds;
+        const durationStr = `0:${durationSecondsSnapshot < 10 ? "0" : ""}${durationSecondsSnapshot}`;
+        const clientId = crypto.randomUUID();
 
         const voiceMsg: ChatMessage = {
-          id: Date.now().toString(),
+          id: clientId,
+          clientId,
           sender: "customer",
-          isVoice: true,
-          voiceDuration: durationStr === "0:00" ? "0:04" : durationStr,
-          audioUrl: audioUrl,
+          text: `Voice note (${durationStr})`,
+          attachments: [
+            {
+              id: clientId,
+              purpose: "VOICE",
+              resourceType: "video",
+              duration: durationSecondsSnapshot || 1,
+              localUrl: audioUrl,
+            },
+          ],
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         };
 
-        if (activeConversation !== "support") {
-          setChatMessages((prev) => [...prev, voiceMsg]);
-
-          // Upload audio file and dispatch message with voice mediaId
-          const audioFile = new File([audioBlob], `voicenote-${Date.now()}.webm`, {
-            type: "audio/webm",
-          });
-          uploadMediaFile(audioFile, "VOICE")
-            .then((res) => {
-              if (res?.id) {
-                sendQuoteMessageApi(activeConversation, {
-                  text: `Voice note (${durationStr})`,
-                  mediaIds: [res.id],
-                  clientId: `client-${Date.now()}`,
-                }).catch(() => {});
-              }
-            })
-            .catch(() => {});
-        } else {
-          setSupportMessages((prev) => [...prev, voiceMsg]);
-        }
-        toast.success("Voice note sent");
-
         // Stop all audio tracks
         stream.getTracks().forEach((track) => track.stop());
+
+        if (activeConversation !== "support") {
+          setChatMessages((prev) => [...prev, voiceMsg]);
+          try {
+            const audioFile = new File([audioBlob], `voicenote-${Date.now()}.${ext}`, {
+              type: mimeType,
+            });
+            const res = await uploadMediaFile(audioFile, "VOICE");
+            await sendQuoteMessageApi(activeConversation, {
+              text: `Voice note (${durationStr})`,
+              mediaIds: [res.id],
+              clientId,
+            });
+            toast.success("Voice note sent");
+          } catch {
+            toast.error("Failed to send voice note");
+          }
+        } else {
+          setSupportMessages((prev) => [...prev, voiceMsg]);
+          toast.success("Voice note added");
+        }
       };
 
       mediaRecorder.start();
@@ -443,11 +467,11 @@ function CustomerMessagesView() {
   // ══════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in duration-150">
-      {/* Hidden file input for functional photo attachment */}
+      {/* Hidden file input for functional photo / file attachment */}
       <input
         type="file"
         ref={imageInputRef}
-        accept="image/*"
+        accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xls,.xlsx,.zip"
         onChange={handlePhotoSelect}
         className="hidden"
       />
@@ -645,57 +669,16 @@ function CustomerMessagesView() {
                         : "bg-neutral-100 text-neutral-800 rounded-tl-xs"
                     }`}
                   >
-                    {/* Attached Image if present */}
-                    {msg.image && (
-                      <div className="relative w-full h-44 rounded-xl overflow-hidden mb-2">
-                        <Image
-                          src={msg.image}
-                          alt="Attachment"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    )}
-
-                    {/* Voice Note if present */}
-                    {msg.isVoice ? (
-                      <div className="flex items-center gap-3 py-1">
-                        <button
-                          type="button"
-                          onClick={() => togglePlayAudio(msg)}
-                          className="w-8 h-8 rounded-full bg-white text-[#001B40] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs hover:scale-105 transition-transform"
-                          aria-label="Play voice note"
-                        >
-                          {playingMessageId === msg.id ? (
-                            <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                              <rect x="6" y="4" width="4" height="16" />
-                              <rect x="14" y="4" width="4" height="16" />
-                            </svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24">
-                              <polygon points="5 3 19 12 5 21 5 3" />
-                            </svg>
-                          )}
-                        </button>
-                        {/* Audio Waveform Graphic */}
-                        <div className="flex items-center gap-0.5 flex-1 h-5">
-                          {[3, 6, 8, 4, 10, 14, 8, 12, 16, 7, 11, 15, 9, 6, 12, 8, 4, 10, 5, 8, 3].map((h, i) => (
-                            <span
-                              key={i}
-                              style={{ height: `${h * 1.2}px` }}
-                              className={`w-1 rounded-full transition-colors ${
-                                playingMessageId === msg.id ? "bg-blue-300 animate-pulse" : "bg-white/60"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-[11px] text-blue-200 shrink-0 font-mono">
-                          {msg.voiceDuration || "0:24"}
-                        </span>
-                      </div>
-                    ) : (
-                      <p>{msg.text}</p>
-                    )}
+                    <ChatAttachments
+                      attachments={msg.attachments}
+                      fallbackName={msg.text}
+                      isSelf={isMe}
+                    />
+                    {msg.text &&
+                      !(msg.attachments?.some((a) => a.purpose === "VOICE") &&
+                        msg.text.toLowerCase().startsWith("voice note")) && (
+                        <p>{msg.text}</p>
+                      )}
                   </div>
                   <span className="text-[10px] text-neutral-400 mt-1 px-1">
                     {msg.time}

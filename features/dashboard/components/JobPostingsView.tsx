@@ -181,36 +181,59 @@ export default function JobPostingsView({ onJobsLoaded }: JobPostingsViewProps =
         const liveJobs = await getJobsApi();
         if (!mounted) return;
         if (liveJobs && Array.isArray(liveJobs) && liveJobs.length > 0) {
-          const mappedJobs: PostedJob[] = liveJobs.map((j) => ({
-            id: j.id,
-            title: j.title,
-            category: "Home & Construction",
-            service: j.title,
-            location: "Lagos, Nigeria",
-            date: new Date(j.preferredStart || j.createdAt).toLocaleDateString("en-NG", {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-            }),
-            time: "Flexible",
-            budget: "Negotiable",
-            urgency: j.urgency,
-            updatedAt: "Recent",
-            status:
-              j.status === "OPEN"
-                ? "receiving-quotes"
-                : j.status === "CANCELLED"
+          const mappedJobs: PostedJob[] = liveJobs.map((j: any) => {
+            const comparisons = Array.isArray(j.comparisons) ? j.comparisons : [];
+            const mappedQuotes: ArtisanQuote[] = comparisons
+              .filter((c: any) => Boolean(c?.offer))
+              .map((c: any) => {
+                const durationDays = Number(c.offer.durationDays || 0);
+                const totalKobo =
+                  Number(c.offer.base || 0) + Number(c.offer.fee || 0) ||
+                  Number(c.offer.amount || 0);
+                return {
+                  id: c.offer.id || c.quoteId,
+                  artisanName: c.artisan?.businessName || c.artisan?.fullName || "Artisan",
+                  rating: Number((c.artisan?.rating || 0).toFixed(1)),
+                  completedJobs: c.artisan?.completedJobs ?? 0,
+                  price: Math.round(totalKobo / 100),
+                  duration: durationDays > 0 ? `${durationDays} day${durationDays === 1 ? "" : "s"}` : "Flexible",
+                  avatarUrl: "/images/david.jpg",
+                };
+              });
+            const quotesReceived = j.quotesReceived ?? j.quotesCount ?? mappedQuotes.length;
+            const status: JobStatus =
+              j.status === "CANCELLED"
                 ? "cancelled"
                 : j.status === "EXPIRED"
                 ? "expired"
-                : "receiving-quotes",
-            matchedProfessionals: 5,
-            quotesReceived: j.quotesCount || 0,
-            isAccessible: true,
-            someoneOnSite: true,
-            photos: [],
-            quotes: [],
-          }));
+                : quotesReceived > 0
+                ? "receiving-quotes"
+                : "no-quotes-yet";
+
+            return {
+              id: j.id,
+              title: j.title,
+              category: "Home & Construction",
+              service: j.title,
+              location: j.address?.address || "Lagos, Nigeria",
+              date: new Date(j.preferredStart || j.createdAt).toLocaleDateString("en-NG", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
+              }),
+              time: "Flexible",
+              budget: "Negotiable",
+              urgency: j.urgency,
+              updatedAt: "Recent",
+              status,
+              matchedProfessionals: j.matchedProfessionals ?? 0,
+              quotesReceived,
+              isAccessible: true,
+              someoneOnSite: true,
+              photos: [],
+              quotes: mappedQuotes,
+            };
+          });
           setJobs(mappedJobs);
           if (mappedJobs[0]?.id) {
             setSelectedJobId(mappedJobs[0].id);
@@ -276,6 +299,10 @@ export default function JobPostingsView({ onJobsLoaded }: JobPostingsViewProps =
           setAcceptedQuote(quote);
           setCurrentSubView("accepted");
         }}
+        onCompletePayment={(quote) => {
+          setAcceptedQuote(quote);
+          setCurrentSubView("payment");
+        }}
       />
     );
   }
@@ -305,6 +332,7 @@ export default function JobPostingsView({ onJobsLoaded }: JobPostingsViewProps =
   if (currentSubView === "payment" && selectedJob) {
     return (
       <SecureJobPaymentView
+        bookingId={acceptedQuote?.bookingId}
         jobId={selectedJob.id}
         jobTitle={selectedJob.title}
         artisanName={acceptedQuote?.artisanName || "Emeka Okafor"}

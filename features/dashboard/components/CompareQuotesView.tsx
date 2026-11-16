@@ -10,6 +10,7 @@ import { QuoteResponse, QuoteOffer } from "@/types/customer";
 
 export interface DetailedQuote {
   id: string;
+  bookingId?: string;
   artisanId: string;
   artisanName: string;
   avatarUrl: string;
@@ -29,6 +30,8 @@ export interface DetailedQuote {
   materialsNotIncluded: string;
   additionalNotes: string;
   submittedAt: string;
+  offerStatus?: string;
+  bookingFunded?: boolean;
 }
 
 type FilterType = "recommended" | "lowest-price" | "highest-rated" | "closest" | "fastest";
@@ -39,6 +42,7 @@ interface CompareQuotesViewProps {
   onBack: () => void;
   onOpenProfile: (artisanId: string) => void;
   onAcceptSuccess: (quote: DetailedQuote) => void;
+  onCompletePayment?: (quote: DetailedQuote) => void;
 }
 
 function mapOfferToDetailedQuote(
@@ -88,6 +92,7 @@ export default function CompareQuotesView({
   onBack,
   onOpenProfile,
   onAcceptSuccess,
+  onCompletePayment,
 }: CompareQuotesViewProps) {
   const [activeFilter, setActiveFilter] = useState<FilterType>("recommended");
   const [loadedQuotes, setLoadedQuotes] = useState<DetailedQuote[]>([]);
@@ -113,7 +118,58 @@ export default function CompareQuotesView({
       })
       .then((res) => {
         if (!mounted || !res) return;
-        const [quotesRes] = res;
+        const [quotesRes, jobRes] = res as [QuoteResponse[], any];
+        const comparisons = Array.isArray(jobRes?.comparisons) ? jobRes.comparisons : [];
+
+        if (comparisons.length > 0) {
+          const mapped: DetailedQuote[] = comparisons
+            .filter(
+              (c: any) =>
+                c?.offer &&
+                (c.offer.status === "OPEN" || c.offer.status === "ACCEPTED")
+            )
+            .map((c: any, idx: number) => {
+              const offer = c.offer as QuoteOffer & {
+                scope?: string;
+                exclusions?: string;
+                notes?: string;
+              };
+              const baseQuote = mapOfferToDetailedQuote(
+                {
+                  id: c.quoteId,
+                  customerId: jobRes.customerId || "",
+                  artisanId: c.artisan?.id || offer.authorId,
+                  serviceId: jobRes.serviceId || "",
+                  description: offer.scope || jobRes.description || "",
+                  urgency: jobRes.urgency || "STANDARD",
+                  status: c.status || "OPEN",
+                  expiresAt: offer.expiresAt,
+                } as QuoteResponse,
+                offer,
+                idx
+              );
+              const distanceKm =
+                typeof c.artisan?.distance === "number"
+                  ? `${(c.artisan.distance / 1000).toFixed(1)} km away`
+                  : "Nearby";
+              return {
+                ...baseQuote,
+                bookingId: jobRes.booking?.id,
+                offerStatus: offer.status,
+                bookingFunded: Boolean(jobRes.booking?.funded),
+                artisanName: c.artisan?.businessName || c.artisan?.fullName || baseQuote.artisanName,
+                rating: Number((c.artisan?.rating || 0).toFixed(1)),
+                completedJobs: c.artisan?.completedJobs ?? 0,
+                distance: distanceKm,
+                workDescription: offer.scope || baseQuote.workDescription,
+                materialsNotIncluded: offer.exclusions || baseQuote.materialsNotIncluded,
+                additionalNotes: offer.notes || "",
+              };
+            });
+          setLoadedQuotes(mapped);
+          return;
+        }
+
         const list = Array.isArray(quotesRes) ? quotesRes : [];
         const mapped: DetailedQuote[] = [];
         list.forEach((quote) => {
@@ -158,10 +214,10 @@ export default function CompareQuotesView({
     setIsAccepting(true);
 
     try {
-      await acceptOfferApi(accepted.id, generateIdempotencyKey());
+      const booking = await acceptOfferApi(accepted.id, generateIdempotencyKey());
       setAcceptQuoteModal(null);
       toast.success("Quote accepted!");
-      onAcceptSuccess(accepted);
+      onAcceptSuccess({ ...accepted, bookingId: booking?.id });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to accept quote.";
       toast.error(msg);
@@ -402,13 +458,29 @@ export default function CompareQuotesView({
                   </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setAcceptQuoteModal(quote)}
-                  className="w-full py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold transition-colors cursor-pointer text-center shadow-2xs"
-                >
-                  Accept
-                </button>
+                {quote.offerStatus === "ACCEPTED" ? (
+                  quote.bookingFunded ? (
+                    <div className="w-full py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-semibold text-center">
+                      Accepted &amp; Paid
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => (onCompletePayment ? onCompletePayment(quote) : onAcceptSuccess(quote))}
+                      className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors cursor-pointer text-center shadow-2xs"
+                    >
+                      Complete payment
+                    </button>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAcceptQuoteModal(quote)}
+                    className="w-full py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold transition-colors cursor-pointer text-center shadow-2xs"
+                  >
+                    Accept
+                  </button>
+                )}
               </div>
             </div>
           );

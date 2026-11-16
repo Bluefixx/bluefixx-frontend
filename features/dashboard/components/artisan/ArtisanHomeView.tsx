@@ -221,6 +221,25 @@ function ArtisanHomeViewContent({
   // Selected job for detail view
   const [selectedJob, setSelectedJob] = useState<JobDetailData | null>(null);
 
+  const selectJobWithOffer = (job: JobDetailData) => {
+    setSelectedJob(job);
+    const offer = job.ownOffer;
+    if (offer && offer.status === "OPEN") {
+      setIsQuoteSent(true);
+      setSelectedQuoteMeta({
+        offerId: offer.id,
+        quoteAmount: formatNaira(offer.base ?? offer.labour ?? 0, true),
+        estimatedCompletion: offer.durationDays
+          ? `${offer.durationDays} day${offer.durationDays === 1 ? "" : "s"}`
+          : "Flexible",
+        warrantyPeriod: offer.warrantyDays ? `${offer.warrantyDays} days` : "Standard",
+      });
+    } else {
+      setIsQuoteSent(false);
+      setSelectedQuoteMeta(null);
+    }
+  };
+
   // Send Quote Modal
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
 
@@ -292,7 +311,7 @@ function ArtisanHomeViewContent({
       <ArtisanFindJobsView
         isVerified={isVerified}
         onSelectJob={(job) => {
-          setSelectedJob(job);
+          selectJobWithOffer(job);
           setCurrentView("job-detail");
         }}
         onContinueVerification={() => setCurrentView("verification")}
@@ -405,8 +424,8 @@ function ArtisanHomeViewContent({
       <ArtisanJobsListView
         initialTab={jobsListTab}
         onSelectRequest={(job) => {
-          setSelectedJob(job);
-          setCurrentView("send-quote");
+          selectJobWithOffer(job);
+          setCurrentView(job.ownOffer?.status === "OPEN" ? "quote-sent" : "send-quote");
         }}
         onManageJob={(bookingId) => {
           setSelectedBookingId(bookingId);

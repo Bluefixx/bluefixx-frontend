@@ -28,6 +28,17 @@ export interface JobDetailData {
   photoCaption: string;
   audioDuration: string;
   questions: Array<{ question: string; answer: string }>;
+  ownOffer?: {
+    id: string;
+    base?: string | number;
+    labour?: string | number;
+    materials?: Array<{ name?: string; amount?: number | string }>;
+    durationDays?: number;
+    warrantyDays?: number;
+    scope?: string;
+    status?: string;
+    createdAt?: string;
+  } | null;
 }
 
 interface ArtisanJobDetailViewProps {

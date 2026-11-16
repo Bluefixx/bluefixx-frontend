@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { createJobApi, getCatalogApi, getSavedAddressesApi, uploadMediaFile } from "@/lib/api";
+import { createJobApi, createSavedAddressApi, getCatalogApi, getSavedAddressesApi, uploadMediaFile } from "@/lib/api";
 import { UrgencyLevel } from "@/types/customer";
 
 export default function PostJobWizard() {
@@ -73,6 +73,13 @@ export default function PostJobWizard() {
     "Blue gate, second building after the pharmacy"
   );
   const [savedAddresses, setSavedAddresses] = useState<Array<{ id: string; label: string; address: string }>>([]);
+  const [isAddAddressModalOpen, setIsAddAddressModalOpen] = useState(false);
+  const [newAddrLabel, setNewAddrLabel] = useState("Home");
+  const [newAddrText, setNewAddrText] = useState("");
+  const [newAddrInstructions, setNewAddrInstructions] = useState("");
+  const [newAddrLat, setNewAddrLat] = useState(6.5244);
+  const [newAddrLng, setNewAddrLng] = useState(3.3792);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
 
   // ════════════════════════════════════════════════════════════
   // STEP 6 STATE: PREFERRED TIME
@@ -93,6 +100,8 @@ export default function PostJobWizard() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mediaIds, setMediaIds] = useState<string[]>([]);
+  const [voiceMediaId, setVoiceMediaId] = useState<string | null>(null);
+  const [pendingUploads, setPendingUploads] = useState(0);
   const [realServices, setRealServices] = useState<Array<{ id: string; name: string; tradeName: string; categoryName: string }>>([]);
   const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
 
@@ -194,6 +203,10 @@ export default function PostJobWizard() {
   // ════════════════════════════════════════════════════════════
   const handleNext = async () => {
     if (currentStep === 7) {
+      if (pendingUploads > 0) {
+        toast("Please wait for your photos or voice note to finish uploading.");
+        return;
+      }
       // Step 7 -> 8: Post the job to the API
       setIsSubmitting(true);
       const loadingToast = toast.loading("Publishing your job...");
@@ -262,7 +275,7 @@ export default function PostJobWizard() {
             preferredEnd,
             budgetMinimum: budgetKobo,
             budgetMaximum: budgetKobo * 1.5,
-            mediaIds,
+            mediaIds: [...mediaIds, ...(voiceMediaId ? [voiceMediaId] : [])],
             submit: true,
           },
           `job-${Date.now()}`
@@ -320,14 +333,19 @@ export default function PostJobWizard() {
       const objectUrl = URL.createObjectURL(file);
       newPhotos.push(objectUrl);
 
-      // Async upload media in background
+      setPendingUploads((c) => c + 1);
       uploadMediaFile(file, "JOB")
         .then((res) => {
           if (res?.id) {
             setMediaIds((prev) => [...prev, res.id]);
           }
         })
-        .catch(() => {});
+        .catch((err: unknown) => {
+          toast.error(err instanceof Error ? err.message : `Failed to upload ${file.name}`);
+        })
+        .finally(() => {
+          setPendingUploads((c) => Math.max(0, c - 1));
+        });
     }
 
     if (newPhotos.length > 0) {
@@ -341,6 +359,7 @@ export default function PostJobWizard() {
 
   const handleRemovePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setMediaIds((prev) => prev.filter((_, i) => i !== index));
     toast.success("Photo removed");
   };
 
@@ -362,13 +381,32 @@ export default function PostJobWizard() {
         };
 
         mediaRecorder.onstop = () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+          const mimeType = mediaRecorder.mimeType || "audio/webm";
+          const ext = mimeType.includes("mp4") ? "m4a" : mimeType.includes("ogg") ? "ogg" : "webm";
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
           const url = URL.createObjectURL(audioBlob);
           setVoiceNoteUrl(url);
           setHasVoiceNote(true);
           setIsRecording(false);
           stream.getTracks().forEach((track) => track.stop());
-          toast.success("Voice note recorded!");
+
+          const audioFile = new File([audioBlob], `job-voicenote-${Date.now()}.${ext}`, {
+            type: mimeType,
+          });
+          setPendingUploads((c) => c + 1);
+          uploadMediaFile(audioFile, "VOICE")
+            .then((res) => {
+              if (res?.id) {
+                setVoiceMediaId(res.id);
+                toast.success("Voice note uploaded!");
+              }
+            })
+            .catch((err: unknown) => {
+              toast.error(err instanceof Error ? err.message : "Failed to upload voice note");
+            })
+            .finally(() => {
+              setPendingUploads((c) => Math.max(0, c - 1));
+            });
         };
 
         mediaRecorder.start();
@@ -438,7 +476,40 @@ export default function PostJobWizard() {
     setHasVoiceNote(false);
     setIsPlayingVoice(false);
     setVoiceNoteUrl("");
+    setVoiceMediaId(null);
     toast.success("Voice note deleted");
+  };
+
+  const handleSaveNewAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAddrLabel.trim() || newAddrText.trim().length < 5) {
+      toast.error("Please enter a label and a full street address (at least 5 characters).");
+      return;
+    }
+    setIsSavingAddress(true);
+    try {
+      const created = await createSavedAddressApi({
+        label: newAddrLabel.trim(),
+        address: newAddrText.trim(),
+        latitude: newAddrLat,
+        longitude: newAddrLng,
+        instructions: newAddrInstructions.trim() || undefined,
+        isDefault: savedAddresses.length === 0,
+      });
+      setSavedAddresses((prev) => [
+        { id: created.id, label: (created as any).label || newAddrLabel.trim(), address: (created as any).address || newAddrText.trim() },
+        ...prev,
+      ]);
+      setSelectedAddressId(created.id);
+      setIsAddAddressModalOpen(false);
+      setNewAddrText("");
+      setNewAddrInstructions("");
+      toast.success("Address saved and selected!");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save address.");
+    } finally {
+      setIsSavingAddress(false);
+    }
   };
 
   useEffect(() => {
@@ -1410,14 +1481,113 @@ export default function PostJobWizard() {
                 {/* + Add a new address button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    toast.success("Add address modal opened");
-                  }}
+                  onClick={() => setIsAddAddressModalOpen(true)}
                   className="w-full py-3 px-4 rounded-2xl border border-neutral-200 bg-[#F8F9FA] hover:bg-neutral-100 font-sans font-bold text-xs sm:text-sm text-[#0F1115] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <span>+</span>
                   <span>Add a new address</span>
                 </button>
+
+                {isAddAddressModalOpen && (
+                  <div className="fixed inset-0 z-50 bg-neutral-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+                    <form
+                      onSubmit={handleSaveNewAddress}
+                      className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-neutral-200 space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-heading font-bold text-lg text-[#001B40]">
+                          Add a new address
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddAddressModalOpen(false)}
+                          className="p-1 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-neutral-700 mb-1">
+                          Label *
+                        </label>
+                        <input
+                          type="text"
+                          value={newAddrLabel}
+                          onChange={(e) => setNewAddrLabel(e.target.value)}
+                          placeholder="e.g. Home, Office"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-xs sm:text-sm focus:outline-none focus:border-[#001B40]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-neutral-700 mb-1">
+                          Street address *
+                        </label>
+                        <input
+                          type="text"
+                          value={newAddrText}
+                          onChange={(e) => setNewAddrText(e.target.value)}
+                          placeholder="e.g. 14 Adeola Odeku Street, Victoria Island, Lagos"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-xs sm:text-sm focus:outline-none focus:border-[#001B40]"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-neutral-700 mb-1">
+                          Access instructions (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={newAddrInstructions}
+                          onChange={(e) => setNewAddrInstructions(e.target.value)}
+                          placeholder="e.g. Blue gate, call on arrival"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-300 text-xs sm:text-sm focus:outline-none focus:border-[#001B40]"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!navigator.geolocation) {
+                            toast.error("Geolocation is not supported in this browser.");
+                            return;
+                          }
+                          navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                              setNewAddrLat(pos.coords.latitude);
+                              setNewAddrLng(pos.coords.longitude);
+                              toast.success("Location coordinates updated!");
+                            },
+                            () => toast.error("Could not fetch GPS coordinates; using default.")
+                          );
+                        }}
+                        className="text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
+                      >
+                        Use my current GPS location
+                      </button>
+
+                      <div className="flex items-center justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsAddAddressModalOpen(false)}
+                          className="px-4 py-2.5 rounded-xl border border-neutral-200 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isSavingAddress}
+                          className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs font-semibold cursor-pointer disabled:opacity-60"
+                        >
+                          {isSavingAddress ? "Saving..." : "Save address"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
 
                 {/* Access notes */}
                 <div className="pt-2">

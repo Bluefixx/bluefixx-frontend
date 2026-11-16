@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
 import { declineJobApi, createJobConversationApi } from "@/lib/api/artisan";
+import { getMediaUrlApi } from "@/lib/api/media";
 
 export interface JobDetailData {
   id: string;
@@ -28,6 +29,13 @@ export interface JobDetailData {
   photoCaption: string;
   audioDuration: string;
   questions: Array<{ question: string; answer: string }>;
+  media?: Array<{
+    id: string;
+    purpose: string;
+    resourceType: string;
+    duration?: number | null;
+    bytes?: number | null;
+  }>;
   ownOffer?: {
     id: string;
     base?: string | number;
@@ -96,11 +104,95 @@ export function ArtisanJobDetailView({
   onAskQuestion,
 }: ArtisanJobDetailViewProps) {
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [resolvedPhotoUrls, setResolvedPhotoUrls] = useState<string[]>(
+    job.photoUrl ? [job.photoUrl] : []
+  );
+  const [resolvedVoiceUrl, setResolvedVoiceUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const toggleAudio = () => {
-    setIsPlayingAudio(!isPlayingAudio);
-    if (!isPlayingAudio) {
-      toast.success("Playing customer voice note...");
+  const voiceItem = (job.media || []).find((m) => m.purpose === "VOICE");
+  const photoItems = (job.media || []).filter(
+    (m) => m.purpose !== "VOICE" && m.resourceType === "image"
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    setResolvedPhotoUrls(job.photoUrl ? [job.photoUrl] : []);
+    setResolvedVoiceUrl(null);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsPlayingAudio(false);
+
+    if (photoItems.length > 0) {
+      Promise.all(
+        photoItems.map((m) =>
+          getMediaUrlApi(m.id)
+            .then((r) => r.url)
+            .catch(() => null)
+        )
+      ).then((urls) => {
+        if (!mounted) return;
+        const valid = urls.filter((u): u is string => Boolean(u));
+        if (valid.length > 0) setResolvedPhotoUrls(valid);
+      });
+    }
+
+    if (voiceItem) {
+      getMediaUrlApi(voiceItem.id)
+        .then((r) => {
+          if (mounted && r?.url) setResolvedVoiceUrl(r.url);
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      mounted = false;
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.id]);
+
+  const formattedVoiceDuration = voiceItem?.duration
+    ? `${Math.floor(voiceItem.duration / 60)}:${Math.round(voiceItem.duration % 60) < 10 ? "0" : ""}${Math.round(voiceItem.duration % 60)}`
+    : job.audioDuration;
+
+  const toggleAudio = async () => {
+    if (isPlayingAudio && audioRef.current) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    let url = resolvedVoiceUrl;
+    if (!url && voiceItem) {
+      try {
+        const res = await getMediaUrlApi(voiceItem.id);
+        url = res?.url ?? null;
+        if (url) setResolvedVoiceUrl(url);
+      } catch {
+        url = null;
+      }
+    }
+
+    if (!url) {
+      toast.error("Voice note audio is unavailable.");
+      return;
+    }
+
+    try {
+      if (!audioRef.current || audioRef.current.src !== url) {
+        audioRef.current = new Audio(url);
+        audioRef.current.onended = () => setIsPlayingAudio(false);
+      }
+      await audioRef.current.play();
+      setIsPlayingAudio(true);
+    } catch {
+      toast.error("Could not play voice note.");
+      setIsPlayingAudio(false);
     }
   };
 
@@ -192,75 +284,91 @@ export function ArtisanJobDetailView({
           </div>
 
           {/* Card 2: Photos from the customer */}
-          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
-            <h2 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
-              Photos from the customer
-            </h2>
-            <div className="relative rounded-2xl overflow-hidden border border-neutral-100 aspect-video sm:aspect-[16/9] max-h-80 bg-neutral-100">
-              <Image
-                src={job.photoUrl}
-                alt={job.photoCaption}
-                fill
-                className="object-cover"
-              />
+          {resolvedPhotoUrls.length > 0 && (
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
+              <h2 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
+                Photos from the customer
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {resolvedPhotoUrls.map((url, idx) => (
+                  <a
+                    key={idx}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative rounded-2xl overflow-hidden border border-neutral-100 aspect-video bg-neutral-100 block"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={job.photoCaption || `Job photo ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+              {job.photoCaption && (
+                <p className="font-sans text-xs text-neutral-500 font-medium">
+                  {job.photoCaption}
+                </p>
+              )}
             </div>
-            <p className="font-sans text-xs text-neutral-500 font-medium">
-              {job.photoCaption}
-            </p>
-          </div>
+          )}
 
           {/* Card 3: Voice note from the customer */}
-          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
-            <h2 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
-              Voice note from the customer
-            </h2>
+          {(voiceItem || job.audioDuration) && (
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-4">
+              <h2 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
+                Voice note from the customer
+              </h2>
 
-            {/* Audio Waveform Bar */}
-            <div className="p-3.5 sm:p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={toggleAudio}
-                className="w-10 h-10 rounded-full bg-[#001B40] hover:bg-[#052F5F] text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs cursor-pointer"
-                aria-label={isPlayingAudio ? "Pause voice note" : "Play voice note"}
-              >
-                {isPlayingAudio ? (
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                    <rect x="6" y="4" width="4" height="16" rx="1" />
-                    <rect x="14" y="4" width="4" height="16" rx="1" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                )}
-              </button>
+              {/* Audio Waveform Bar */}
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={toggleAudio}
+                  className="w-10 h-10 rounded-full bg-[#001B40] hover:bg-[#052F5F] text-white flex items-center justify-center shrink-0 transition-colors shadow-2xs cursor-pointer"
+                  aria-label={isPlayingAudio ? "Pause voice note" : "Play voice note"}
+                >
+                  {isPlayingAudio ? (
+                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                      <rect x="6" y="4" width="4" height="16" rx="1" />
+                      <rect x="14" y="4" width="4" height="16" rx="1" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 fill-current ml-0.5" viewBox="0 0 24 24">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  )}
+                </button>
 
-              {/* Simulated Waveform Visual */}
-              <div className="flex-1 flex items-center gap-1 h-8 overflow-hidden">
-                {[12, 24, 18, 30, 16, 8, 22, 28, 14, 20, 26, 18, 12, 30, 24, 16, 22, 28, 10, 16, 24, 18, 14, 8].map(
-                  (height, i) => (
-                    <div
-                      key={i}
-                      className={`w-1 rounded-full transition-all duration-300 ${
-                        isPlayingAudio && i % 3 === 0
-                          ? "bg-[#001B40] animate-pulse"
-                          : "bg-neutral-300"
-                      }`}
-                      style={{ height: `${height}px` }}
-                    />
-                  )
-                )}
+                {/* Simulated Waveform Visual */}
+                <div className="flex-1 flex items-center gap-1 h-8 overflow-hidden">
+                  {[12, 24, 18, 30, 16, 8, 22, 28, 14, 20, 26, 18, 12, 30, 24, 16, 22, 28, 10, 16, 24, 18, 14, 8].map(
+                    (height, i) => (
+                      <div
+                        key={i}
+                        className={`w-1 rounded-full transition-all duration-300 ${
+                          isPlayingAudio && i % 3 === 0
+                            ? "bg-[#001B40] animate-pulse"
+                            : "bg-neutral-300"
+                        }`}
+                        style={{ height: `${height}px` }}
+                      />
+                    )
+                  )}
+                </div>
+
+                <span className="font-sans text-xs font-semibold text-neutral-500 shrink-0">
+                  {formattedVoiceDuration || "0:00"}
+                </span>
               </div>
 
-              <span className="font-sans text-xs font-semibold text-neutral-500 shrink-0">
-                {job.audioDuration}
-              </span>
+              <p className="font-sans text-xs text-neutral-400">
+                Recorded by {job.customerName} when posting the job. Listen before you quote.
+              </p>
             </div>
-
-            <p className="font-sans text-xs text-neutral-400">
-              Recorded by {job.customerName} when posting the job. Listen before you quote.
-            </p>
-          </div>
+          )}
 
           {/* Alert Notice Banner (Matching Screenshot 5 Left) */}
           <div className="p-4 rounded-2xl bg-[#EBF1F7]/70 border border-[#CBDCE9] flex items-start gap-3">

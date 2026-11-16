@@ -29,6 +29,11 @@ export default function DashboardHeader({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isRoleMenuOpen, setIsRoleMenuOpen] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -381,7 +386,7 @@ export default function DashboardHeader({
             onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
             className="w-10 h-10 rounded-full overflow-hidden border-2 border-white ring-2 ring-neutral-200/80 hover:ring-[#001B40] transition-all cursor-pointer shrink-0 bg-neutral-100 flex items-center justify-center"
           >
-            {user?.avatarUrl ? (
+            {hasMounted && user?.avatarUrl ? (
               <Image
                 src={user.avatarUrl}
                 alt={user.fullName || "User Avatar"}
@@ -391,7 +396,7 @@ export default function DashboardHeader({
               />
             ) : (
               <span className="font-bold text-sm text-[#001B40]">
-                {user?.fullName ? user.fullName[0].toUpperCase() : "D"}
+                {hasMounted && user?.fullName ? user.fullName[0].toUpperCase() : "D"}
               </span>
             )}
           </button>

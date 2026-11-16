@@ -1,8 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/stores/auth-store";
+import { getArtisanDashboardApi } from "@/lib/api/artisan";
+import { ArtisanDashboardResponse } from "@/types/artisan";
 
 interface ArtisanProfileViewProps {
   onBackToDashboard: () => void;
@@ -19,13 +22,39 @@ export function ArtisanProfileView({
   onNavigateToNotifications,
   onNavigateToSettings,
 }: ArtisanProfileViewProps) {
-  const services = [
-    "Welding & fabrication",
-    "Arc welding",
-    "Plumbing repair",
-    "Generator servicing",
-    "Pipe installation",
-  ];
+  const { user, locationName } = useAuth();
+  const [dashboardData, setDashboardData] = useState<ArtisanDashboardResponse | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getArtisanDashboardApi()
+      .then((res) => {
+        if (mounted) setDashboardData(res);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const profile = dashboardData?.profile as any;
+  const businessName = profile?.businessName || (user?.fullName ? `${user.fullName} Services` : "Artisan Business");
+  const fullName = user?.fullName || "Artisan";
+  const displayLocation = locationName || "Lagos, Nigeria";
+  const isVerified = profile?.approval === "APPROVED";
+  const completedCount = profile?.completedJobsCount ?? (dashboardData as any)?.recentCompletedJobs?.length ?? 0;
+  const ratingValue = profile?.ratingCount > 0 ? (profile.ratingTotal / profile.ratingCount).toFixed(1) : "5.0";
+
+  const services: string[] =
+    Array.isArray(profile?.services) && profile.services.length > 0
+      ? profile.services.map((s: any) => s.service?.name || s.name || s.description).filter(Boolean)
+      : [
+          "Plumbing repair",
+          "Electrical",
+          "AC & Appliance Repair",
+          "Carpentry",
+          "Painting",
+        ];
 
   const reviews = [
     {
@@ -70,32 +99,34 @@ export function ArtisanProfileView({
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-neutral-100 border-2 border-white shadow-xs shrink-0">
               <Image
-                src="/images/david.jpg"
-                alt="John Obiora"
+                src={user?.avatarUrl || "/images/david.jpg"}
+                alt={fullName}
                 fill
                 className="object-cover"
               />
             </div>
             <div>
               <h2 className="font-heading font-extrabold text-lg sm:text-xl text-[#0F1115]">
-                Obiora Welding & Fabrication
+                {businessName}
               </h2>
               <p className="text-xs sm:text-sm text-neutral-500 font-medium">
-                John Obiora
+                {fullName}
               </p>
               <p className="text-xs text-neutral-400 mt-0.5">
-                📍 Independence Layout, Enugu
+                📍 {displayLocation}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-              Already verified
+              {isVerified ? "Already verified" : "Verification pending"}
             </span>
-            <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#001B40] text-white shadow-2xs">
-              Master Artisan verified
-            </span>
+            {isVerified && (
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#001B40] text-white shadow-2xs">
+                Verified Artisan
+              </span>
+            )}
           </div>
         </div>
 
@@ -103,13 +134,13 @@ export function ArtisanProfileView({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
           <div className="bg-neutral-50 rounded-2xl p-4 text-center border border-neutral-100">
             <span className="font-heading font-extrabold text-2xl text-[#0F1115] block">
-              126
+              {completedCount}
             </span>
             <span className="text-xs text-neutral-500 font-medium">Jobs</span>
           </div>
           <div className="bg-neutral-50 rounded-2xl p-4 text-center border border-neutral-100">
             <span className="font-heading font-extrabold text-2xl text-[#0F1115] block">
-              4.8
+              {ratingValue}
             </span>
             <span className="text-xs text-neutral-500 font-medium">Rating</span>
           </div>

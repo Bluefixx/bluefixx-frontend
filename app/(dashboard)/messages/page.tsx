@@ -29,14 +29,10 @@ interface ChatMessage {
   time: string;
 }
 
-function MessagesPageContent() {
-  const { user, activeRole } = useAuth();
+function CustomerMessagesView() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const initialConversation = searchParams.get("conversation") === "support" ? "support" : "support";
-
-  if (activeRole === "artisan") {
-    return <ArtisanMessagesView />;
-  }
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<string>(initialConversation);
@@ -956,6 +952,14 @@ function MessagesPageContent() {
       )}
     </div>
   );
+}
+
+function MessagesPageContent() {
+  const { activeRole } = useAuth();
+  if (activeRole === "artisan") {
+    return <ArtisanMessagesView />;
+  }
+  return <CustomerMessagesView />;
 }
 
 export default function MessagesPage() {

@@ -254,12 +254,23 @@ export interface WalletTransaction {
 }
 
 // ── Messages & Conversations ─────────────────────────────────
+export interface ChatMessageAttachment {
+  id: string;
+  purpose: MediaPurpose;
+  resourceType: MediaResourceType;
+  duration?: number | null;
+  bytes?: number | null;
+  localUrl?: string;
+  fileName?: string;
+}
+
 export interface ChatMessage {
   id: string;
   quoteId: string;
   senderId: string;
   text: string;
   mediaIds: string[];
+  attachments?: ChatMessageAttachment[];
   clientId?: string;
   createdAt: string;
 }
@@ -439,7 +450,7 @@ export type MediaPurpose =
   | "REVIEW"
   | "ASSESSMENT";
 
-export type MediaResourceType = "image" | "video";
+export type MediaResourceType = "image" | "video" | "raw";
 
 export interface MediaUploadInitiateRequest {
   purpose: MediaPurpose;

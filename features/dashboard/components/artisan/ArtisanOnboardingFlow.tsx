@@ -7,7 +7,6 @@ import {
   getArtisanOnboardingApi,
   patchArtisanOnboardingApi,
   submitArtisanOnboardingApi,
-  submitArtisanIdentityApi,
   getServicesCatalogApi,
 } from "@/lib/api/artisan";
 import { uploadMediaFile } from "@/lib/api/media";
@@ -305,9 +304,9 @@ export function ArtisanOnboardingFlow({
     setIdentityIncompleteError(false);
     setIsSaving(true);
     try {
-      await submitArtisanIdentityApi({
+      await patchArtisanOnboardingApi({
         nin: ninNumber.trim(),
-        mediaIds: [govIdMediaId, selfieMediaId],
+        identityMediaIds: [govIdMediaId, selfieMediaId],
       });
       setCurrentStep(3);
     } catch (err: unknown) {

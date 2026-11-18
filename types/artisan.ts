@@ -139,6 +139,8 @@ export interface ArtisanEarning {
   status: string;
   bookingId: string | null;
   title: string;
+  description?: string;
+  date?: string;
 }
 
 export interface ArtisanEarningsPolicies {
@@ -154,15 +156,19 @@ export interface ArtisanEarnings {
   available: MonetaryString;
   withdrawalReserved: MonetaryString;
   held: MonetaryString;
+  escrow?: MonetaryString;
   paid: MonetaryString;
   transfers: BankTransfer[];
   lifetimeEarnings: MonetaryString;
   monthlyEarnings: MonetaryString;
   weekly: Array<{ date: string; amount: MonetaryString }>;
   recent: ArtisanEarning[];
+  recentEarnings?: ArtisanEarning[];
   withdrawalPolicy?: WithdrawalPolicy | null;
   policies: ArtisanEarningsPolicies;
 }
+
+export type ArtisanEarningsSummary = ArtisanEarnings;
 
 export interface ArtisanDashboardResponse {
   profile: ArtisanDashboardProfile | null;
@@ -178,6 +184,8 @@ export interface ArtisanDashboardResponse {
   capabilities?: ArtisanCapabilities;
   onboarding?: ArtisanOnboardingResponse;
   earnings: ArtisanEarnings;
+  recentEarnings?: ArtisanEarning[];
+  activeApprenticesCount?: number;
   rewards?: Record<string, unknown>;
   recommendedJobs: ArtisanJobListItem[];
   recommendationRestriction: string | null;
@@ -483,6 +491,10 @@ export interface ArtisanBookingDetail {
   completedAt?: string | null;
   autoReleaseAt?: string | null;
   jobTitle?: string;
+  title?: string;
+  trade?: string;
+  scheduledFor?: string;
+  customerName?: string;
   jobDescription?: string;
   address?: {
     street?: string;

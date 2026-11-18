@@ -29,10 +29,14 @@ export function middleware(request: NextRequest) {
   // 3. Handle dashboard root redirection
   if (pathname === '/dashboard') {
     if (activeRole === 'artisan') {
-      return NextResponse.redirect(new URL('/artisan', request.url));
+      const target = new URL('/artisan', request.url);
+      target.search = request.nextUrl.search;
+      return NextResponse.redirect(target);
     }
     if (activeRole === 'apprentice' || activeRole === 'talent' || activeRole === 'learner') {
-      return NextResponse.redirect(new URL('/talent/home', request.url));
+      const target = new URL('/talent/home', request.url);
+      target.search = request.nextUrl.search;
+      return NextResponse.redirect(target);
     }
     // Default for customer
     return NextResponse.next();

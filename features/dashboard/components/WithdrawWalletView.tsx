@@ -79,28 +79,34 @@ export function WithdrawWalletView({
   };
 
   const handleAuthorizeWithdrawal = async () => {
+    const fullPin = pinDigits.join("");
+    if (fullPin.length < 4) {
+      toast.error("Please enter your complete 4-digit PIN");
+      return;
+    }
+    const bankId = savedBanks[0]?.id;
+    if (!bankId) {
+      toast.error("Please add and verify a payout bank account first.");
+      return;
+    }
+
     setStep("processing");
 
     try {
       const res = await requestWithdrawalApi({
+        bankId,
         amount: selectedAmount * 100, // convert NGN to kobo
-        bankAccountId: savedBanks[0]?.id || "default-bank-account",
+        pin: fullPin,
       });
 
-      if (res?.id) {
-        setTxnReference(`BFX-WTH-${res.id.slice(0, 8).toUpperCase()}`);
-      }
+      const ref = res?.reference || (res?.id ? `BFX-WTH-${res.id.slice(0, 8).toUpperCase()}` : txnReference);
+      setTxnReference(ref);
 
-      setTimeout(() => {
-        setStep("success");
-        onWithdrawalCompleted(selectedAmount, newBalance, res?.id || txnReference);
-      }, 1500);
-    } catch {
-      // Graceful fallback for mock mode
-      setTimeout(() => {
-        setStep("success");
-        onWithdrawalCompleted(selectedAmount, newBalance, txnReference);
-      }, 1500);
+      setStep("success");
+      onWithdrawalCompleted(selectedAmount, newBalance, ref);
+    } catch (err: any) {
+      setStep("form");
+      toast.error(err?.message || "Withdrawal request failed. Please try again.");
     }
   };
 

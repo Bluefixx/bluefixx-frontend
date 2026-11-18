@@ -73,11 +73,13 @@ export function ArtisanQuoteFormView({
         throw new Error("Missing job or quote reference");
       }
 
+      const parsedWarrantyDays = parseInt(warranty.replace(/\D/g, ""), 10) || 0;
+      const parsedDurationDays = parseInt(completionTime.replace(/\D/g, ""), 10) || 1;
       const offer = await submitArtisanOfferApi(resolvedQuoteId, {
         labour: nairaToKobo(numLabour),
         materials: numMaterials > 0 ? [{ name: "Materials", amount: nairaToKobo(numMaterials), supplier: "ARTISAN" }] : [],
-        warrantyDays: 21,
-        durationDays: 2,
+        warrantyDays: parsedWarrantyDays,
+        durationDays: parsedDurationDays,
         scope: workDescription,
         exclusions: materialsNotIncluded,
         notes: additionalNotes,

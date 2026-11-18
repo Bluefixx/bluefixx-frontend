@@ -49,13 +49,32 @@ export async function getSavedAddressesApi(): Promise<SavedAddress[]> {
   return apiClient.get<SavedAddress[]>("/addresses");
 }
 
+export interface BackendAddressPayload {
+  label: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  instructions?: string;
+  isDefault?: boolean;
+}
+
 /**
  * Add a new saved address
  */
 export async function createSavedAddressApi(
-  payload: CreateAddressRequest
+  payload: CreateAddressRequest | BackendAddressPayload
 ): Promise<SavedAddress> {
-  return apiClient.post<SavedAddress>("/addresses", payload);
+  const body: BackendAddressPayload =
+    "label" in payload
+      ? payload
+      : {
+          label: payload.title,
+          address: [payload.street, payload.area, payload.city, payload.state].filter(Boolean).join(", "),
+          latitude: payload.latitude,
+          longitude: payload.longitude,
+          isDefault: payload.isDefault,
+        };
+  return apiClient.post<SavedAddress>("/addresses", body);
 }
 
 /**

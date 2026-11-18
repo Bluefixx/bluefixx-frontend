@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { createPaymentApi } from "@/lib/api";
+import { createPaymentApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { openPaystackInline } from "@/lib/paystack";
 
 interface FundWalletViewProps {
   currentBalance: number;
@@ -19,7 +20,6 @@ export function FundWalletView({
   const [step, setStep] = useState<"form" | "processing" | "success">("form");
   const [selectedAmount, setSelectedAmount] = useState<number>(25000);
   const [customAmountStr, setCustomAmountStr] = useState<string>("25,000");
-  const [isPaystackCheckoutOpen, setIsPaystackCheckoutOpen] = useState(false);
   const [copiedTxnId, setCopiedTxnId] = useState(false);
   const [txnReference, setTxnReference] = useState<string>("BFX-FND-4475191");
 
@@ -45,38 +45,74 @@ export function FundWalletView({
     setCustomAmountStr(num.toLocaleString());
   };
 
-  // Handle payment method click in Paystack checkout modal
-  const handleStartProcessing = async (method: "card" | "transfer") => {
-    setIsPaystackCheckoutOpen(false);
+  // Initialize real Paystack TOPUP and open Paystack Inline popup
+  const handleContinueToPayment = async () => {
+    if (selectedAmount <= 0) return;
     setStep("processing");
 
     try {
       const paymentRes = await createPaymentApi({
+        purpose: "TOPUP",
         amount: selectedAmount * 100, // convert NGN to kobo
         source: "PAYSTACK",
       });
 
+      const ref = paymentRes?.reference || txnReference;
       if (paymentRes?.reference) {
         setTxnReference(paymentRes.reference);
       }
 
-      toast.success(
-        method === "card"
-          ? "Paystack: Card payment authorized"
-          : "Paystack: Bank transfer confirmed",
-        { icon: "💳" }
-      );
+      const checkoutUrl = paymentRes?.checkoutUrl || paymentRes?.authorizationUrl;
+      if (!checkoutUrl) {
+        throw new Error("Paystack checkout URL was not returned");
+      }
 
-      setTimeout(() => {
-        setStep("success");
-        onDepositCompleted(selectedAmount, newBalance, paymentRes?.reference || txnReference);
-      }, 1500);
-    } catch {
-      // Fallback gracefully for local mock
-      setTimeout(() => {
-        setStep("success");
-        onDepositCompleted(selectedAmount, newBalance, txnReference);
-      }, 1500);
+      await openPaystackInline({
+        checkoutUrl,
+        onSuccess: async () => {
+          try {
+            const verified = await verifyPaymentApi(paymentRes.id);
+            if (verified?.status === "SUCCEEDED") {
+              toast.success(`Wallet funded with ₦${selectedAmount.toLocaleString()}!`);
+              setStep("success");
+              onDepositCompleted(selectedAmount, newBalance, ref);
+            } else if (verified?.status === "FAILED") {
+              setStep("form");
+              toast.error("Paystack payment failed or was cancelled.");
+            } else {
+              toast("Payment is pending confirmation.");
+              onBackToWallet();
+            }
+          } catch (err: any) {
+            setStep("form");
+            toast.error(err?.message || "Could not verify Paystack payment.");
+          }
+        },
+        onCancel: () => {
+          setStep("form");
+          toast("Payment cancelled.");
+        },
+        onError: (msg) => {
+          setStep("form");
+          toast.error(msg);
+        },
+        onFallbackRedirect: (url) => {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              "bluefixx_pending_topup",
+              JSON.stringify({
+                paymentId: paymentRes.id,
+                reference: paymentRes.reference,
+                amount: selectedAmount,
+              })
+            );
+            window.location.href = url;
+          }
+        },
+      });
+    } catch (err: any) {
+      setStep("form");
+      toast.error(err?.message || "Unable to start Paystack payment. Please try again.");
     }
   };
 
@@ -437,7 +473,7 @@ export function FundWalletView({
           <button
             type="button"
             disabled={selectedAmount <= 0}
-            onClick={() => setIsPaystackCheckoutOpen(true)}
+            onClick={handleContinueToPayment}
             className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] disabled:opacity-50 text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
           >
             Continue to payment
@@ -478,85 +514,6 @@ export function FundWalletView({
           </div>
         </div>
       </div>
-
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* PAYSTACK CHECKOUT MODAL (Screenshot 1 Right)                   */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {isPaystackCheckoutOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-2xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative space-y-6 animate-in zoom-in-95 duration-150">
-            {/* Paystack Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-              <div className="flex items-center gap-2">
-                {/* Paystack Brand Icon */}
-                <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-4 bg-sky-500 rounded-xs" />
-                  <div className="w-1.5 h-3 bg-sky-600 rounded-xs" />
-                  <div className="w-1.5 h-5 bg-[#001B40] rounded-xs" />
-                </div>
-                <span className="font-heading font-black text-lg text-[#001B40] tracking-tight">
-                  paystack
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsPaystackCheckoutOpen(false)}
-                className="text-neutral-400 hover:text-neutral-700 p-1 cursor-pointer"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Amount & Account Details */}
-            <div className="text-center space-y-1">
-              <div className="font-heading font-extrabold text-3xl sm:text-4xl text-[#001B40] tracking-tight">
-                ₦{selectedAmount.toLocaleString()}
-              </div>
-              <p className="text-xs text-neutral-500">
-                danieleze@gmail.com · Bluefixx Technologies
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => handleStartProcessing("card")}
-                className="w-full py-3.5 bg-[#001B40] hover:bg-[#074292] text-white font-bold text-xs sm:text-sm rounded-xl text-center transition-colors shadow-sm cursor-pointer"
-              >
-                Pay with Card
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleStartProcessing("transfer")}
-                className="w-full py-3.5 bg-white hover:bg-neutral-50 text-neutral-800 border border-neutral-200 font-bold text-xs sm:text-sm rounded-xl text-center transition-colors cursor-pointer"
-              >
-                Pay with Transfer
-              </button>
-            </div>
-
-            {/* Security Notice */}
-            <div className="text-center space-y-3 pt-2">
-              <p className="text-[11px] text-neutral-400 leading-relaxed">
-                You are on Paystack&apos;s secure checkout. You will return to Bluefixx once the payment is confirmed.
-              </p>
-
-              <div className="inline-flex items-center gap-1.5 text-xs text-neutral-400">
-                <svg className="w-3.5 h-3.5 text-neutral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                </svg>
-                <span>Secured by Paystack</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

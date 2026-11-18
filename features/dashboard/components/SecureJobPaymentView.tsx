@@ -2,9 +2,11 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
-import { createPaymentApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { createPaymentApi, getWalletApi, verifyPaymentApi } from "@/lib/api/wallet";
+import { setTransactionPinApi } from "@/lib/api/account";
+import { openPaystackInline } from "@/lib/paystack";
 import { confirmBookingScheduleVisitApi } from "@/lib/api/bookings";
-import { nairaToKobo } from "@/lib/utils/currency";
+import { koboToNaira, nairaToKobo } from "@/lib/utils/currency";
 
 export type PaymentStep = "secure" | "secured-success" | "schedule" | "scheduled-success";
 
@@ -37,12 +39,36 @@ export default function SecureJobPaymentView({
 }: SecureJobPaymentViewProps) {
   const [currentStep, setCurrentStep] = useState<PaymentStep>("secure");
   const [selectedPaymentSource, setSelectedPaymentSource] = useState<"wallet" | "fund" | "paystack">("paystack");
+  const [walletAvailableNaira, setWalletAvailableNaira] = useState<number>(0);
+  const [walletLoaded, setWalletLoaded] = useState(false);
 
   // PIN Modal State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pinMode, setPinMode] = useState<"enter" | "create">("enter");
   const [pinDigits, setPinDigits] = useState<string[]>(["", "", "", ""]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const pinInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const refreshWallet = async () => {
+    try {
+      const wallet = await getWalletApi();
+      const avail = koboToNaira(wallet?.available ?? 0);
+      setWalletAvailableNaira(avail);
+      setWalletLoaded(true);
+      if (avail >= quoteTotal && quoteTotal > 0) {
+        setSelectedPaymentSource("wallet");
+      }
+    } catch {
+      setWalletLoaded(true);
+    }
+  };
+
+  useEffect(() => {
+    refreshWallet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteTotal]);
+
+  const canPayWithWallet = walletAvailableNaira >= quoteTotal && quoteTotal > 0;
 
   // Auto-focus first PIN input when modal opens
   useEffect(() => {
@@ -90,8 +116,9 @@ export default function SecureJobPaymentView({
   };
 
   const handleConfirmPayment = async () => {
+    const source = selectedPaymentSource === "wallet" ? "WALLET" : "PAYSTACK";
     const fullPin = pinDigits.join("");
-    if (fullPin.length < 4) {
+    if (source === "WALLET" && fullPin.length < 4) {
       toast.error("Please enter your complete 4-digit PIN");
       return;
     }
@@ -105,14 +132,45 @@ export default function SecureJobPaymentView({
     setIsProcessingPayment(true);
     try {
       const payment = await createPaymentApi({
-        amount: nairaToKobo(quoteTotal),
+        purpose: "BOOKING",
         bookingId: targetBookingId,
-        source: selectedPaymentSource === "wallet" ? "WALLET" : "PAYSTACK",
+        source,
+        ...(source === "WALLET" ? { pin: fullPin } : {}),
       });
 
-      if (payment.authorizationUrl) {
-        window.open(payment.authorizationUrl, "_blank", "noopener,noreferrer");
-        await verifyPaymentApi(payment.id).catch(() => null);
+      if (source === "PAYSTACK") {
+        const checkoutUrl = payment.checkoutUrl || payment.authorizationUrl;
+        if (!checkoutUrl) {
+          throw new Error("Paystack checkout URL was not returned");
+        }
+        setIsPinModalOpen(false);
+        await openPaystackInline({
+          checkoutUrl,
+          onSuccess: async () => {
+            try {
+              const verified = await verifyPaymentApi(payment.id);
+              if (verified?.status === "SUCCEEDED") {
+                setCurrentStep("secured-success");
+                toast.success(`₦${quoteTotal.toLocaleString("en-NG")} secured in Escrow protection!`, {
+                  icon: "🔒",
+                });
+              } else if (verified?.status === "FAILED") {
+                toast.error("Paystack payment failed or was cancelled.");
+              } else {
+                toast("Payment is pending confirmation.");
+              }
+            } catch (err: unknown) {
+              toast.error(err instanceof Error ? err.message : "Could not verify Paystack payment.");
+            }
+          },
+          onCancel: () => {
+            toast("Payment cancelled.");
+          },
+          onError: (msg) => {
+            toast.error(msg);
+          },
+        });
+        return;
       }
 
       setIsPinModalOpen(false);
@@ -122,10 +180,87 @@ export default function SecureJobPaymentView({
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment failed. Please try again.";
-      toast.error(msg);
+      if (source === "WALLET" && msg.toLowerCase().includes("pin")) {
+        toast.error(msg);
+        if (msg.toLowerCase().includes("set")) {
+          setPinMode("create");
+          setPinDigits(["", "", "", ""]);
+        }
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsProcessingPayment(false);
     }
+  };
+
+  const handleSetPinAndPay = async () => {
+    const fullPin = pinDigits.join("");
+    if (fullPin.length < 4) {
+      toast.error("Please enter a 4-digit PIN");
+      return;
+    }
+    setIsProcessingPayment(true);
+    try {
+      await setTransactionPinApi({ pin: fullPin });
+      toast.success("Transaction PIN saved!");
+      setPinMode("enter");
+      await handleConfirmPayment();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not set transaction PIN.");
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleFundWallet = async () => {
+    const shortfall = Math.max(100, Math.ceil(quoteTotal - walletAvailableNaira));
+    setIsProcessingPayment(true);
+    try {
+      const payment = await createPaymentApi({
+        purpose: "TOPUP",
+        amount: nairaToKobo(shortfall),
+        source: "PAYSTACK",
+      });
+      const checkoutUrl = payment.checkoutUrl || payment.authorizationUrl;
+      if (!checkoutUrl) {
+        throw new Error("Paystack checkout URL was not returned");
+      }
+      await openPaystackInline({
+        checkoutUrl,
+        onSuccess: async () => {
+          try {
+            const verified = await verifyPaymentApi(payment.id);
+            if (verified?.status === "SUCCEEDED") {
+              toast.success(`Wallet funded with ₦${shortfall.toLocaleString("en-NG")}!`);
+              await refreshWallet();
+            } else {
+              toast("Top-up is pending confirmation.");
+            }
+          } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : "Could not verify wallet funding.");
+          }
+        },
+        onCancel: () => toast("Wallet funding cancelled."),
+        onError: (msg) => toast.error(msg),
+      });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to initialize wallet funding.");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handleContinueClick = () => {
+    if (selectedPaymentSource === "wallet") {
+      setPinMode("enter");
+      setIsPinModalOpen(true);
+      return;
+    }
+    if (selectedPaymentSource === "fund") {
+      void handleFundWallet();
+      return;
+    }
+    void handleConfirmPayment();
   };
 
   return (
@@ -212,8 +347,19 @@ export default function SecureJobPaymentView({
                 </h3>
 
                 <div className="space-y-3">
-                  {/* Option 1: Bluefixx Wallet (Disabled/Insufficient) */}
-                  <div className="p-4 rounded-2xl border border-neutral-200 bg-neutral-50/60 flex items-center justify-between gap-3 text-xs opacity-75">
+                  {/* Option 1: Bluefixx Wallet */}
+                  <div
+                    onClick={() => {
+                      if (canPayWithWallet) setSelectedPaymentSource("wallet");
+                    }}
+                    className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-3 text-xs ${
+                      canPayWithWallet
+                        ? selectedPaymentSource === "wallet"
+                          ? "border-[#001B40] bg-[#F4F7FB] cursor-pointer"
+                          : "border-neutral-200 hover:border-neutral-300 bg-white cursor-pointer"
+                        : "border-neutral-200 bg-neutral-50/60 opacity-75 cursor-not-allowed"
+                    }`}
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-500 shrink-0">
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -226,19 +372,28 @@ export default function SecureJobPaymentView({
                           Bluefixx Wallet
                         </h4>
                         <p className="font-sans text-[11px] text-neutral-400">
-                          Balance ₦85,000, not enough for this payment
+                          {!walletLoaded
+                            ? "Checking wallet balance..."
+                            : canPayWithWallet
+                            ? `Balance ₦${walletAvailableNaira.toLocaleString("en-NG")} · Ready to pay`
+                            : `Balance ₦${walletAvailableNaira.toLocaleString("en-NG")}, not enough for this payment`}
                         </p>
                       </div>
                     </div>
-                    <div className="w-4 h-4 rounded-full border border-neutral-300" />
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        selectedPaymentSource === "wallet" ? "border-[#001B40]" : "border-neutral-300"
+                      }`}
+                    >
+                      {selectedPaymentSource === "wallet" && (
+                        <div className="w-2 h-2 rounded-full bg-[#001B40]" />
+                      )}
+                    </div>
                   </div>
 
                   {/* Option 2: Fund Wallet */}
                   <div
-                    onClick={() => {
-                      setSelectedPaymentSource("fund");
-                      toast("Wallet funding will be available in the next release");
-                    }}
+                    onClick={() => setSelectedPaymentSource("fund")}
                     className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-xs ${
                       selectedPaymentSource === "fund"
                         ? "border-[#001B40] bg-[#F4F7FB]"
@@ -300,8 +455,14 @@ export default function SecureJobPaymentView({
                         </p>
                       </div>
                     </div>
-                    <div className="w-4 h-4 rounded-full border border-[#001B40] flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-[#001B40]" />
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        selectedPaymentSource === "paystack" ? "border-[#001B40]" : "border-neutral-300"
+                      }`}
+                    >
+                      {selectedPaymentSource === "paystack" && (
+                        <div className="w-2 h-2 rounded-full bg-[#001B40]" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -361,10 +522,15 @@ export default function SecureJobPaymentView({
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => setIsPinModalOpen(true)}
-                    className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer text-center shadow-xs"
+                    onClick={handleContinueClick}
+                    disabled={isProcessingPayment}
+                    className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer text-center shadow-xs disabled:opacity-60"
                   >
-                    Continue
+                    {isProcessingPayment
+                      ? "Processing..."
+                      : selectedPaymentSource === "fund"
+                      ? `Fund ₦${Math.max(100, Math.ceil(quoteTotal - walletAvailableNaira)).toLocaleString("en-NG")} via Paystack`
+                      : "Continue"}
                   </button>
                 </div>
               </div>
@@ -395,10 +561,12 @@ export default function SecureJobPaymentView({
 
             <div>
               <h3 className="font-heading font-bold text-lg text-[#0F1115]">
-                Enter transaction PIN
+                {pinMode === "create" ? "Set transaction PIN" : "Enter transaction PIN"}
               </h3>
               <p className="font-sans text-xs text-neutral-500 mt-2 leading-relaxed max-w-xs mx-auto">
-                Authorise ₦{quoteTotal.toLocaleString()} to be held in escrow for {jobTitle}
+                {pinMode === "create"
+                  ? "Create a 4-digit Bluefixx wallet PIN to authorize escrow payments."
+                  : `Authorise ₦${quoteTotal.toLocaleString()} to be held in escrow for ${jobTitle}`}
               </p>
             </div>
 
@@ -422,19 +590,37 @@ export default function SecureJobPaymentView({
               ))}
             </div>
 
-            <p className="font-sans text-[11px] text-neutral-400">
-              Enter your 4-digit Bluefixx security PIN
-            </p>
+            <div className="space-y-1">
+              <p className="font-sans text-[11px] text-neutral-400">
+                {pinMode === "create"
+                  ? "Choose a 4-digit PIN you will remember"
+                  : "Enter your 4-digit Bluefixx security PIN"}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPinMode(pinMode === "enter" ? "create" : "enter");
+                  setPinDigits(["", "", "", ""]);
+                }}
+                className="text-[11px] font-semibold text-[#001B40] hover:underline cursor-pointer"
+              >
+                {pinMode === "enter" ? "Haven't set a PIN yet? Set PIN now" : "Already have a PIN? Enter PIN"}
+              </button>
+            </div>
 
             {/* Action Button */}
             <div className="pt-2">
               <button
                 type="button"
-                onClick={handleConfirmPayment}
+                onClick={pinMode === "create" ? handleSetPinAndPay : handleConfirmPayment}
                 disabled={isProcessingPayment}
                 className="w-full py-3.5 rounded-xl bg-[#001B40] hover:bg-[#052F5F] text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer text-center shadow-2xs disabled:opacity-60"
               >
-                {isProcessingPayment ? "Securing payment..." : "Continue to payment"}
+                {isProcessingPayment
+                  ? "Securing payment..."
+                  : pinMode === "create"
+                  ? "Save PIN & pay"
+                  : "Continue to payment"}
               </button>
             </div>
           </div>

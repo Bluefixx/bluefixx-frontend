@@ -33,13 +33,32 @@ export async function getWalletActivityApi(params?: {
 /**
  * Initialize payment or funding
  */
-export async function createPaymentApi(payload: {
-  amount: number; // in kobo
-  bookingId?: string;
-  additionId?: string;
-  source?: "WALLET" | "PAYSTACK";
-}): Promise<{ id: string; authorizationUrl?: string; reference: string }> {
-  return apiClient.post("/payments", payload);
+export async function createPaymentApi(
+  payload: {
+    purpose?: "TOPUP" | "BOOKING" | "TRAINING";
+    amount?: number; // in kobo
+    bookingId?: string;
+    additionId?: string;
+    trainingEnrollmentId?: string;
+    source?: "WALLET" | "PAYSTACK";
+    pin?: string;
+  },
+  idempotencyKey?: string
+): Promise<{
+  id: string;
+  status?: string;
+  checkoutUrl?: string;
+  authorizationUrl?: string;
+  reference: string;
+}> {
+  const key =
+    idempotencyKey ||
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `pay_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+  return apiClient.post("/payments", payload, {
+    headers: { "Idempotency-Key": key },
+  });
 }
 
 /**
@@ -92,11 +111,22 @@ export async function downloadPaymentReceiptApi(id: string): Promise<Blob> {
 /**
  * Request wallet withdrawal
  */
-export async function requestWithdrawalApi(payload: {
-  amount: number; // in kobo
-  bankAccountId: string;
-}): Promise<{ id: string; status: string }> {
-  return apiClient.post("/wallet/withdrawals", payload);
+export async function requestWithdrawalApi(
+  payload: {
+    bankId: string;
+    amount: number; // in kobo
+    pin: string;
+  },
+  idempotencyKey?: string
+): Promise<{ id: string; status: string; reference?: string }> {
+  const key =
+    idempotencyKey ||
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `wth_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`);
+  return apiClient.post("/wallet/withdrawals", payload, {
+    headers: { "Idempotency-Key": key },
+  });
 }
 
 /**

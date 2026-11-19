@@ -232,3 +232,136 @@ export interface WorkerVerificationCase {
     author: string;
   }[];
 }
+
+// ==========================================
+// Transactions & Finance Module Data Contracts
+// ==========================================
+
+export type FinancePaymentMethod = "Card — Paystack" | "Bank transfer" | "Wallet balance";
+
+export interface AdminTransaction {
+  id: string;
+  customer: {
+    id: string;
+    code: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  worker: {
+    id: string;
+    code: string;
+    name: string;
+    avatarUrl?: string;
+    trade: string;
+  };
+  job: {
+    id: string;
+    title: string;
+    trade: string;
+    location: string;
+    deliveryStatus: string;
+  };
+  grossAmount: number;
+  platformFee: number;
+  workerEarnings: number;
+  method: FinancePaymentMethod;
+  status: JobPaymentStatus;
+  date: string;
+  gatewayRef: string;
+  timeline: {
+    paymentInitiated?: string;
+    fundsHeldInEscrow?: string;
+    jobCompleted?: string;
+    payoutReleased?: string;
+    refundIssued?: string;
+  };
+  refundHistory?: {
+    id: string;
+    amount: number;
+    reason: string;
+    date: string;
+    admin: string;
+    status: "Processed" | "Pending" | "Rejected";
+  }[];
+  auditHistory: {
+    id: string;
+    action: string;
+    actor: string;
+    date: string;
+  }[];
+  flags?: string[];
+}
+
+export interface AdminWithdrawal {
+  id: string;
+  worker: {
+    id: string;
+    code: string;
+    name: string;
+    avatarUrl?: string;
+    trade: string;
+  };
+  amount: number;
+  requestedAt: string;
+  destinationBank: {
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    nameMatchStatus: "MATCH" | "PARTIAL" | "MISMATCH";
+  };
+  status: "PENDING" | "APPROVED" | "FLAGGED" | "IN_REVIEW" | "COMPLETED" | "REJECTED";
+  assignedAdmin: string;
+  riskNote?: string;
+}
+
+export interface AdminRefund {
+  id: string;
+  transactionId: string;
+  customer: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  worker: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  job: {
+    id: string;
+    title: string;
+  };
+  amount: number;
+  reason: string;
+  status: "Processed" | "Pending" | "Rejected";
+  admin: string;
+  date: string;
+}
+
+export interface CommissionTierConfig {
+  standardCommissionPercent: number;
+  solarCommissionPercent: number;
+  apprenticeshipCommissionPercent: number;
+  withdrawalFlatFee: number;
+  categoryOverrides: { trade: string; percent: number }[];
+}
+
+export interface WalletLedgerEntry {
+  id: string;
+  user: {
+    id: string;
+    name: string;
+    code: string;
+    role: string;
+  };
+  type:
+    | "Wallet funding"
+    | "Withdrawal payout"
+    | "Escrow credit"
+    | "Escrow debit"
+    | "Admin adjustment"
+    | "Commission deduction";
+  amount: number;
+  status: "Successful" | "Pending" | "Failed";
+  date: string;
+}

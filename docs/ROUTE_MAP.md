@@ -48,6 +48,10 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 | `/talent/settings/notifications` | Talent Settings | Notification preference toggles | `app/(talent)/layout.tsx` | Complete | Talent Web · Notifications |
 | `/talent/settings/safety-support` | Talent Settings | Safety centre, emergency dial, and support reporting | `app/(talent)/layout.tsx` | Complete | Talent Web · Safety & support |
 | `/talent/settings/referrals` | Talent Settings | Invite & earn referral dashboard | `app/(talent)/layout.tsx` | Complete | Talent Web · Invite & earn |
+| `/admin` | Admin / Operations | Redirects to `/ops` | `app/layout.tsx` | Complete | Operations Console |
+| `/ops` | Admin / Operations | Operations Console Dashboard with priority attention queue, marketplace health KPIs, operational analytics, trade/location performance, and sensitive actions | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Dashboard |
+| `/ops/dashboard` | Admin / Operations | Direct link to Operations Console Dashboard | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Dashboard |
+| `/ops/users` | Admin / Operations | Comprehensive User Management table with tab filtering (All, Workers, Customers, Talents, Pending Verification, Suspended), bulk actions, risk indicators, impersonation audit, and 360° profile drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Users, Worker Verifications, Customers, Talents, Suspended |
 
 ---
 

@@ -1,6 +1,49 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-13 (Media Upload Contract Fix, Talent Reviews & Messages API Wiring)*
+*Last updated: 2026-11-18 (Admin Operations Console & Advanced User Management Module)*
+
+---
+
+## 0. Latest Session — Admin Operations Console & Advanced User Management
+
+### A. Operations Console Dashboard & Core Layout (`app/(admin)/ops`)
+- **Route Architecture**:
+  - Implemented `/admin` (auto-redirects to `/ops`).
+  - Implemented `/ops` and `/ops/dashboard` using dedicated layout `app/(admin)/ops/layout.tsx`.
+  - Nested components: `OpsSidebar`, `OpsHeader`, and `<React.Suspense>` boundaries.
+- **OpsSidebar (`features/admin/components/OpsSidebar.tsx`)**:
+  - Matches 8 reference screenshots with pixel precision.
+  - Collapsible accordions for *Users*, *Jobs*, *Transactions & Finance*, *Disputes & Support*, and *Talents / Apprenticeship*.
+  - Real alert badges (`Worker verification (24)`, `Disputes (2)`, `Failed withdrawals (5)`, `Support tickets (12)`, `Reviews (3)`).
+  - Version footer: "Bluefixx Admin v1.4 · Lagos region".
+- **OpsHeader (`features/admin/components/OpsHeader.tsx`)**:
+  - Universal search bar, notification drawer popover, and administrator profile pill ("Simeon Daniel · Operations Admin").
+- **Dashboard View (`features/admin/components/OpsDashboardView.tsx`)**:
+  - 8 Priority Attention cards with severity badges (`Critical`, `High`, `Review`, `Monitor`).
+  - Marketplace Health KPIs with percentage delta indicators and turnover/GTV summaries.
+  - SVG analytics curves for Revenue vs. Refund Pressure, Supply/Demand, and Job Funnel.
+  - Active trade breakdown, location distribution, top active workers, and recent sensitive admin audit actions.
+
+### B. User Management Suite with 5 Advanced Capabilities (`app/(admin)/ops/users`)
+- **Interactive Multi-Tab Filtering**:
+  - Tabs: All Users, Workers, Customers, Talents, Pending Verification (24), Suspended / Blocked.
+  - Filter bar: multi-attribute search (name, email, phone, user code, trade, location), role dropdown, verification status, account status, and risk level.
+  - CSV export helper (`handleExportCSV`).
+- **Feature 1: Bulk Operational Actions (`OpsBulkActionModal.tsx`)**:
+  - Multi-select row checkboxes with sticky bottom bulk actions floating toolbar.
+  - Supports Bulk KYC Approval, Document Re-request, Bulk Tagging (`VIP`, `High-Volume`, `Escrow-Hold`, etc.), and Bulk Payout Freeze.
+- **Feature 2: Support Impersonation ("View As User") (`OpsImpersonationBanner.tsx`)**:
+  - Read-only impersonation session launcher with active top warning banner.
+  - Direct deep links to Customer, Artisan, or Talent dashboards while logging an admin security audit event.
+- **Feature 3: Financial Safeguards, Payout Freezing & Custom Limits (`OpsUserProfileDrawer.tsx`)**:
+  - Granular payout freeze toggle without terminating login access.
+  - Custom commission override (%) and daily payout limit (₦) controls.
+- **Feature 4: Risk & Anti-Fraud Signals (`OpsUserProfileDrawer.tsx` & table column)**:
+  - Visual Risk Level badges (`LOW`, `MEDIUM`, `HIGH`) and active anti-fraud risk tags.
+  - Dispute rate metrics, completion rates, and historical dispute tracking.
+- **Feature 5: Direct Wallet Adjustments (`OpsWalletAdjustmentModal.tsx`)**:
+  - Administrative Credit / Debit adjustments with categories (Refund, Goodwill credit, Fee correction, Dispute resolution, Penalty).
+  - Mandatory reason documentation and instant balance reconciliation.
 
 ---
 

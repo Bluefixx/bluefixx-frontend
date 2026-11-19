@@ -5,6 +5,7 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { AdminUser } from "../types";
 import { OpsWalletAdjustmentModal } from "./OpsWalletAdjustmentModal";
+import { OpsSecurityPinModal } from "./OpsSecurityPinModal";
 
 interface OpsUserProfileDrawerProps {
   user: AdminUser | null;
@@ -33,6 +34,19 @@ export function OpsUserProfileDrawer({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isWalletAdjustOpen, setIsWalletAdjustOpen] = useState(false);
   const [newTagInput, setNewTagInput] = useState("");
+  const [pinModalConfig, setPinModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    onSuccess: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    actionLabel: "",
+    onSuccess: () => {},
+  });
 
   if (!isOpen || !user) return null;
 
@@ -64,7 +78,7 @@ export function OpsUserProfileDrawer({
     }, 400);
   };
 
-  const handleToggleFreezePayouts = () => {
+  const executeToggleFreezePayouts = () => {
     const nextState = !user.payoutsFrozen;
     const auditNote = {
       id: `note-${Date.now()}`,
@@ -86,6 +100,28 @@ export function OpsUserProfileDrawer({
         ? `Payouts frozen for ${user.fullName}.`
         : `Payout access restored for ${user.fullName}.`
     );
+  };
+
+  const handleToggleFreezePayouts = () => {
+    setPinModalConfig({
+      isOpen: true,
+      title: user.payoutsFrozen ? "Authorize Payout Unfreeze" : "Authorize Payout Freeze",
+      description: `Enter your 4-digit Admin PIN to ${
+        user.payoutsFrozen ? "restore payout access for" : "freeze all withdrawal payouts for"
+      } ${user.fullName}.`,
+      actionLabel: user.payoutsFrozen ? "Confirm Unfreeze" : "Confirm Freeze",
+      onSuccess: executeToggleFreezePayouts,
+    });
+  };
+
+  const handleOpenWalletAdjustWithPin = () => {
+    setPinModalConfig({
+      isOpen: true,
+      title: "Authorize Balance Adjustment",
+      description: `Direct wallet balance debit/credit adjustment for ${user.fullName} requires administrator PIN verification.`,
+      actionLabel: "Authorize Adjustment",
+      onSuccess: () => setIsWalletAdjustOpen(true),
+    });
   };
 
   const handleAddTag = (e: React.FormEvent) => {
@@ -553,7 +589,7 @@ export function OpsUserProfileDrawer({
                   </h4>
                   <button
                     type="button"
-                    onClick={() => setIsWalletAdjustOpen(true)}
+                    onClick={handleOpenWalletAdjustWithPin}
                     className="px-3 py-1.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold transition-colors cursor-pointer"
                   >
                     ± Adjust Balance
@@ -804,6 +840,16 @@ export function OpsUserProfileDrawer({
           }}
         />
       )}
+
+      {/* Admin Security PIN Authorization */}
+      <OpsSecurityPinModal
+        isOpen={pinModalConfig.isOpen}
+        title={pinModalConfig.title}
+        description={pinModalConfig.description}
+        actionLabel={pinModalConfig.actionLabel}
+        onClose={() => setPinModalConfig((p) => ({ ...p, isOpen: false }))}
+        onSuccess={pinModalConfig.onSuccess}
+      />
     </div>
   );
 }

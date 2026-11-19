@@ -10,6 +10,7 @@ import { OpsSendNotificationModal } from "./OpsSendNotificationModal";
 import { OpsUserProfileDrawer } from "./OpsUserProfileDrawer";
 import { OpsBulkActionModal, BulkActionType } from "./OpsBulkActionModal";
 import { OpsImpersonationBanner } from "./OpsImpersonationBanner";
+import { OpsSecurityPinModal } from "./OpsSecurityPinModal";
 
 export function OpsUsersView() {
   const searchParams = useSearchParams();
@@ -20,6 +21,18 @@ export function OpsUsersView() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // Clear conflicting filters whenever currentTab changes (e.g. from Customers to Talents)
+  useEffect(() => {
+    setFilterRole("ALL");
+    setSearchQuery("");
+    if (currentTab === "pending-verification") {
+      setFilterVerification("ALL");
+    }
+    if (currentTab === "suspended") {
+      setFilterAccount("ALL");
+    }
+  }, [currentTab]);
 
   const [users, setUsers] = useState<AdminUser[]>(MOCK_ADMIN_USERS);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,6 +57,36 @@ export function OpsUsersView() {
 
   // Impersonation state
   const [impersonatedUser, setImpersonatedUser] = useState<AdminUser | null>(null);
+
+  // Admin Security PIN state for critical actions
+  const [pendingPinAction, setPendingPinAction] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionLabel: string;
+    onSuccess: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    actionLabel: "",
+    onSuccess: () => {},
+  });
+
+  const requirePinAuth = (
+    title: string,
+    description: string,
+    actionLabel: string,
+    onSuccess: () => void
+  ) => {
+    setPendingPinAction({
+      isOpen: true,
+      title,
+      description,
+      actionLabel,
+      onSuccess,
+    });
+  };
 
   // Tab Filtering logic
   const filteredUsers = useMemo(() => {
@@ -207,6 +250,36 @@ export function OpsUsersView() {
     setActiveMenuUserId(null);
     setInspectUser(null);
     toast.success(`Started read-only support session as ${u.fullName} (${u.role}).`);
+  };
+
+  const handleStartImpersonationWithPin = (u: AdminUser) => {
+    setActiveMenuUserId(null);
+    requirePinAuth(
+      "Authorize User Impersonation",
+      `Launching an impersonated support session as ${u.fullName} (${u.userCode}) gives temporary access to their role view. This privileged action is logged to the audit registry.`,
+      "Authorize Session",
+      () => handleStartImpersonation(u)
+    );
+  };
+
+  const handleInitiateSuspendWithPin = (u: AdminUser) => {
+    setActiveMenuUserId(null);
+    requirePinAuth(
+      "Authorize Account Suspension",
+      `Suspending ${u.fullName}'s account will revoke all active marketplace access and freeze wallet withdrawals immediately.`,
+      "Proceed to Suspend",
+      () => setSuspendTargetUser(u)
+    );
+  };
+
+  const handleReactivateUserWithPin = (u: AdminUser) => {
+    setActiveMenuUserId(null);
+    requirePinAuth(
+      "Authorize Account Reactivation",
+      `Reactivating ${u.fullName}'s account will restore normal marketplace access and verified matching.`,
+      "Reactivate Account",
+      () => handleReactivateUser(u)
+    );
   };
 
   return (
@@ -493,9 +566,10 @@ export function OpsUsersView() {
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => {
+                filteredUsers.map((user, index) => {
                   const isChecked = selectedUserIds.includes(user.id);
                   const isMenuOpen = activeMenuUserId === user.id;
+                  const openUpwards = index >= Math.max(0, filteredUsers.length - 2);
 
                   return (
                     <tr
@@ -672,7 +746,11 @@ export function OpsUsersView() {
                               className="fixed inset-0 z-30"
                               onClick={() => setActiveMenuUserId(null)}
                             />
-                            <div className="absolute right-5 mt-1 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200/90 py-1.5 z-40 text-left animate-in fade-in zoom-in-95">
+                            <div
+                              className={`absolute right-4 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200/90 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 ${
+                                openUpwards ? "bottom-8 mb-1" : "top-full mt-1"
+                              }`}
+                            >
                             <button
                               type="button"
                               onClick={() => {
@@ -690,7 +768,7 @@ export function OpsUsersView() {
 
                             <button
                               type="button"
-                              onClick={() => handleStartImpersonation(user)}
+                              onClick={() => handleStartImpersonationWithPin(user)}
                               className="w-full px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
                             >
                               <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -721,7 +799,7 @@ export function OpsUsersView() {
                             {user.accountStatus === "SUSPENDED" ? (
                               <button
                                 type="button"
-                                onClick={() => handleReactivateUser(user)}
+                                onClick={() => handleReactivateUserWithPin(user)}
                                 className="w-full px-3.5 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer"
                               >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -732,10 +810,7 @@ export function OpsUsersView() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setSuspendTargetUser(user);
-                                  setActiveMenuUserId(null);
-                                }}
+                                onClick={() => handleInitiateSuspendWithPin(user)}
                                 className="w-full px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
                               >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -829,6 +904,16 @@ export function OpsUsersView() {
           setInspectUser(updated);
           setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
         }}
+      />
+
+      {/* Admin Security PIN Authorization */}
+      <OpsSecurityPinModal
+        isOpen={pendingPinAction.isOpen}
+        title={pendingPinAction.title}
+        description={pendingPinAction.description}
+        actionLabel={pendingPinAction.actionLabel}
+        onClose={() => setPendingPinAction((prev) => ({ ...prev, isOpen: false }))}
+        onSuccess={pendingPinAction.onSuccess}
       />
     </div>
   );

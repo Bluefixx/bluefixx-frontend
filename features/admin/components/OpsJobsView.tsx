@@ -498,8 +498,9 @@ export function OpsJobsView() {
                   </td>
                 </tr>
               ) : (
-                filteredJobs.map((job) => {
+                filteredJobs.map((job, index) => {
                   const isMenuOpen = activeMenuJobId === job.id;
+                  const openUpwards = index >= Math.max(0, filteredJobs.length - 2);
 
                   return (
                     <tr
@@ -652,7 +653,11 @@ export function OpsJobsView() {
                         {isMenuOpen && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setActiveMenuJobId(null)} />
-                            <div className="absolute right-4 mt-1 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95">
+                            <div
+                              className={`absolute right-4 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 ${
+                                openUpwards ? "bottom-8 mb-1" : "top-full mt-1"
+                              }`}
+                            >
                               <button
                                 type="button"
                                 onClick={() => {

@@ -365,3 +365,131 @@ export interface WalletLedgerEntry {
   status: "Successful" | "Pending" | "Failed";
   date: string;
 }
+
+// ==========================================
+// Disputes, Support & Safety Contracts
+// ==========================================
+
+export type DisputeStatus = "OPEN" | "UNDER_REVIEW" | "AWAITING_RESPONSE" | "ESCALATED" | "RESOLVED";
+export type DisputePriority = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+
+export interface DisputeParty {
+  id: string;
+  name: string;
+  code: string;
+  role: "CUSTOMER" | "WORKER";
+  avatarUrl?: string;
+  phone?: string;
+  email?: string;
+  totalJobs: number;
+  rating?: number;
+  lifetimeSpendOrEarned: number;
+  pastDisputesCount: number;
+  cancelledJobsCount?: number;
+  status: "ACTIVE" | "SUSPENDED" | "FLAGGED";
+  payoutsFrozen?: boolean;
+}
+
+export interface DisputeEvidenceAttachment {
+  id: string;
+  name: string;
+  url: string;
+  uploadedAt: string;
+  sizeBytes?: number;
+  uploader: string;
+  description?: string;
+  isAfterProof?: boolean;
+  type?: "photo" | "document" | "video";
+}
+
+export interface DisputeMessage {
+  id: string;
+  author: {
+    name: string;
+    role: "CUSTOMER" | "WORKER" | "ADMIN";
+    avatarUrl?: string;
+  };
+  timestamp: string;
+  content: string;
+  attachments?: DisputeEvidenceAttachment[];
+  isInternalAdminNote?: boolean;
+}
+
+export interface DisputeTimelineEvent {
+  title: string;
+  date: string;
+  description?: string;
+  completed: boolean;
+  active?: boolean;
+}
+
+export interface AdminDispute {
+  id: string;
+  title: string;
+  jobId: string;
+  jobTitle: string;
+  transactionId: string;
+  escrowAmount: number;
+  openedDate: string;
+  priority: DisputePriority;
+  status: DisputeStatus;
+  assignedAdmin: string;
+  customer: DisputeParty;
+  worker: DisputeParty;
+  resolutionOutcome?: "FULL_WORKER" | "FULL_CUSTOMER" | "SPLIT_AGREED" | "NO_EVIDENCE";
+  resolutionSplit?: {
+    workerPercentage: number;
+    customerPercentage: number;
+    workerAmount: number;
+    customerAmount: number;
+    platformFee: number;
+  };
+  resolutionReason?: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  refundDebitMemoId?: string;
+  messages: DisputeMessage[];
+  evidenceFiles: DisputeEvidenceAttachment[];
+  timeline: DisputeTimelineEvent[];
+}
+
+export interface AdminSupportTicket {
+  id: string;
+  user: {
+    name: string;
+    role: "Customer" | "Worker" | "Talent";
+    avatarUrl?: string;
+    code: string;
+  };
+  subject: string;
+  category: "Withdrawal" | "Payments" | "Dispute" | "Verification" | "Account Safety" | "Apprenticeship" | "Reviews" | "Programmes";
+  priority: "Urgent" | "High" | "Medium" | "Low";
+  status: "Open" | "In Progress" | "Waiting for user" | "Resolved";
+  assignedAdmin: string;
+  createdAt: string;
+  waitTime: string;
+  isBreachedSLA: boolean;
+  slaRemainingMinutes?: number;
+  lastMessageSnippet: string;
+  jobId?: string;
+  transactionId?: string;
+}
+
+export interface AdminSafetyIncident {
+  id: string;
+  party: {
+    name: string;
+    code: string;
+    role: "Customer" | "Worker" | "Talent";
+  };
+  title: string;
+  priority: "Critical" | "High" | "Medium" | "Low";
+  category: "Conduct" | "Damage" | "Theft" | "Harassment" | "Safety";
+  jobId?: string;
+  status: "Open" | "Investigating" | "Resolved" | "Escalated";
+  assignedAdmin: string;
+  reportedDate: string;
+  description: string;
+  location: string;
+  isCriticalAlert?: boolean;
+}

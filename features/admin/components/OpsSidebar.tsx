@@ -162,6 +162,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
             </svg>
           ),
           subItems: [
+            { name: "Disputes", href: "/ops/disputes" },
             { name: "Support tickets", href: "/ops/support", badge: 12, badgeColor: "orange" },
             { name: "Safety / incidents", href: "/ops/safety", badge: 4, badgeColor: "red" },
           ],
@@ -306,7 +307,11 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
     const targetPath = subPath || parentHref;
 
     // Check if current route matches this sub item's base path
-    if (pathname !== targetPath) {
+    const pathMatches =
+      pathname === targetPath ||
+      (targetPath !== "/ops" && pathname.startsWith(targetPath + "/"));
+
+    if (!pathMatches) {
       return false;
     }
 

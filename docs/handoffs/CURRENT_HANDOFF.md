@@ -1,10 +1,45 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-18 (Admin Operations Console & Advanced User Management Module)*
+*Last updated: 2026-11-19 (Trust & Safety / Disputes & Support Operations Suite)*
 
 ---
 
-## 0. Latest Session — Admin Operations Console & Advanced User Management
+## 0. Latest Session — Trust & Safety / Disputes & Support Operations Suite
+
+### A. Core Suite Architecture & Route Mapping
+1. **Dispute Management & Arbitration Queue (`/ops/disputes`)**:
+   - 5 KPI summary metric cards: *Open disputes (5)*, *In escrow (₦1,420,000)*, *Escalated (1)*, *Awaiting response (2)*, and *Avg resolution (4.2 days)*.
+   - Filter tabs: *All* vs. *Assigned to me*.
+   - Filter bar using universal dropdowns (`OpsDropdown.tsx`) matching Figma Frame 2147238654 (Status, Priority, Search, and CSV export).
+   - Data table matching Figma screenshot with 1-click transition to case workstation.
+2. **360° Dispute Arbitration Workstation (`/ops/disputes/[id]`)**:
+   - Header with status badges (`Under review`, `High`), breadcrumbs, and top actions (`Request information`, `Escalate`, `Resolve`).
+   - Left Column:
+     - Case summary (Job ID, title, escrow amount, transaction ID, payment status).
+     - Parties card: Customer & Worker trust profiles (total jobs, rating, lifetime spend/volume, past disputes count, profile deep-links).
+     - **Feature 3: Direct Disciplinary Sanctions (`OpsDisciplinaryActionModal.tsx`)**: Allows 1-click Freeze Payouts, Account Suspension, or Formal Policy Warnings right inside the case workstation, gated by PIN authorization.
+   - Middle Column:
+     - Multi-party chronological thread (Customer statements, Worker counter-claims, Admin internal notes).
+     - File attachments (`evidence-1.jpg`, `evidence-2.jpg`, `evidence-3.jpg`).
+     - **Feature 2: Integrated Evidence Media Lightbox (`OpsEvidenceLightboxModal.tsx`)**: Full-screen inspection with zoom, rotation, metadata/EXIF verification, and a side-by-side Before/After Comparison mode.
+     - Multi-mode reply composer: toggle between internal admin notes and messages to both parties.
+   - Right Column:
+     - Arbitration Decision Engine: outcomes (`Release full escrow to worker`, `Refund full escrow to customer`, `Split escrow agreed`, `No evidence provided`), live money impact preview (Customer refund, Worker net, Platform fee).
+     - PIN-authorized decision modals (`OpsDisputeResolveModal`, `OpsDisputeRefundModal`, `OpsDisputeEscalateModal`, `OpsDisputeRequestInfoModal`).
+     - Case timeline audit stepper (Job completed → Dispute opened → Escrow frozen → Evidence requested → Under review → Resolution).
+3. **Support Tickets Inbox with SLA Engine (`/ops/support`)**:
+   - Header with SLA breach alert banner (`7 tickets breaching first-response SLA: Average wait time 3.7 hrs`).
+   - Category, Priority, and Status dropdown filters matching Frame 2147238654.
+   - Data table with SLA breach badges, and quick inspection & response drawer.
+4. **Safety & Real-Time Incident Response (`/ops/safety`)**:
+   - Real-time Critical Incident Alert Banner (`1 critical incident open right now: IN-00042 [Open incident case]`).
+   - Severity matrix, category filtering (`Conduct`, `Damage`, `Theft`, `Harassment`, `Safety`), and triage finding drawer.
+5. **Universal Design System Dropdown (`OpsDropdown.tsx`)**:
+   - Clean reusable dropdown component adhering to Frame 2147238654 with dark navy selection, compact triggers, and click-outside dismissal.
+
+---
+
+## 1. Prior Session — Transactions & Finance Module (`app/(admin)/ops/finance`)
 
 ### A. Operations Console Dashboard & Core Layout (`app/(admin)/ops`)
 - **Route Architecture**:

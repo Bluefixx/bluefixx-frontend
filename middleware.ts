@@ -18,7 +18,9 @@ export function middleware(request: NextRequest) {
     pathname === '/signup' ||
     pathname === '/forgot-password' ||
     pathname === '/' ||
-    pathname === '/onboarding'
+    pathname === '/onboarding' ||
+    pathname.startsWith('/ops') ||
+    pathname.startsWith('/admin')
   ) {
     return NextResponse.next();
   }

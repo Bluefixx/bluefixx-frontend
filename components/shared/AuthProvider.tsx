@@ -288,7 +288,13 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       resetAuth();
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (!path.startsWith("/login") && !path.startsWith("/register") && !path.startsWith("/forgot-password")) {
+        if (
+          !path.startsWith("/login") &&
+          !path.startsWith("/register") &&
+          !path.startsWith("/forgot-password") &&
+          !path.startsWith("/ops") &&
+          !path.startsWith("/admin")
+        ) {
           window.location.href = "/login";
         }
       }
@@ -298,6 +304,14 @@ export default function AuthProvider({ children }: AuthProviderProps) {
   // Hydrate user profile & wallet on initial app load if authenticated
   useEffect(() => {
     let isMounted = true;
+
+    // Skip customer profile hydration when viewing the admin console
+    if (
+      typeof window !== "undefined" &&
+      (window.location.pathname.startsWith("/ops") || window.location.pathname.startsWith("/admin"))
+    ) {
+      return;
+    }
 
     // 1. Profile & Active Role from /account
     getAccountProfileApi()

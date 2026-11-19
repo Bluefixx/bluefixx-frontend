@@ -173,7 +173,9 @@ axiosInstance.interceptors.response.use(
             path.startsWith("/register") ||
             path.startsWith("/signup") ||
             path.startsWith("/onboarding") ||
-            path.startsWith("/forgot-password");
+            path.startsWith("/forgot-password") ||
+            path.startsWith("/ops") ||
+            path.startsWith("/admin");
           if (!isPublicRoute) {
             window.location.href = "/login";
           }
@@ -201,7 +203,9 @@ axiosInstance.interceptors.response.use(
           path.startsWith("/register") ||
           path.startsWith("/signup") ||
           path.startsWith("/onboarding") ||
-          path.startsWith("/forgot-password");
+          path.startsWith("/forgot-password") ||
+          path.startsWith("/ops") ||
+          path.startsWith("/admin");
         if (!isPublicRoute) {
           window.location.href = "/login";
         }

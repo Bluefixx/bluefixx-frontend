@@ -33,13 +33,12 @@ interface NavGroup {
 export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentTab = searchParams.get("tab") || "all";
 
   // Control which dropdowns are expanded
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Users: true,
     Jobs: false,
-    "Transactions & finance": false,
+    "Transactions & finance": true,
     "Disputes & support": false,
     "Talents / apprenticeship": false,
   });
@@ -105,12 +104,12 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
             </svg>
           ),
           subItems: [
-            { name: "All jobs", href: "/ops/jobs" },
-            { name: "Active", href: "/ops/jobs?tab=active" },
-            { name: "Pending", href: "/ops/jobs?tab=pending" },
-            { name: "Completed", href: "/ops/jobs?tab=completed" },
-            { name: "Cancelled", href: "/ops/jobs?tab=cancelled" },
-            { name: "Disputed", href: "/ops/jobs?tab=disputed", badge: 2, badgeColor: "red" },
+            { name: "All jobs", href: "/ops/jobs", paramTab: "all" },
+            { name: "Active", href: "/ops/jobs?tab=active", paramTab: "active" },
+            { name: "Pending", href: "/ops/jobs?tab=pending", paramTab: "pending" },
+            { name: "Completed", href: "/ops/jobs?tab=completed", paramTab: "completed" },
+            { name: "Cancelled", href: "/ops/jobs?tab=cancelled", paramTab: "cancelled" },
+            { name: "Disputed", href: "/ops/jobs?tab=disputed", paramTab: "disputed", badge: 2, badgeColor: "red" },
           ],
         },
         {
@@ -140,11 +139,11 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
             </svg>
           ),
           subItems: [
-            { name: "All transactions", href: "/ops/finance" },
-            { name: "Withdrawals", href: "/ops/finance?tab=withdrawals", badge: 5, badgeColor: "red" },
-            { name: "Refunds", href: "/ops/finance?tab=refunds", badge: 2, badgeColor: "orange" },
-            { name: "Platform revenue", href: "/ops/finance?tab=revenue" },
-            { name: "Wallet activity", href: "/ops/finance?tab=wallet" },
+            { name: "All transactions", href: "/ops/finance", paramTab: "all" },
+            { name: "Withdrawals", href: "/ops/finance?tab=withdrawals", paramTab: "withdrawals", badge: 5, badgeColor: "red" },
+            { name: "Refunds", href: "/ops/finance?tab=refunds", paramTab: "refunds", badge: 2, badgeColor: "orange" },
+            { name: "Platform revenue", href: "/ops/finance?tab=revenue", paramTab: "revenue" },
+            { name: "Wallet activity", href: "/ops/finance?tab=wallet", paramTab: "wallet" },
           ],
         },
       ],
@@ -193,12 +192,12 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
             </svg>
           ),
           subItems: [
-            { name: "Applications", href: "/ops/talents?tab=applications", badge: 2, badgeColor: "blue" },
-            { name: "Active talents", href: "/ops/talents?tab=active" },
-            { name: "Master artisans", href: "/ops/talents?tab=masters" },
-            { name: "Programmes", href: "/ops/talents?tab=programmes" },
-            { name: "Certifications", href: "/ops/talents?tab=certifications" },
-            { name: "Apprenticeship payments", href: "/ops/talents?tab=payments" },
+            { name: "Applications", href: "/ops/talents?tab=applications", paramTab: "applications", badge: 2, badgeColor: "blue" },
+            { name: "Active talents", href: "/ops/talents?tab=active", paramTab: "active" },
+            { name: "Master artisans", href: "/ops/talents?tab=masters", paramTab: "masters" },
+            { name: "Programmes", href: "/ops/talents?tab=programmes", paramTab: "programmes" },
+            { name: "Certifications", href: "/ops/talents?tab=certifications", paramTab: "certifications" },
+            { name: "Apprenticeship payments", href: "/ops/talents?tab=payments", paramTab: "payments" },
           ],
         },
         {
@@ -301,6 +300,57 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
     },
   ];
 
+  // Helper to check if a sub-item is active
+  const isSubItemActive = (sub: NavSubItem, parentHref: string): boolean => {
+    const [subPath, subQuery] = sub.href.split("?");
+    const targetPath = subPath || parentHref;
+
+    // Check if current route matches this sub item's base path
+    if (pathname !== targetPath) {
+      return false;
+    }
+
+    // Determine the target tab for this sub-item
+    let targetTab = sub.paramTab;
+    if (!targetTab && subQuery) {
+      const params = new URLSearchParams(subQuery);
+      targetTab = params.get("tab") || undefined;
+    }
+
+    const currentTab = (searchParams.get("tab") || "all").toLowerCase();
+
+    // If this sub-item has a specific tab defined (e.g. "withdrawals", "all")
+    if (targetTab) {
+      return currentTab === targetTab.toLowerCase();
+    }
+
+    // If this sub-item has no query params and no paramTab, check if there's no tab in URL or tab is 'all'
+    return !searchParams.get("tab") || searchParams.get("tab") === "all";
+  };
+
+  // Auto-expand group if current path matches
+  React.useEffect(() => {
+    navGroups.forEach((grp) => {
+      grp.items.forEach((item) => {
+        if (item.subItems) {
+          const isCurrentGroup =
+            pathname === item.href ||
+            item.subItems.some((sub) => {
+              const [subPath] = sub.href.split("?");
+              return pathname === subPath || pathname.startsWith(subPath + "/");
+            });
+
+          if (isCurrentGroup) {
+            setExpandedGroups((prev) => ({
+              ...prev,
+              [item.name]: true,
+            }));
+          }
+        }
+      });
+    });
+  }, [pathname]);
+
   return (
     <aside className="w-64 bg-white border-r border-neutral-200/90 flex flex-col h-screen shrink-0 sticky top-0 select-none z-30">
       {/* Brand Header */}
@@ -342,14 +392,10 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                 const isExpanded = expandedGroups[item.name];
                 const isExactActive =
                   pathname === item.href ||
-                  (item.href === "/ops/dashboard" && pathname === "/ops");
+                  (item.href === "/ops/dashboard" && pathname === "/ops") ||
+                  (item.href === "/ops/verification" && (pathname === "/ops/verification" || pathname === "/ops/verifications"));
                 const isChildActive =
-                  hasSub && item.subItems?.some((sub) => {
-                    if (sub.paramTab) {
-                      return pathname === "/ops/users" && currentTab === sub.paramTab;
-                    }
-                    return pathname.startsWith(sub.href);
-                  });
+                  hasSub && item.subItems?.some((sub) => isSubItemActive(sub, item.href));
 
                 return (
                   <div key={item.name} className="space-y-0.5">
@@ -373,6 +419,8 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                               className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${
                                 item.badgeColor === "red"
                                   ? "bg-red-100 text-red-700"
+                                  : item.badgeColor === "blue"
+                                  ? "bg-blue-100 text-blue-700"
                                   : "bg-amber-100 text-amber-700"
                               }`}
                             >
@@ -413,6 +461,8 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                                 ? "bg-white/20 text-white"
                                 : item.badgeColor === "red"
                                 ? "bg-red-100 text-red-700"
+                                : item.badgeColor === "blue"
+                                ? "bg-blue-100 text-blue-700"
                                 : "bg-amber-100 text-amber-700"
                             }`}
                           >
@@ -426,9 +476,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                     {hasSub && isExpanded && (
                       <div className="pl-6 pr-1 py-0.5 space-y-0.5 border-l-2 border-neutral-100 ml-4">
                         {item.subItems?.map((sub) => {
-                          const isSubActive = sub.paramTab
-                            ? pathname === "/ops/users" && currentTab === sub.paramTab
-                            : pathname === sub.href;
+                          const isSubActive = isSubItemActive(sub, item.href);
 
                           return (
                             <Link
@@ -449,6 +497,8 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                                       ? "bg-white/20 text-white"
                                       : sub.badgeColor === "red"
                                       ? "bg-red-100 text-red-700"
+                                      : sub.badgeColor === "blue"
+                                      ? "bg-blue-100 text-blue-700"
                                       : "bg-amber-100 text-amber-700"
                                   }`}
                                 >

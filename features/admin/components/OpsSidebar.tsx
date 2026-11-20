@@ -301,7 +301,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
     },
   ];
 
-  // Helper to check if a sub-item is active
+  //Helper to check if a sub-item is active
   const isSubItemActive = (sub: NavSubItem, parentHref: string): boolean => {
     const [subPath, subQuery] = sub.href.split("?");
     const targetPath = subPath || parentHref;
@@ -408,11 +408,10 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                       <button
                         type="button"
                         onClick={() => toggleGroup(item.name)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                          isChildActive || isExactActive
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${isChildActive || isExactActive
                             ? "text-[#001B40] font-bold"
                             : "text-neutral-600 hover:bg-neutral-100/70 hover:text-neutral-900"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2.5">
                           {item.icon(Boolean(isChildActive || isExactActive))}
@@ -421,21 +420,19 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                         <div className="flex items-center gap-1.5">
                           {item.badge && (
                             <span
-                              className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${
-                                item.badgeColor === "red"
+                              className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${item.badgeColor === "red"
                                   ? "bg-red-100 text-red-700"
                                   : item.badgeColor === "blue"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : "bg-amber-100 text-amber-700"
-                              }`}
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-amber-100 text-amber-700"
+                                }`}
                             >
                               {item.badge}
                             </span>
                           )}
                           <svg
-                            className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
+                            className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${isExpanded ? "rotate-180" : ""
+                              }`}
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -449,11 +446,10 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                       <Link
                         href={item.href}
                         onClick={onCloseMobile}
-                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
-                          isExactActive
+                        className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${isExactActive
                             ? "bg-[#001B40] text-white shadow-xs"
                             : "text-neutral-600 hover:bg-neutral-100/70 hover:text-neutral-900"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2.5">
                           {item.icon(isExactActive)}
@@ -461,15 +457,14 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                         </div>
                         {item.badge && (
                           <span
-                            className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${
-                              isExactActive
+                            className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${isExactActive
                                 ? "bg-white/20 text-white"
                                 : item.badgeColor === "red"
-                                ? "bg-red-100 text-red-700"
-                                : item.badgeColor === "blue"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-amber-100 text-amber-700"
-                            }`}
+                                  ? "bg-red-100 text-red-700"
+                                  : item.badgeColor === "blue"
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-amber-100 text-amber-700"
+                              }`}
                           >
                             {item.badge}
                           </span>
@@ -488,24 +483,22 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                               key={sub.name}
                               href={sub.href}
                               onClick={onCloseMobile}
-                              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all ${
-                                isSubActive
+                              className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs transition-all ${isSubActive
                                   ? "bg-[#001B40] text-white font-bold shadow-2xs"
                                   : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50"
-                              }`}
+                                }`}
                             >
                               <span className="truncate">{sub.name}</span>
                               {sub.badge && (
                                 <span
-                                  className={`px-1.5 py-0.2 text-[9px] font-bold rounded-sm ml-1.5 ${
-                                    isSubActive
+                                  className={`px-1.5 py-0.2 text-[9px] font-bold rounded-sm ml-1.5 ${isSubActive
                                       ? "bg-white/20 text-white"
                                       : sub.badgeColor === "red"
-                                      ? "bg-red-100 text-red-700"
-                                      : sub.badgeColor === "blue"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-amber-100 text-amber-700"
-                                  }`}
+                                        ? "bg-red-100 text-red-700"
+                                        : sub.badgeColor === "blue"
+                                          ? "bg-blue-100 text-blue-700"
+                                          : "bg-amber-100 text-amber-700"
+                                    }`}
                                 >
                                   {sub.badge}
                                 </span>

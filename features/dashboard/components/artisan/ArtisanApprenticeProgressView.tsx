@@ -17,6 +17,7 @@ interface MilestoneItem {
 }
 
 interface ArtisanApprenticeProgressViewProps {
+  enrollmentId?: string;
   apprenticeName?: string;
   tradeTitle?: string;
   onBack: () => void;
@@ -25,6 +26,7 @@ interface ArtisanApprenticeProgressViewProps {
 }
 
 export function ArtisanApprenticeProgressView({
+  enrollmentId,
   apprenticeName = "Daniel Eze",
   tradeTitle = "Welding & Metal Fabrication Apprenticeship",
   onBack,
@@ -54,24 +56,32 @@ export function ArtisanApprenticeProgressView({
       prev.map((m) => (m.id === id ? { ...m, completed: nextCompleted } : m))
     );
 
+    if (!enrollmentId) {
+      toast.error("No active apprentice enrollment selected.");
+      return;
+    }
+
     try {
-      await updateApprenticeProgressApi("mock-enrollment-id", id, nextCompleted);
+      await updateApprenticeProgressApi(enrollmentId, id, nextCompleted);
       toast.success("Milestone progress updated");
-    } catch {
-      toast.success("Milestone progress updated");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update milestone progress");
     }
   };
 
   const handleConfirmCompletion = async () => {
+    if (!enrollmentId) {
+      toast.error("No active apprentice enrollment selected.");
+      return;
+    }
     try {
-      await completeApprenticeTrainingApi("mock-enrollment-id");
-      toast.success("Apprenticeship completed! Final payout of ₦50,000 released.");
-    } catch {
-      toast.success("Apprenticeship completed! Final payout of ₦50,000 released.");
-    } finally {
+      await completeApprenticeTrainingApi(enrollmentId);
+      toast.success("Apprenticeship completed! Final payout released.");
       setIsDetailedConfirmModalOpen(false);
       setIsConfirmModalOpen(false);
       setIsGraduated(true);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to complete apprenticeship");
     }
   };
 

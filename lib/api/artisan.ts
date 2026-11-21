@@ -696,3 +696,79 @@ export async function setDefaultBeneficiaryApi(
   return apiClient.patch<{ message: string }>(`/account/banks/${id}/default`, { pin });
 }
 
+// ── 12. Competence, Assessments & Extended Training ───────────────
+
+export async function getCustomerReviewForBookingApi(bookingId: string): Promise<unknown> {
+  return apiClient.get(`/artisan/bookings/${bookingId}/customer-review`);
+}
+
+export async function getArtisanCompetenceApi(): Promise<unknown> {
+  return apiClient.get("/artisan/competence");
+}
+
+export async function getArtisanAssessmentsApi(): Promise<unknown[]> {
+  return apiClient.get<unknown[]>("/artisan/assessments");
+}
+
+export async function startArtisanAssessmentApi(payload: { tradeId: string }): Promise<unknown> {
+  return apiClient.post("/artisan/assessments", payload);
+}
+
+export async function getArtisanAssessmentByIdApi(id: string): Promise<unknown> {
+  return apiClient.get(`/artisan/assessments/${id}`);
+}
+
+export async function submitAssessmentAnswersApi(
+  id: string,
+  payload: { answers: Array<{ questionId: string; answer: string }> }
+): Promise<unknown> {
+  return apiClient.post(`/artisan/assessments/${id}/answers`, payload);
+}
+
+export async function submitAssessmentEvidenceApi(
+  id: string,
+  payload: { mediaIds: string[]; notes?: string }
+): Promise<unknown> {
+  return apiClient.post(`/artisan/assessments/${id}/evidence`, payload);
+}
+
+export async function getArtisanApplicationByIdApi(id: string): Promise<unknown> {
+  return apiClient.get(`/artisan/training/applications/${id}`);
+}
+
+export async function updateTrainingCurriculumApi(
+  programId: string,
+  payload: { curriculum: unknown }
+): Promise<unknown> {
+  return apiClient.patch(`/artisan/training/programs/${programId}/curriculum`, payload);
+}
+
+export async function getArtisanEnrollmentCertificateApi(enrollmentId: string): Promise<unknown> {
+  return apiClient.get(`/artisan/training/enrollments/${enrollmentId}/certificate`);
+}
+
+export async function createTrainingAssignmentApi(
+  enrollmentId: string,
+  payload: { title: string; description?: string; dueAt?: string }
+): Promise<unknown> {
+  return apiClient.post(`/artisan/training/enrollments/${enrollmentId}/assignments`, payload);
+}
+
+export async function reviewTrainingAssignmentApi(
+  assignmentId: string,
+  payload: { approved: boolean; feedback?: string }
+): Promise<unknown> {
+  return apiClient.post(`/artisan/training/assignments/${assignmentId}/review`, payload);
+}
+
+export async function recordTrainingAttendanceApi(
+  enrollmentId: string,
+  payload: { date: string; present: boolean; notes?: string }
+): Promise<unknown> {
+  return apiClient.post(`/artisan/training/enrollments/${enrollmentId}/attendance`, payload);
+}
+
+export async function submitTrainingMilestoneApi(milestoneId: string): Promise<unknown> {
+  return apiClient.post(`/artisan/training/milestones/${milestoneId}/submit`, {});
+}
+

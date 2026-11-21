@@ -38,3 +38,10 @@ export async function updateNotificationPreferencesApi(
 ): Promise<NotificationPreferences> {
   return apiClient.patch<NotificationPreferences>("/account/notification-preferences", payload);
 }
+
+/**
+ * Mark a single notification as read by ID
+ */
+export async function markNotificationReadByIdApi(id: string): Promise<{ message?: string }> {
+  return apiClient.post<{ message?: string }>(`/notifications/${id}/read`, {});
+}

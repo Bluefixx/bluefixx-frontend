@@ -9,6 +9,7 @@ import {
   decideAdditionApi,
   confirmBookingApi,
 } from "@/lib/api/bookings";
+import { createSupportCaseApi } from "@/lib/api/support";
 import { BookingDetail } from "@/types/customer";
 import { koboToNaira } from "@/lib/utils/currency";
 
@@ -462,13 +463,25 @@ export default function JobProgressTrackerView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (!problemReason.trim()) {
                       toast.error("Please explain the issue first");
                       return;
                     }
-                    setIsReportProblemModalOpen(false);
-                    toast.success("Dispute opened. Bluefixx Escrow remains locked.");
+                    try {
+                      await createSupportCaseApi({
+                        category: "DISPUTE",
+                        bookingId: booking?.id || jobId || undefined,
+                        subject: "Booking dispute",
+                        description: problemReason.trim(),
+                      });
+                      setIsReportProblemModalOpen(false);
+                      toast.success("Dispute opened. Bluefixx Escrow remains locked.");
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error ? err.message : "Failed to submit dispute"
+                      );
+                    }
                   }}
                   className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs cursor-pointer"
                 >

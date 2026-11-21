@@ -73,3 +73,61 @@ export async function acceptOfferApi(offerId: string, idempotencyKey?: string): 
       : undefined
   );
 }
+
+export interface NegotiationOfferSnapshot {
+  id: string;
+  version: number;
+  authorRole: "CUSTOMER" | "ARTISAN";
+  base: string;
+  fee: string;
+  artisanEarnings: string;
+  customerTotal: string;
+  expiresAt: string;
+  status: string;
+  budgetPosition?: "BELOW" | "WITHIN" | "ABOVE" | null;
+}
+
+export interface NegotiationState {
+  quoteId: string;
+  status: string;
+  enabled: boolean;
+  turn: "CUSTOMER" | "ARTISAN" | null;
+  round: number;
+  maxRounds: number;
+  liveMinutes: number;
+  offer: NegotiationOfferSnapshot | null;
+  history: Array<{
+    version: number;
+    authorRole: "CUSTOMER" | "ARTISAN";
+    base: string;
+    customerTotal: string;
+    status: string;
+    createdAt: string;
+    budgetPosition?: "BELOW" | "WITHIN" | "ABOVE" | null;
+  }>;
+  budget?: { minimum: string | null; maximum: string | null } | null;
+  serverTime: string;
+  bookingId?: string | null;
+}
+
+/**
+ * Fetch current live price negotiation state for a quote
+ */
+export async function getQuoteNegotiationApi(quoteId: string): Promise<NegotiationState> {
+  return apiClient.get<NegotiationState>(`/quotes/${quoteId}/negotiation`);
+}
+
+/**
+ * Submit a price-only counter-offer in an active quote negotiation
+ */
+export async function counterOfferApi(
+  quoteId: string,
+  priceKobo: number,
+  idempotencyKey?: string
+): Promise<NegotiationState> {
+  return apiClient.post<NegotiationState>(
+    `/quotes/${quoteId}/counter`,
+    { price: priceKobo },
+    idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined
+  );
+}

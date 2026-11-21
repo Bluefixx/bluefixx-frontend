@@ -66,7 +66,7 @@ export function ArtisanProfileView({
             completed: dashboard.completed ?? 0,
             ratingCount: dashboard.profile?.ratingCount ?? 0,
             ratingTotal: dashboard.profile?.ratingTotal ?? 0,
-            activeApprenticesCount: dashboard.activeApprenticesCount ?? 0,
+            activeApprenticesCount: dashboard.training?.activeApprentices ?? 0,
           });
         }
 

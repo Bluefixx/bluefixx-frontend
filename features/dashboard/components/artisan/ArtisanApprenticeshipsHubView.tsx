@@ -8,6 +8,7 @@ import {
   getArtisanTrainingProgramsApi,
   getArtisanApplicationsApi,
   getArtisanEnrollmentsApi,
+  updateApplicationDecisionApi,
 } from "@/lib/api/artisan";
 
 type ApprenticeshipTab = "active" | "applications" | "completed";
@@ -36,36 +37,17 @@ export function ArtisanApprenticeshipsHubView({
     status: ApplicantStatus;
   } | null>(null);
 
-  // Sample Applicants Matching Figma Screens
-  const [applicants, setApplicants] = useState([
-    {
-      id: "app-chidera",
-      name: "Chidera Okwu",
-      location: "Abakpa Enugu East · Age 21",
-      appliedDate: "18 Aug 2026, 10:12",
-      experience: "Two years helping in my uncle's workshop in Nsukka",
-      status: "new" as ApplicationSubTab,
-      avatar: "👨🏾",
-    },
-    {
-      id: "app-1",
-      name: "Chinedu Agu",
-      location: "Abakpa Nike, Enugu",
-      appliedDate: "3 Aug 2026",
-      experience: "No formal experience. Finished secondary school in 2025.",
-      status: "declined" as ApplicationSubTab,
-      avatar: "👨🏾",
-    },
-    {
-      id: "app-2",
-      name: "Ifeanyi Ugwu",
-      location: "New Haven, Enugu",
-      appliedDate: "10 Aug 2026",
-      experience: "No formal experience. Finished secondary school in 2021.",
-      status: "new" as ApplicationSubTab,
-      avatar: "👨🏿",
-    },
-  ]);
+  const [applicants, setApplicants] = useState<
+    Array<{
+      id: string;
+      name: string;
+      location: string;
+      appliedDate: string;
+      experience: string;
+      status: ApplicationSubTab;
+      avatar: string;
+    }>
+  >([]);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -83,7 +65,25 @@ export function ArtisanApprenticeshipsHubView({
       getArtisanApplicationsApi({ status: statusMapping[applicantSubTab] })
         .then((res) => {
           if (!mounted || !res || !Array.isArray(res.items)) return;
-          console.debug(`Loaded ${res.items.length} applications`);
+          const mapped = res.items.map((item) => ({
+            id: item.id,
+            name: item.talentName || "Applicant",
+            location: item.programTitle || "Apprenticeship",
+            appliedDate: item.submittedAt
+              ? new Date(item.submittedAt).toLocaleDateString()
+              : "Recent",
+            experience: item.priorExperience || "No prior experience noted",
+            status:
+              item.status === "ACCEPTED"
+                ? ("accepted" as const)
+                : item.status === "DECLINED"
+                ? ("declined" as const)
+                : item.status === "UNDER_REVIEW"
+                ? ("reviewing" as const)
+                : ("new" as const),
+            avatar: "👨🏾",
+          }));
+          setApplicants(mapped);
         })
         .catch((err) => {
           console.debug("Applications API offline or mocked.", err);
@@ -95,7 +95,8 @@ export function ArtisanApprenticeshipsHubView({
       getArtisanEnrollmentsApi()
         .then((items) => {
           if (!mounted || !Array.isArray(items)) return;
-          console.debug(`Loaded ${items.length} apprentice enrollments`);
+          if (items.length === 0) setIsEmpty(true);
+          else setIsEmpty(false);
         })
         .catch((err) => {
           console.debug("Enrollments API offline or mocked.", err);
@@ -110,18 +111,28 @@ export function ArtisanApprenticeshipsHubView({
     };
   }, [activeTab, applicantSubTab]);
 
-  const handleAcceptApplicant = (id: string, name: string) => {
-    setApplicants((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "accepted" } : a))
-    );
-    toast.success(`${name} accepted! Invoice and reservation sent.`);
+  const handleAcceptApplicant = async (id: string, name: string) => {
+    try {
+      await updateApplicationDecisionApi(id, { decision: "ACCEPTED" });
+      setApplicants((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: "accepted" } : a))
+      );
+      toast.success(`${name} accepted! Invoice and reservation sent.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to accept applicant");
+    }
   };
 
-  const handleDeclineApplicant = (id: string, name: string) => {
-    setApplicants((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "declined" } : a))
-    );
-    toast(`${name} application declined.`);
+  const handleDeclineApplicant = async (id: string, name: string) => {
+    try {
+      await updateApplicationDecisionApi(id, { decision: "DECLINED" });
+      setApplicants((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: "declined" } : a))
+      );
+      toast(`${name} application declined.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to decline applicant");
+    }
   };
 
   // ═══════════════════════════════════════════════════════════

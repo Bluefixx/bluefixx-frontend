@@ -36,34 +36,17 @@ export default function ReviewsPage() {
     amount: "₦45,000",
   });
 
-  const [artisanCompletedJobs] = useState([
-    {
-      id: "aj-1",
-      title: "Generator repair",
-      customerName: "Daniel C.",
-      completedDate: "12 Aug",
-      amount: "₦45,000 paid out",
-      status: "pending",
-    },
-    {
-      id: "aj-2",
-      title: "Bathroom re-piping",
-      customerName: "Chinedu O.",
-      completedDate: "8 Aug",
-      amount: "₦110,000",
-      status: "reviewed",
-      rating: 5,
-    },
-    {
-      id: "aj-3",
-      title: "Window frame replacement",
-      customerName: "Amara M.",
-      completedDate: "15 July",
-      amount: "₦35,000",
-      status: "reviewed",
-      rating: 5,
-    },
-  ]);
+  const [artisanCompletedJobs] = useState<
+    Array<{
+      id: string;
+      title: string;
+      customerName: string;
+      completedDate: string;
+      amount: string;
+      status: string;
+      rating?: number;
+    }>
+  >([]);
 
   // Views: "list" (Screenshot 1 Left), "write" (Screenshot 1 Right), "submitted" (Screenshot 2)
   const [currentView, setCurrentView] = useState<"list" | "write" | "submitted">("list");

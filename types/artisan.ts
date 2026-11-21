@@ -482,6 +482,7 @@ export interface ArtisanBookingDetail {
   reservationUntil?: string | null;
   completedAt?: string | null;
   autoReleaseAt?: string | null;
+  title?: string;
   jobTitle?: string;
   jobDescription?: string;
   address?: {

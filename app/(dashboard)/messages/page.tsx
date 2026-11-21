@@ -14,6 +14,7 @@ import {
   uploadMediaFile,
 } from "@/lib/api";
 import { ArtisanMessagesView } from "@/features/dashboard/components/artisan/ArtisanMessagesView";
+import { LiveNegotiationPanel } from "@/features/dashboard/components/LiveNegotiationPanel";
 import { Conversation } from "@/types/customer";
 import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 
@@ -840,6 +841,13 @@ function MessagesPageContent() {
               {activePeerRole}
             </span>
           </div>
+
+          {activeConversation !== "support" && (
+            <LiveNegotiationPanel
+              quoteId={activeConversation}
+              role="CUSTOMER"
+            />
+          )}
 
           {/* Action button */}
           <Link

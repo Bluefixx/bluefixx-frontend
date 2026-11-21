@@ -16,6 +16,7 @@ import {
   markTalentProgramMessagesReadApi,
 } from "@/lib/api/talent";
 import { getSocket, emitWithAck } from "@/lib/realtime/socket";
+import { LiveNegotiationPanel } from "@/features/dashboard/components/LiveNegotiationPanel";
 
 type ThreadKind = "quote" | "talent" | "support";
 
@@ -643,6 +644,12 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
 
               {/* Chat Messages Timeline */}
               <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-neutral-50/50">
+                {activeThread.kind === "quote" && activeThread.quoteId && (
+                  <LiveNegotiationPanel
+                    quoteId={activeThread.quoteId}
+                    role="ARTISAN"
+                  />
+                )}
                 <div className="flex justify-center">
                   <span className="text-[11px] font-medium text-neutral-500 bg-white border border-neutral-200/80 px-3.5 py-1 rounded-full shadow-2xs">
                     {activeThread.subtitle}

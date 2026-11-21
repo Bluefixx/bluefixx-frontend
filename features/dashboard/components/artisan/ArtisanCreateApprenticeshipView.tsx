@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import toast from "react-hot-toast";
 import {
   createTrainingProgramApi,
+  getServicesCatalogApi,
   patchProgramQuestionsApi,
   publishTrainingProgramApi,
 } from "@/lib/api/artisan";
@@ -780,23 +781,68 @@ export function ArtisanCreateApprenticeshipView({
               onClick={async () => {
                 const totalKobo = nairaToKobo(parseInt(trainingFee.replace(/,/g, "")) || 150000);
                 try {
-                  await publishTrainingProgramApi("mock-prog-uuid", {
-                    schedule: selectedDays.join(", "),
+                  const catalog = await getServicesCatalogApi().catch(() => []);
+                  const matchedTrade = catalog.find((t) =>
+                    t.name.toLowerCase().includes(selectedTrade.toLowerCase())
+                  );
+                  const tradeId = matchedTrade?.id || catalog[0]?.id || "welding";
+                  const startsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+                  const created = await createTrainingProgramApi({
+                    tradeId,
+                    title: `${selectedTrade} Apprenticeship`,
+                    description: skillsTaught,
+                    location: workplaceAddress,
+                    latitude: 6.4584,
+                    longitude: 7.5464,
+                    startsAt,
+                    durationMonths: parseInt(durationMonths, 10) || 6,
+                    capacity: parseInt(availableSlots, 10) || 3,
+                    fee: totalKobo,
+                  });
+
+                  const mappedQuestions = questions.map((q) => ({
+                    id: q.id,
+                    prompt: q.question,
+                    type:
+                      q.type === "Yes/No"
+                        ? ("YES_NO" as const)
+                        : q.type === "File Upload"
+                        ? ("FILE" as const)
+                        : ("TEXT" as const),
+                    required: q.required,
+                  }));
+                  if (mappedQuestions.length > 0) {
+                    await patchProgramQuestionsApi(created.id, mappedQuestions);
+                  }
+
+                  await publishTrainingProgramApi(created.id, {
+                    schedule: `${selectedDays.join(", ")} (${startTime} - ${closeTime})`,
                     sessions: [
-                      { date: "2026-09-01", title: "Orientation" },
-                      { date: "2026-09-03", title: "Workshop Safety" },
+                      { date: startsAt.slice(0, 10), title: "Orientation" },
+                      {
+                        date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000)
+                          .toISOString()
+                          .slice(0, 10),
+                        title: "Workshop Safety",
+                      },
                     ],
                     milestones: [
                       { title: "Deposit / Milestone 1", amount: Math.round(totalKobo / 2), order: 1 },
-                      { title: "Completion / Milestone 2", amount: Math.round(totalKobo / 2), order: 2 },
+                      {
+                        title: "Completion / Milestone 2",
+                        amount: totalKobo - Math.round(totalKobo / 2),
+                        order: 2,
+                      },
                     ],
                   });
                   toast.success("Apprenticeship published successfully!");
-                } catch {
-                  toast.success("Apprenticeship published successfully!");
-                } finally {
                   setCurrentStep("published");
                   if (onSuccess) onSuccess();
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "Could not publish apprenticeship"
+                  );
                 }
               }}
               className="px-8 py-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"

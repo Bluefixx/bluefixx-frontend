@@ -907,8 +907,6 @@ function ArtisanHomeViewContent({
             <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
               {dashboardData?.earnings?.available !== undefined
                 ? formatNaira(dashboardData.earnings.available, true)
-                : isVerified
-                ? "₦168,000"
                 : "₦0"}
             </span>
           </div>
@@ -928,10 +926,8 @@ function ArtisanHomeViewContent({
               Held in escrow
             </span>
             <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
-              {dashboardData?.earnings?.escrow !== undefined
-                ? formatNaira(dashboardData.earnings.escrow, true)
-                : isVerified
-                ? "₦46,500"
+              {dashboardData?.earnings?.held !== undefined
+                ? formatNaira(dashboardData.earnings.held, true)
                 : "₦0"}
             </span>
           </div>
@@ -969,19 +965,19 @@ function ArtisanHomeViewContent({
                   setSelectedJob({
                     id: job.id,
                     code: `BFX-${job.id.slice(0, 5).toUpperCase()}`,
-                    title: job.title || "Bathroom Plumbing Repair",
-                    category: job.trade || "Plumbing",
-                    subCategory: "Repair",
+                    title: job.title || "Active Job",
+                    category: "Service",
+                    subCategory: "Booking",
                     postedTime: "Scheduled",
                     isUrgent: false,
-                    status: "Scheduled",
+                    status: job.status || "Scheduled",
                     description: "Active job in progress.",
-                    service: job.trade || "Plumbing",
-                    date: job.scheduledFor ? new Date(job.scheduledFor).toLocaleDateString() : "Scheduled",
+                    service: job.title || "Service",
+                    date: job.visitStart ? new Date(job.visitStart).toLocaleDateString() : "Scheduled",
                     time: "Agreed time",
                     budget: "In escrow",
                     urgency: "Scheduled",
-                    customerName: job.customerName || "Daniel C.",
+                    customerName: job.customer?.fullName || "Customer",
                     customerLocation: "Enugu, Nigeria",
                     distance: "2.5 km away",
                     driveTime: "10 mins",
@@ -999,7 +995,7 @@ function ArtisanHomeViewContent({
                     {job.title || "Active Job"}
                   </h3>
                   <p className="font-sans text-xs text-neutral-400">
-                    {job.customerName || "Customer"} · {job.scheduledFor ? new Date(job.scheduledFor).toLocaleString() : "Scheduled"}
+                    {job.customer?.fullName || "Customer"} · {job.visitStart ? new Date(job.visitStart).toLocaleString() : "Scheduled"}
                   </p>
                 </div>
 
@@ -1009,27 +1005,8 @@ function ArtisanHomeViewContent({
               </div>
             ))}
           </div>
-        ) : isVerified ? (
-          /* Active Job Card */
-          <div
-            onClick={() => setCurrentView("active-job-detail")}
-            className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-neutral-300 transition-all"
-          >
-            <div className="space-y-1.5">
-              <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
-                Bathroom Plumbing Repair
-              </h3>
-              <p className="font-sans text-xs text-neutral-400">
-                Daniel C. · Tomorrow · 9:00 AM
-              </p>
-            </div>
-
-            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full self-start sm:self-center shrink-0">
-              ● Scheduled
-            </span>
-          </div>
         ) : (
-          /* Empty State for Unverified / Just Verified */
+          /* Empty State */
           <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-2xs text-center space-y-2">
             <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
               No active jobs yet
@@ -1272,36 +1249,36 @@ function ArtisanHomeViewContent({
 
             {/* In Training Progress Bars */}
             <div className="space-y-3 pt-1">
-              <div className="flex items-center justify-between text-xs text-neutral-500 font-medium">
-                <span className="font-bold text-neutral-800">2 apprentices in training</span>
-                <span>Daniel (65%) · Samuel (40%)</span>
-              </div>
-
-              {/* Daniel bar */}
-              <div
-                onClick={() => setCurrentView("apprentice-progress")}
-                className="space-y-1 cursor-pointer group"
-                title="View Daniel Eze's progress"
-              >
-                <div className="flex justify-between text-[11px] text-neutral-500 font-medium group-hover:text-[#001B40]">
-                  <span className="group-hover:underline font-bold">Daniel Eze</span>
-                  <span>85%</span>
-                </div>
-                <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#001B40] h-full rounded-full w-[85%]" />
-                </div>
-              </div>
-
-              {/* Samuel bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] text-neutral-500 font-medium">
-                  <span>Samuel</span>
-                  <span>40%</span>
-                </div>
-                <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#001B40] h-full rounded-full w-[40%]" />
-                </div>
-              </div>
+              {dashboardData?.training?.apprentices && dashboardData.training.apprentices.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between text-xs text-neutral-500 font-medium">
+                    <span className="font-bold text-neutral-800">
+                      {dashboardData.training.apprentices.length} apprentice
+                      {dashboardData.training.apprentices.length === 1 ? "" : "s"} in training
+                    </span>
+                  </div>
+                  {dashboardData.training.apprentices.map((apprentice) => (
+                    <div
+                      key={apprentice.enrollmentId}
+                      onClick={() => setCurrentView("apprentice-progress")}
+                      className="space-y-1 cursor-pointer group"
+                    >
+                      <div className="flex justify-between text-[11px] text-neutral-500 font-medium group-hover:text-[#001B40]">
+                        <span className="group-hover:underline font-bold">{apprentice.name}</span>
+                        <span>{apprentice.progress}%</span>
+                      </div>
+                      <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-[#001B40] h-full rounded-full"
+                          style={{ width: `${Math.min(100, Math.max(0, apprentice.progress))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className="text-xs text-neutral-400">No active apprentices yet.</p>
+              )}
             </div>
           </div>
         </div>
@@ -1322,8 +1299,8 @@ function ArtisanHomeViewContent({
           </div>
 
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-3.5">
-            {dashboardData?.recentEarnings && dashboardData.recentEarnings.length > 0 ? (
-              dashboardData.recentEarnings.map((earning) => (
+            {dashboardData?.earnings?.recent && dashboardData.earnings.recent.length > 0 ? (
+              dashboardData.earnings.recent.map((earning) => (
                 <div
                   key={earning.id}
                   className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3"
@@ -1337,89 +1314,18 @@ function ArtisanHomeViewContent({
                     </div>
                     <div>
                       <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        {earning.description}
+                        {earning.title}
                       </h4>
                       <p className="font-sans text-[11px] text-neutral-400">
-                        {earning.date}
+                        {new Date(earning.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +{formatNaira(earning.amount)}
+                    +{formatNaira(earning.amount, true)}
                   </span>
                 </div>
               ))
-            ) : isVerified ? (
-              <>
-                {/* Earning 1 */}
-                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="14" x="2" y="5" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        Shower line replacement
-                      </h4>
-                      <p className="font-sans text-[11px] text-neutral-400">
-                        Festus M. · Aug 19
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +₦85,000
-                  </span>
-                </div>
-
-                {/* Earning 2 */}
-                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="14" x="2" y="5" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        Kitchen sink installation
-                      </h4>
-                      <p className="font-sans text-[11px] text-neutral-400">
-                        Ngozi A. · Aug 18
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +₦62,000
-                  </span>
-                </div>
-
-                {/* Earning 3 */}
-                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="14" x="2" y="5" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        Bathroom re-piping
-                      </h4>
-                      <p className="font-sans text-[11px] text-neutral-400">
-                        Chidiadi O. · Aug 17
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +₦48,000
-                  </span>
-                </div>
-              </>
             ) : (
               <div className="py-6 text-center text-xs text-neutral-400 font-sans">
                 Earnings from completed jobs will appear here.

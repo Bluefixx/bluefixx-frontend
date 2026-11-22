@@ -70,7 +70,7 @@ export function OpsUsersView() {
     title: "",
     description: "",
     actionLabel: "",
-    onSuccess: () => {},
+    onSuccess: () => { },
   });
 
   const requirePinAuth = (
@@ -178,12 +178,12 @@ export function OpsUsersView() {
       setInspectUser((prev) =>
         prev
           ? {
-              ...prev,
-              accountStatus: "SUSPENDED",
-              suspensionCategory: category,
-              suspensionReason: reason,
-              suspendedAt: new Date().toLocaleString(),
-            }
+            ...prev,
+            accountStatus: "SUSPENDED",
+            suspensionCategory: category,
+            suspensionReason: reason,
+            suspendedAt: new Date().toLocaleString(),
+          }
           : null
       );
     }
@@ -207,11 +207,11 @@ export function OpsUsersView() {
       setInspectUser((prev) =>
         prev
           ? {
-              ...prev,
-              accountStatus: "ACTIVE",
-              suspensionCategory: undefined,
-              suspensionReason: undefined,
-            }
+            ...prev,
+            accountStatus: "ACTIVE",
+            suspensionCategory: undefined,
+            suspensionReason: undefined,
+          }
           : null
       );
     }
@@ -574,9 +574,8 @@ export function OpsUsersView() {
                   return (
                     <tr
                       key={user.id}
-                      className={`hover:bg-neutral-50/70 transition-colors ${
-                        isChecked ? "bg-blue-50/30" : ""
-                      }`}
+                      className={`hover:bg-neutral-50/70 transition-colors ${isChecked ? "bg-blue-50/30" : ""
+                        }`}
                     >
                       {/* Checkbox */}
                       <td className="py-3.5 pl-5 pr-2">
@@ -637,13 +636,12 @@ export function OpsUsersView() {
                       {/* Role Pill */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md font-bold text-[10px] ${
-                            user.role === "WORKER"
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md font-bold text-[10px] ${user.role === "WORKER"
                               ? "bg-blue-50 text-blue-700 border border-blue-200"
                               : user.role === "CUSTOMER"
-                              ? "bg-sky-50 text-sky-700 border border-sky-200"
-                              : "bg-amber-50 text-amber-700 border border-amber-200"
-                          }`}
+                                ? "bg-sky-50 text-sky-700 border border-sky-200"
+                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                            }`}
                         >
                           {user.role === "WORKER" ? "Worker" : user.role === "CUSTOMER" ? "Customer" : "Talent"}
                         </span>
@@ -667,15 +665,14 @@ export function OpsUsersView() {
                       {/* Verification Status */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                            user.verificationStatus === "VERIFIED"
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${user.verificationStatus === "VERIFIED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : user.verificationStatus === "PENDING"
-                              ? "bg-amber-50 text-amber-700 border border-amber-200"
-                              : user.verificationStatus === "UNDER_REVIEW"
-                              ? "bg-blue-50 text-blue-700 border border-blue-200"
-                              : "bg-red-50 text-red-700 border border-red-200"
-                          }`}
+                                ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                : user.verificationStatus === "UNDER_REVIEW"
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : "bg-red-50 text-red-700 border border-red-200"
+                            }`}
                         >
                           {user.verificationStatus === "VERIFIED" && "✓ Verified"}
                           {user.verificationStatus === "PENDING" && "• Pending"}
@@ -687,13 +684,12 @@ export function OpsUsersView() {
                       {/* Account Status */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            user.accountStatus === "ACTIVE"
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${user.accountStatus === "ACTIVE"
                               ? "text-emerald-700 bg-emerald-50"
                               : user.accountStatus === "SUSPENDED"
-                              ? "text-red-700 bg-red-50"
-                              : "text-neutral-500 bg-neutral-100"
-                          }`}
+                                ? "text-red-700 bg-red-50"
+                                : "text-neutral-500 bg-neutral-100"
+                            }`}
                         >
                           {user.accountStatus === "ACTIVE" && "▲ Active"}
                           {user.accountStatus === "SUSPENDED" && "▼ Suspended"}
@@ -704,13 +700,12 @@ export function OpsUsersView() {
                       {/* Risk Level Column (Feature 4) */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            user.riskLevel === "HIGH"
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${user.riskLevel === "HIGH"
                               ? "bg-red-100 text-red-800"
                               : user.riskLevel === "MEDIUM"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-emerald-50 text-emerald-700"
-                          }`}
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-emerald-50 text-emerald-700"
+                            }`}
                         >
                           {user.riskLevel === "HIGH" && "⚠ High"}
                           {user.riskLevel === "MEDIUM" && "• Medium"}
@@ -747,81 +742,80 @@ export function OpsUsersView() {
                               onClick={() => setActiveMenuUserId(null)}
                             />
                             <div
-                              className={`absolute right-4 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200/90 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 ${
-                                openUpwards ? "bottom-8 mb-1" : "top-full mt-1"
-                              }`}
+                              className={`absolute right-4 w-48 bg-white rounded-2xl shadow-xl border border-neutral-200/90 py-1.5 z-40 text-left animate-in fade-in zoom-in-95 ${openUpwards ? "bottom-8 mb-1" : "top-full mt-1"
+                                }`}
                             >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setInspectUser(user);
-                                setActiveMenuUserId(null);
-                              }}
-                              className="w-full px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 flex items-center gap-2 cursor-pointer"
-                            >
-                              <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </svg>
-                              <span>Open profile</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleStartImpersonationWithPin(user)}
-                              className="w-full px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
-                            >
-                              <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                              </svg>
-                              <span>View as user (Audit)</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNotifyUsers([user]);
-                                setIsNotifyModalOpen(true);
-                                setActiveMenuUserId(null);
-                              }}
-                              className="w-full px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 flex items-center gap-2 cursor-pointer"
-                            >
-                              <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                              </svg>
-                              <span>Send notification</span>
-                            </button>
-
-                            <div className="my-1 border-t border-neutral-100" />
-
-                            {user.accountStatus === "SUSPENDED" ? (
                               <button
                                 type="button"
-                                onClick={() => handleReactivateUserWithPin(user)}
-                                className="w-full px-3.5 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer"
+                                onClick={() => {
+                                  setInspectUser(user);
+                                  setActiveMenuUserId(null);
+                                }}
+                                className="w-full px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 flex items-center gap-2 cursor-pointer"
                               >
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <polyline points="20 6 9 17 4 12" />
+                                <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                  <circle cx="12" cy="12" r="3" />
                                 </svg>
-                                <span>Reactivate account</span>
+                                <span>Open profile</span>
                               </button>
-                            ) : (
+
                               <button
                                 type="button"
-                                onClick={() => handleInitiateSuspendWithPin(user)}
-                                className="w-full px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                onClick={() => handleStartImpersonationWithPin(user)}
+                                className="w-full px-3.5 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
                               >
-                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                  <circle cx="12" cy="12" r="10" />
-                                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                <svg className="w-4 h-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                  <circle cx="12" cy="7" r="4" />
                                 </svg>
-                                <span>Suspend account</span>
+                                <span>View as user (Audit)</span>
                               </button>
-                            )}
-                          </div>
-                        </>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNotifyUsers([user]);
+                                  setIsNotifyModalOpen(true);
+                                  setActiveMenuUserId(null);
+                                }}
+                                className="w-full px-3.5 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 flex items-center gap-2 cursor-pointer"
+                              >
+                                <svg className="w-4 h-4 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                                </svg>
+                                <span>Send notification</span>
+                              </button>
+
+                              <div className="my-1 border-t border-neutral-100" />
+
+                              {user.accountStatus === "SUSPENDED" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleReactivateUserWithPin(user)}
+                                  className="w-full px-3.5 py-2 text-xs font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2 cursor-pointer"
+                                >
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <span>Reactivate account</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleInitiateSuspendWithPin(user)}
+                                  className="w-full px-3.5 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                >
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                                  </svg>
+                                  <span>Suspend account</span>
+                                </button>
+                              )}
+                            </div>
+                          </>
                         )}
                       </td>
                     </tr>

@@ -277,7 +277,7 @@ export function OpsDisputeDetailView({
               {dispute.id} — {dispute.title}
             </h1>
             <span
-              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+              className={`inline-flex items-center whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                 dispute.status === "RESOLVED"
                   ? "bg-emerald-100 text-emerald-800"
                   : dispute.status === "ESCALATED"
@@ -292,7 +292,7 @@ export function OpsDisputeDetailView({
                 : "Under review"}
             </span>
             <span
-              className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+              className={`inline-flex items-center whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                 dispute.priority === "CRITICAL" || dispute.priority === "HIGH"
                   ? "bg-red-100 text-red-700"
                   : "bg-amber-100 text-amber-700"
@@ -366,7 +366,7 @@ export function OpsDisputeDetailView({
                 </div>
                 <div>
                   <span className="text-neutral-500 block text-[11px]">Payment status</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                  <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
                     Escrow held
                   </span>
                 </div>
@@ -408,7 +408,7 @@ export function OpsDisputeDetailView({
                     <span className="text-[10px] text-neutral-500">Customer · {dispute.customer.code}</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                   Active
                 </span>
               </div>
@@ -459,7 +459,7 @@ export function OpsDisputeDetailView({
                     <span className="text-[10px] text-neutral-500">Worker · {dispute.worker.code}</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                   Active
                 </span>
               </div>
@@ -552,7 +552,7 @@ export function OpsDisputeDetailView({
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-[#001B40]">{msg.author.name}</span>
                         <span
-                          className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded text-[9px] font-bold ${
                             isAdmin
                               ? "bg-blue-100 text-blue-800"
                               : isCustomer
@@ -563,7 +563,7 @@ export function OpsDisputeDetailView({
                           {msg.author.role}
                         </span>
                         {msg.isInternalAdminNote && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-200 text-amber-900">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-200 text-amber-900">
                             INTERNAL NOTE
                           </span>
                         )}

@@ -255,24 +255,24 @@ export function OpsSupportView() {
                     </td>
 
                     {/* User */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-neutral-900">{t.user.name}</span>
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-neutral-100 text-neutral-700">
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-neutral-100 text-neutral-700 whitespace-nowrap shrink-0">
                           {t.user.role}
                         </span>
                       </div>
                     </td>
 
                     {/* Category */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="font-medium text-neutral-700">{t.category}</span>
                     </td>
 
                     {/* Priority */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${
                           t.priority === "Urgent"
                             ? "bg-red-100 text-red-700"
                             : t.priority === "High"
@@ -287,9 +287,9 @@ export function OpsSupportView() {
                     </td>
 
                     {/* Status */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${
                           t.status === "Open"
                             ? "bg-blue-100 text-blue-800"
                             : t.status === "In Progress"
@@ -325,7 +325,7 @@ export function OpsSupportView() {
                         {t.waitTime}
                       </span>
                       {t.isBreachedSLA && (
-                        <span className="block text-[9px] font-extrabold text-red-600 uppercase">
+                        <span className="block text-[9px] font-extrabold text-red-600 uppercase whitespace-nowrap">
                           SLA Breach
                         </span>
                       )}

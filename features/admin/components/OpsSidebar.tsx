@@ -420,7 +420,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                         <div className="flex items-center gap-1.5">
                           {item.badge && (
                             <span
-                              className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${item.badgeColor === "red"
+                              className={`whitespace-nowrap shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded-md ${item.badgeColor === "red"
                                   ? "bg-red-100 text-red-700"
                                   : item.badgeColor === "blue"
                                     ? "bg-blue-100 text-blue-700"
@@ -457,7 +457,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                         </div>
                         {item.badge && (
                           <span
-                            className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md ${isExactActive
+                            className={`whitespace-nowrap shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded-md ${isExactActive
                                 ? "bg-white/20 text-white"
                                 : item.badgeColor === "red"
                                   ? "bg-red-100 text-red-700"
@@ -491,7 +491,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                               <span className="truncate">{sub.name}</span>
                               {sub.badge && (
                                 <span
-                                  className={`px-1.5 py-0.2 text-[9px] font-bold rounded-sm ml-1.5 ${isSubActive
+                                  className={`whitespace-nowrap shrink-0 px-1.5 py-0.2 text-[9px] font-bold rounded-sm ml-1.5 ${isSubActive
                                       ? "bg-white/20 text-white"
                                       : sub.badgeColor === "red"
                                         ? "bg-red-100 text-red-700"

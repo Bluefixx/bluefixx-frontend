@@ -311,10 +311,10 @@ export function OpsWorkerVerificationsView() {
                     <td className="py-3.5 px-4 text-neutral-600">{c.worker.location}</td>
 
                     {/* Documents */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="font-medium">{c.documents.length}</span>
                       {flaggedCount > 0 && (
-                        <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700">
+                        <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 whitespace-nowrap shrink-0">
                           {flaggedCount} flagged
                         </span>
                       )}
@@ -324,29 +324,29 @@ export function OpsWorkerVerificationsView() {
                     <td className="py-3.5 px-4 text-neutral-500 whitespace-nowrap">{c.submittedAt}</td>
 
                     {/* Status */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       {c.status === "PENDING" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                           Pending
                         </span>
                       )}
                       {c.status === "IN_REVIEW" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                           In Review
                         </span>
                       )}
                       {c.status === "REQUIRES_INFO" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300">
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-300">
                           Requires more info
                         </span>
                       )}
                       {c.status === "REJECTED" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                           Rejected
                         </span>
                       )}
                       {c.status === "APPROVED" && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Approved
                         </span>
                       )}

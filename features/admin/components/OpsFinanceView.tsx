@@ -528,34 +528,34 @@ export function OpsFinanceView() {
                           ₦{tx.workerEarnings.toLocaleString()}
                         </td>
                         <td className="py-3.5 px-4 text-neutral-600 whitespace-nowrap">{tx.method}</td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
                           {tx.status === "IN_ESCROW" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                               In Escrow
                             </span>
                           )}
                           {tx.status === "HOLDING" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                               Holding
                             </span>
                           )}
                           {tx.status === "RELEASED" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                               Released
                             </span>
                           )}
                           {tx.status === "DISPUTED" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                               Disputed
                             </span>
                           )}
                           {tx.status === "REFUNDED" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-300">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-300">
                               Refunded
                             </span>
                           )}
                           {tx.status === "FAILED" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 border border-red-300">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 border border-red-300">
                               Failed
                             </span>
                           )}
@@ -752,24 +752,24 @@ export function OpsFinanceView() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 whitespace-nowrap">
                           {wd.status === "PENDING" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                               Pending
                             </span>
                           )}
                           {wd.status === "APPROVED" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                               Approved
                             </span>
                           )}
                           {wd.status === "FLAGGED" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
                               Flagged
                             </span>
                           )}
                           {wd.status === "IN_REVIEW" && (
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                            <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
                               In Review
                             </span>
                           )}
@@ -832,8 +832,8 @@ export function OpsFinanceView() {
                         ₦{rf.amount.toLocaleString()}
                       </td>
                       <td className="py-3.5 px-4 text-neutral-600 max-w-xs">{rf.reason}</td>
-                      <td className="py-3.5 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800">
                           {rf.status}
                         </span>
                       </td>
@@ -1074,9 +1074,9 @@ export function OpsFinanceView() {
                       <td className="py-3.5 px-4 font-extrabold text-neutral-900">
                         ₦{w.amount.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
                             w.status === "Successful"
                               ? "bg-emerald-50 text-emerald-800"
                               : "bg-amber-50 text-amber-800"

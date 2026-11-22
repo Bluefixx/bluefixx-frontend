@@ -119,7 +119,7 @@ export function OpsDashboardView() {
                     {item.count}
                   </span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                       item.level === "critical"
                         ? "bg-red-50 text-red-700 border border-red-200"
                         : item.level === "high"
@@ -392,9 +392,9 @@ export function OpsDashboardView() {
                   <td className="py-3 px-3 font-semibold text-[#001B40]">{item.adminName}</td>
                   <td className="py-3 px-3 font-medium text-neutral-800">{item.action}</td>
                   <td className="py-3 px-3 font-mono text-neutral-500">{item.reference}</td>
-                  <td className="py-3 px-3 text-right">
+                  <td className="py-3 px-3 text-right whitespace-nowrap">
                     <span
-                      className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      className={`inline-flex items-center whitespace-nowrap shrink-0 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                         item.status === "Approved"
                           ? "bg-emerald-50 text-emerald-700"
                           : item.status === "Suspended"

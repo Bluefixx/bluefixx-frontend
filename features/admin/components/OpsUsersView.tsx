@@ -624,7 +624,7 @@ export function OpsUsersView() {
                             {user.tags && user.tags.length > 0 && (
                               <div className="flex items-center gap-1 mt-0.5">
                                 {user.tags.slice(0, 2).map((t) => (
-                                  <span key={t} className="text-[9px] bg-neutral-100 text-neutral-600 px-1.5 py-0.2 rounded font-medium">
+                                  <span key={t} className="text-[9px] bg-neutral-100 text-neutral-600 px-1.5 py-0.2 rounded font-medium whitespace-nowrap shrink-0">
                                     {t}
                                   </span>
                                 ))}
@@ -635,9 +635,9 @@ export function OpsUsersView() {
                       </td>
 
                       {/* Role Pill */}
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md font-bold text-[10px] ${
                             user.role === "WORKER"
                               ? "bg-blue-50 text-blue-700 border border-blue-200"
                               : user.role === "CUSTOMER"
@@ -655,7 +655,7 @@ export function OpsUsersView() {
                       </td>
 
                       {/* Phone */}
-                      <td className="py-3.5 px-3 text-neutral-600 font-mono text-[11px]">
+                      <td className="py-3.5 px-3 text-neutral-600 font-mono text-[11px] whitespace-nowrap">
                         {user.phone}
                       </td>
 
@@ -665,9 +665,9 @@ export function OpsUsersView() {
                       </td>
 
                       {/* Verification Status */}
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
                             user.verificationStatus === "VERIFIED"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                               : user.verificationStatus === "PENDING"
@@ -685,9 +685,9 @@ export function OpsUsersView() {
                       </td>
 
                       {/* Account Status */}
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             user.accountStatus === "ACTIVE"
                               ? "text-emerald-700 bg-emerald-50"
                               : user.accountStatus === "SUSPENDED"
@@ -702,9 +702,9 @@ export function OpsUsersView() {
                       </td>
 
                       {/* Risk Level Column (Feature 4) */}
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             user.riskLevel === "HIGH"
                               ? "bg-red-100 text-red-800"
                               : user.riskLevel === "MEDIUM"

@@ -709,7 +709,7 @@ export function OpsEvidenceLightboxModal({
                     </div>
                     <div className="flex justify-between py-1">
                       <span className="text-neutral-400">Classification</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      <span className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${
                         currentFile.isAfterProof ? "bg-amber-900/60 text-amber-300" : "bg-blue-900/60 text-blue-300"
                       }`}>
                         {currentFile.isAfterProof ? "After / Disputed State" : "Initial Pre-job Baseline"}
@@ -873,7 +873,7 @@ export function OpsDisciplinaryActionModal({
             <span className="font-bold text-[#001B40] block">{targetUser.name}</span>
             <span className="text-neutral-500 text-[11px]">{targetUser.code} · {targetUser.totalJobs} jobs on platform</span>
           </div>
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
             Case: {disputeId}
           </span>
         </div>

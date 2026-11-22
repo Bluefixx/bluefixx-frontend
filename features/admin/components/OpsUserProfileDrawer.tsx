@@ -227,7 +227,7 @@ export function OpsUserProfileDrawer({
                     {user.fullName}
                   </h2>
                   <span
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                    className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-md text-[11px] font-bold ${
                       user.role === "WORKER"
                         ? "bg-blue-50 text-blue-700 border border-blue-200"
                         : user.role === "CUSTOMER"
@@ -240,7 +240,7 @@ export function OpsUserProfileDrawer({
 
                   {/* Anti-fraud Risk Level Badge */}
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       user.riskLevel === "HIGH"
                         ? "bg-red-100 text-red-800 border border-red-300"
                         : user.riskLevel === "MEDIUM"
@@ -256,7 +256,7 @@ export function OpsUserProfileDrawer({
 
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       user.verificationStatus === "VERIFIED"
                         ? "bg-emerald-50 text-emerald-700"
                         : user.verificationStatus === "PENDING"
@@ -274,7 +274,7 @@ export function OpsUserProfileDrawer({
                   </span>
 
                   <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    className={`inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                       user.accountStatus === "ACTIVE"
                         ? "bg-emerald-50 text-emerald-700"
                         : user.accountStatus === "SUSPENDED"
@@ -289,7 +289,7 @@ export function OpsUserProfileDrawer({
                   </span>
 
                   {user.payoutsFrozen && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                    <span className="inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
                       🔒 Payouts Frozen
                     </span>
                   )}

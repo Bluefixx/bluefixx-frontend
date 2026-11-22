@@ -358,7 +358,7 @@ export function OpsJobsView() {
             >
               <span>{tab.label}</span>
               {tab.count !== undefined && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 font-bold">
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 font-bold whitespace-nowrap shrink-0">
                   {tab.count}
                 </span>
               )}
@@ -562,9 +562,9 @@ export function OpsJobsView() {
                       </td>
 
                       {/* Payment */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         {job.paymentStatus === "IN_ESCROW" && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                             <svg className="w-2.5 h-2.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                               <path
                                 fillRule="evenodd"
@@ -576,56 +576,56 @@ export function OpsJobsView() {
                           </span>
                         )}
                         {job.paymentStatus === "HOLDING" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                             Holding
                           </span>
                         )}
                         {job.paymentStatus === "RELEASED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             Released
                           </span>
                         )}
                         {job.paymentStatus === "DISPUTED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             Disputed
                           </span>
                         )}
                         {job.paymentStatus === "REFUNDED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-300">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-300">
                             Refunded
                           </span>
                         )}
                         {job.paymentStatus === "FAILED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 border border-red-300">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 text-red-700 border border-red-300">
                             Failed
                           </span>
                         )}
                       </td>
 
                       {/* Job Status */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3.5 px-4 whitespace-nowrap">
                         {job.deliveryStatus === "IN_PROGRESS" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
                             In Progress
                           </span>
                         )}
                         {job.deliveryStatus === "COMPLETED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             Completed
                           </span>
                         )}
                         {job.deliveryStatus === "POSTED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
                             Posted
                           </span>
                         )}
                         {job.deliveryStatus === "DISPUTED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             Disputed
                           </span>
                         )}
                         {job.deliveryStatus === "CANCELLED" && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-300">
+                          <span className="inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-300">
                             Cancelled
                           </span>
                         )}

@@ -254,9 +254,9 @@ export function OpsSafetyView() {
                     </td>
 
                     {/* Priority */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${
                           inc.priority === "Critical"
                             ? "bg-red-100 text-red-700"
                             : inc.priority === "High"
@@ -269,12 +269,12 @@ export function OpsSafetyView() {
                     </td>
 
                     {/* Category */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span className="font-medium text-neutral-800">{inc.category}</span>
                     </td>
 
                     {/* Job */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       {inc.jobId ? (
                         <Link
                           href={`/ops/jobs?search=${inc.jobId}`}
@@ -288,9 +288,9 @@ export function OpsSafetyView() {
                     </td>
 
                     {/* Status */}
-                    <td className="py-3.5 px-4">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`inline-flex items-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${
                           inc.status === "Resolved"
                             ? "bg-emerald-100 text-emerald-800"
                             : inc.status === "Investigating"

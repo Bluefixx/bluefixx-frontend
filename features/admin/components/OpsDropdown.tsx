@@ -7,6 +7,8 @@ export interface DropdownOption {
   value: string;
 }
 
+export type OpsDropdownOption = DropdownOption;
+
 interface OpsDropdownProps {
   label?: string;
   value: string;

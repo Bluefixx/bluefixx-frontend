@@ -59,6 +59,9 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 | `/ops/disputes/[id]` | Admin / Operations | 360° Dispute Arbitration Workstation with case summary, parties trust profiles, multi-party chronological evidence/conversation thread, Feature 2 media lightbox & before/after inspection, Feature 3 direct disciplinary sanctions, and PIN-authorized resolution engine | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Dispute Case Workstation (DS-00218) |
 | `/ops/support` | Admin / Operations | Support Tickets Inbox with first-response SLA breach tracking, category/priority/status filters, quick reply & resolution drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Support tickets (12) |
 | `/ops/safety` | Admin / Operations | Safety & Critical Incidents response dashboard with real-time critical incident triage banner, severity matrix, and investigation findings log | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Safety / incidents (4) |
+| `/ops/reviews` | Admin / Operations | Reviews & Ratings moderation queue with priority reported banner, rating velocity detection, and full investigation/moderation drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Reviews & ratings (3) |
+| `/ops/talents` | Admin / Operations | Talents & Apprenticeship suite with 6 subtabs (Applications, Active talents, Master artisans, Programmes, Certifications, Apprenticeship payments), application review drawer, and certification issuance modal | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Talents / apprenticeship (2) |
+| `/ops/users/[id]` | Admin / Operations | 360° User Profile Workstation across 9 tabs (Overview, Jobs, Payments, Wallet, Reviews, Complaints, Disputes, Documents, Activity) with suspend and contact actions | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · User Profile (Kunle Adebayo, Samuel Etim, Blessing Adeyemi) |
 
 ---
 

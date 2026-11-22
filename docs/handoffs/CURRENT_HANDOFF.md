@@ -1,10 +1,38 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-19 (Trust & Safety / Disputes & Support Operations Suite)*
+*Last updated: 2026-11-22 (Reviews & Ratings, Talents & Apprenticeship, and User 360 Workstation)*
 
 ---
 
-## 0. Latest Session — Trust & Safety / Disputes & Support Operations Suite
+## 0. Latest Session — Reviews & Ratings, Talents & Apprenticeship, and User 360 Workstation
+
+### A. Core Deliverables & Route Mapping
+1. **Sidebar Brand Logo Synchronization (`OpsSidebar.tsx`)**:
+   - Replaced custom inline SVG cube with the official high-resolution brand asset `/icons/BFLogoBlue.svg` via `next/image` to match the exact user sidebar in `DashboardSidebar.tsx`.
+2. **Reviews & Ratings Workspace (`/ops/reviews`)**:
+   - Priority attention banner: *3 Reported reviews awaiting moderation · Two flagged for suspicious rating patterns from newly created accounts* with 1-click filter button.
+   - Comprehensive filter bar with search input, universal dropdowns (`OpsDropdown.tsx`) for Status, Master Artisan / Trade, Rating, and CSV Export.
+   - Moderation Table with 5-star ratings, review excerpt, retaliatory tags, cross-referenced safety alerts (`SF-00042`), review manipulation patterns, and inline actions (*Investigate*, *Hide / Unhide*).
+   - **Review Investigation Drawer (`OpsReviewDetailDrawer.tsx`)**: Full investigation workstation with reviewer subnet/age details, linked job inspection, dispute/safety deep-links, and verdict form (*Keep & Mark Clean*, *Hide from Public Profile*, *Keep Under Review*, *Hide & Strike Reviewer for Manipulation*) with mandatory audit logging.
+3. **Talents & Apprenticeship Pipeline (`/ops/talents`)**:
+   - 6 Sub-Tabs with query parameter synchronization (`?tab=applications`, `?tab=active`, `?tab=masters`, `?tab=programmes`, `?tab=certifications`, `?tab=payments`):
+     - **Tab 1: Applications (badge: 2)**: Pipeline table with applicant questionnaire drawer (`OpsTalentApplicationDrawer.tsx`) to inspect motivation, trade experience, and referee contacts with *Shortlist*, *Verify & Admit*, and *Reject* actions.
+     - **Tab 2: Active Talents**: Card grid with avatar, verified badge, enrolled programme, supervising master artisan, and progress bars.
+     - **Tab 3: Master Artisans**: Card grid with completed jobs count, verified apprentices, rating, and gross payout ledger.
+     - **Tab 4: Programmes**: Catalog table of apprenticeship cohorts, capacity/enrollment counters (e.g. `8/10`), fees, and statuses.
+     - **Tab 5: Certifications**: Certification audit table with *Issue Certification* trigger.
+     - **Modal: Issue Certification (`OpsIssueCertificationModal.tsx`)**: Warning dialog adhering to Figma screenshot confirming permanent profile verification, worker conversion eligibility, and locking of master artisan logs.
+     - **Tab 6: Apprenticeship Payments**: 4 summary KPI cards (*Total fees paid ₦1,800,000*, *In escrow ₦550,000*, *Released to artisans ₦850,000*, *Overdue / Attention 1*) and itemized installment ledger.
+4. **User 360° Profile Workstation (`/ops/users/[id]`)**:
+   - Dedicated full-page user workstation supporting workers, talents, and customers.
+   - Header with dynamic user status, verified badge, user code, joined date, and primary actions (*Contact* and *Suspend*).
+   - 9 Tabs: *Overview*, *Jobs (2)*, *Payments (2)*, *Wallet*, *Reviews (1)*, *Complaints (1)*, *Disputes (0)*, *Documents (0)*, and *Activity*.
+   - **Suspend Account Modal**: Action modal matching Figma screenshot with reason category selector, mandatory audit note, and instant account freeze.
+   - **Contact User Modal**: Direct SMS / Email dispatch modal.
+
+---
+
+## 1. Prior Session — Trust & Safety / Disputes & Support Operations Suite
 
 ### A. Core Suite Architecture & Route Mapping
 1. **Dispute Management & Arbitration Queue (`/ops/disputes`)**:

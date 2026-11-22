@@ -493,3 +493,140 @@ export interface AdminSafetyIncident {
   location: string;
   isCriticalAlert?: boolean;
 }
+
+// ==========================================
+// Reviews & Ratings Module Contracts
+// ==========================================
+
+export type ReviewReportStatus = "Reported" | "Under Review" | "Clean" | "Hidden";
+
+export interface AdminReview {
+  id: string;
+  stars: number;
+  reviewText: string;
+  subAnnotation?: string;
+  patternTag?: string;
+  reviewerName: string;
+  reviewerRole: "Customer" | "Worker" | "Anonymous";
+  reviewerId: string;
+  reviewerAvatarUrl?: string;
+  reviewedUserName: string;
+  reviewedUserId: string;
+  reviewedUserRole: "Worker" | "Talent" | "Customer";
+  reviewedUserAvatarUrl?: string;
+  jobId: string;
+  jobTitle?: string;
+  trade: string;
+  date: string;
+  reportStatus: ReviewReportStatus;
+  flagReason?: string;
+  moderationNotes?: string;
+  isSuspiciousVelocity?: boolean;
+  linkedDisputeId?: string;
+  linkedSafetyIncidentId?: string;
+}
+
+// ==========================================
+// Talents & Apprenticeship Module Contracts
+// ==========================================
+
+export interface AdminTalentApplication {
+  id: string;
+  talentName: string;
+  talentId: string;
+  avatarUrl?: string;
+  trade: string;
+  programme: string;
+  programmeId: string;
+  location: string;
+  appliedDate: string;
+  status: "In Review" | "Shortlisted" | "Verified" | "Rejected";
+  phone: string;
+  email: string;
+  education: string;
+  motivation: string;
+  experience: string;
+  refereeName?: string;
+  refereeContact?: string;
+}
+
+export interface AdminActiveTalent {
+  id: string;
+  talentName: string;
+  talentId: string;
+  avatarUrl?: string;
+  trade: string;
+  programme: string;
+  programmeId: string;
+  masterArtisanName: string;
+  masterArtisanId: string;
+  progressPercent: number;
+  currentMonth: number;
+  totalMonths: number;
+  enrolledDate: string;
+  status: "Active" | "Pending Completion" | "On Hold";
+  location: string;
+}
+
+export interface AdminMasterArtisan {
+  id: string;
+  name: string;
+  userId: string;
+  avatarUrl?: string;
+  trade: string;
+  location: string;
+  rating: number;
+  ratingCount: number;
+  completedJobsCount: number;
+  verifiedApprenticesCount: number;
+  activeApprenticesCount: number;
+  activeProgrammesCount: number;
+  totalRevenueKobo: number;
+  status: "Active" | "Pending Review" | "Suspended";
+}
+
+export interface AdminApprenticeshipProgramme {
+  id: string;
+  title: string;
+  cohort: string;
+  trade: string;
+  masterArtisanName: string;
+  masterArtisanId: string;
+  duration: string;
+  capacity: number;
+  enrolledCount: number;
+  feeKobo: number;
+  location: string;
+  status: "Active" | "Full" | "Upcoming" | "Completed";
+  startDate: string;
+}
+
+export interface AdminTalentCertification {
+  id: string;
+  talentName: string;
+  talentId: string;
+  trade: string;
+  programme: string;
+  cohort: string;
+  masterArtisanName: string;
+  completedDate: string;
+  status: "Certified" | "Pending" | "In Progress" | "Revoked";
+  issuedAt?: string;
+  issuedBy?: string;
+  certificateCode?: string;
+}
+
+export interface AdminApprenticeshipPayment {
+  id: string;
+  talentName: string;
+  talentId: string;
+  programme: string;
+  masterArtisanName: string;
+  slot: string;
+  totalFeeKobo: number;
+  paidAmountKobo: number;
+  outstandingAmountKobo: number;
+  nextDue: string;
+  status: "Paid in full" | "In Escrow" | "Overdue" | "Pending release" | "Partial";
+  lastPaidDate?: string;
+}

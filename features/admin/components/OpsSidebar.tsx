@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 
 interface OpsSidebarProps {
@@ -361,13 +362,14 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
       {/* Brand Header */}
       <div className="h-16 px-5 border-b border-neutral-200/90 flex items-center justify-between">
         <Link href="/ops/dashboard" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#001B40] text-white flex items-center justify-center shadow-xs">
-            {/* Bluefixx Cube Icon */}
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-              <path d="M21 16.5l-9 5.25-9-5.25v-9l9-5.25 9 5.25v9zM12 3.82L4.5 8.18v7.64L12 20.18l7.5-4.36V8.18L12 3.82z" />
-              <path d="M12 12.5l7.5-4.32M12 12.5L4.5 8.18M12 12.5v7.68" />
-            </svg>
-          </div>
+          <Image
+            src="/icons/BFLogoBlue.svg"
+            alt="BlueFixx"
+            width={30}
+            height={30}
+            className="w-7 h-7 object-contain"
+            priority
+          />
           <span className="font-heading font-extrabold text-sm text-[#001B40] tracking-tight">
             Operations Console
           </span>

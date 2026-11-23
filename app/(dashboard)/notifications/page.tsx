@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/stores/auth-store";
 import { useNotifications, NotificationItem } from "@/lib/stores/notifications-store";
 import { getNotificationsApi } from "@/lib/api/notifications";
+import { getSocket } from "@/lib/realtime/socket";
 import { ArtisanNotificationsView } from "@/features/dashboard/components/artisan/ArtisanNotificationsView";
 
 export default function NotificationsPage() {
   const { activeRole } = useAuth();
   const router = useRouter();
-  const { notifications, setNotifications, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, setNotifications, addNotification, markAsRead, markAllAsRead } = useNotifications();
   const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
 
   useEffect(() => {
@@ -40,16 +41,42 @@ export default function NotificationsPage() {
       })
       .catch(() => {});
 
+    const socket = getSocket();
+    const onNotification = (it: any) => {
+      if (!mounted || !it?.id) return;
+      addNotification({
+        id: it.id,
+        title: it.title,
+        description: it.body || it.title,
+        time: it.createdAt
+          ? new Date(it.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Just now",
+        dateGroup: "Today",
+        isRead: Boolean(it.read || it.readAt),
+        type: (it.type?.toLowerCase() as any) || "quote",
+        actionUrl: "/notifications",
+      });
+    };
+    if (socket) {
+      socket.on("notification", onNotification);
+    }
+
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotification);
+      }
     };
-  }, [setNotifications]);
+  }, [setNotifications, addNotification]);
 
   if (activeRole === "artisan") {
     return (
       <ArtisanNotificationsView
         onBack={() => router.back()}
-        onNavigate={(view) => router.push(`/dashboard?view=${view}`)}
+        onNavigate={(view) => router.push(`/artisan?view=${view}`)}
       />
     );
   }

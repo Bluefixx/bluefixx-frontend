@@ -10,6 +10,8 @@ import AccountMenuDropdown from "./AccountMenuDropdown";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { getNotificationsApi } from "@/lib/api/notifications";
 import { getSavedAddressesApi } from "@/lib/api/account";
+import { getSocket } from "@/lib/realtime/socket";
+import { getAccessToken } from "@/lib/api/client";
 import { SavedAddress } from "@/types/customer";
 
 interface DashboardHeaderProps {
@@ -23,7 +25,7 @@ export default function DashboardHeader({
 }: DashboardHeaderProps) {
   const router = useRouter();
   const { user, locationName, setLocationName, walletBalance, activeRole, switchRole } = useAuth();
-  const { unreadCount, setNotifications } = useNotifications();
+  const { unreadCount, setNotifications, addNotification } = useNotifications();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -35,33 +37,59 @@ export default function DashboardHeader({
     setHasMounted(true);
   }, []);
 
+  const mapHeaderNotification = (it: any) => {
+    const rawKind = String(it?.kind || it?.type || "").toUpperCase();
+    let type: "quote" | "job-completed" | "warranty" | "review" | "escrow" | "referral" = "quote";
+    if (/(COMPLET|WORK_SUBMITTED)/.test(rawKind)) type = "job-completed";
+    else if (/WARRANTY/.test(rawKind)) type = "warranty";
+    else if (/REVIEW/.test(rawKind)) type = "review";
+    else if (/(ESCROW|PAY|WALLET|WITHDRAW|FUND)/.test(rawKind)) type = "escrow";
+    else if (/REFERRAL/.test(rawKind)) type = "referral";
+
+    return {
+      id: it.id,
+      title: it.title || "Notification",
+      description: it.body || it.description || it.title || "",
+      time: it.createdAt
+        ? new Date(it.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Just now",
+      dateGroup: "Today" as const,
+      isRead: Boolean(it.read || it.readAt),
+      type,
+      actionUrl: "/notifications",
+    };
+  };
+
   useEffect(() => {
+    if (!hasMounted || !getAccessToken()) return;
     let mounted = true;
-    getNotificationsApi()
-      .then((items) => {
-        if (mounted && Array.isArray(items)) {
-          setNotifications(
-            items.map((it: any) => ({
-              id: it.id,
-              title: it.title,
-              description: it.body || it.title,
-              time: it.createdAt
-                ? new Date(it.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Today",
-              dateGroup: "Today",
-              isRead: Boolean(it.read || it.readAt),
-              type: (it.type?.toLowerCase() as any) || "quote",
-              actionUrl: "/notifications",
-            }))
-          );
-        }
-      })
-      .catch((err) => {
-        console.debug("Notifications API offline, using cached notifications.", err);
-      });
+
+    const refreshNotifications = () => {
+      getNotificationsApi()
+        .then((items) => {
+          if (mounted && Array.isArray(items)) {
+            setNotifications(items.map(mapHeaderNotification));
+          }
+        })
+        .catch((err) => {
+          console.debug("Notifications API offline, using cached notifications.", err);
+        });
+    };
+
+    refreshNotifications();
+
+    const socket = getSocket();
+    const onNotification = (payload: any) => {
+      if (!mounted || !payload?.id) return;
+      addNotification(mapHeaderNotification(payload));
+    };
+    if (socket) {
+      socket.on("notification", onNotification);
+      socket.on("connect", refreshNotifications);
+    }
 
     // Hydrate user addresses for dynamic location
     getSavedAddressesApi()
@@ -78,8 +106,12 @@ export default function DashboardHeader({
 
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotification);
+        socket.off("connect", refreshNotifications);
+      }
     };
-  }, [setNotifications, locationName, setLocationName]);
+  }, [hasMounted, user?.id, setNotifications, addNotification, locationName, setLocationName]);
 
   const displayLocation =
     locationName ||

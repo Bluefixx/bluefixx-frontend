@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { getNotificationsApi, markNotificationReadApi } from "@/lib/api/notifications";
+import { getSocket } from "@/lib/realtime/socket";
 import type { NotificationItem } from "@/types/customer";
 
 export interface ArtisanNotificationItem {
@@ -110,8 +111,21 @@ export function ArtisanNotificationsView({
         if (mounted) setIsLoading(false);
       }
     })();
+    const socket = getSocket();
+    const onNotification = (payload: RawNotification) => {
+      if (!mounted || !payload?.id) return;
+      const mapped = mapNotification(payload);
+      setNotifications((prev) => (prev.some((n) => n.id === mapped.id) ? prev : [mapped, ...prev]));
+    };
+    if (socket) {
+      socket.on("notification", onNotification);
+    }
+
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotification);
+      }
     };
   }, []);
 

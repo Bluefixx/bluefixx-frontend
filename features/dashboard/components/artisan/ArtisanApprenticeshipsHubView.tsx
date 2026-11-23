@@ -281,7 +281,7 @@ export function ArtisanApprenticeshipsHubView({
                       {applicant.name}
                     </h3>
                     <p className="text-[11px] text-neutral-400 mt-0.5">
-                      Welding & Metal Fabrication · Applied {applicant.appliedDate}
+                      {applicant.location} · Applied {applicant.appliedDate}
                     </p>
                   </div>
                 </div>
@@ -523,107 +523,57 @@ export function ArtisanApprenticeshipsHubView({
             </div>
           )}
 
-          {/* TAB 2: APPLICATIONS OVERVIEW (Screenshot 5 Left) */}
+          {/* TAB 2: APPLICATIONS OVERVIEW */}
           {activeTab === "applications" && (
             <div className="space-y-3.5">
-              {/* Item 1 */}
-              <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      Welding & Metal Fabrication Apprenticeship
-                    </h4>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      3 months · 3 slots · 4 applications
-                    </p>
-                  </div>
+              {programs.length === 0 ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-neutral-200 text-xs text-neutral-400">
+                  No apprenticeship programmes yet.
                 </div>
+              ) : (
+                programs.map((prog) => {
+                  const openSlots = Math.max(0, (prog.capacity || 0) - (prog.enrolledCount || 0));
+                  const durationLabel = prog.durationMonths
+                    ? `${prog.durationMonths} months`
+                    : `${prog.durationWeeks || 12} weeks`;
+                  return (
+                    <div
+                      key={prog.id}
+                      className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
+                            {prog.title}
+                          </h4>
+                          <p className="text-xs text-neutral-400 mt-0.5">
+                            {durationLabel} · {openSlots} of {prog.capacity || 0} slots open
+                          </p>
+                        </div>
+                      </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
-                    2 new
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Welding & Metal Fabrication Apprenticeship")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    View applications
-                  </button>
-                </div>
-              </div>
-
-              {/* Item 2 */}
-              <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      Gate & Burglary-Proof Fabrication
-                    </h4>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      1 month short course · 2 slots · 1 application
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
-                    1 new
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Gate & Burglary-Proof Fabrication")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    View applications
-                  </button>
-                </div>
-              </div>
-
-              {/* Item 3 */}
-              <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      Plumbing Basics
-                    </h4>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      2 months · Full: 0 open slots
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-600">
-                    Filled
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Plumbing Basics")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    View applications
-                  </button>
-                </div>
-              </div>
+                      <div className="flex items-center gap-3 self-end sm:self-center">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
+                          {prog.enrolledCount || 0} enrolled
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProgrammeForApplicants(prog.title)}
+                          className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                        >
+                          View applications
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 

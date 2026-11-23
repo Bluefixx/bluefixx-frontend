@@ -27,8 +27,8 @@ interface ArtisanApprenticeProgressViewProps {
 
 export function ArtisanApprenticeProgressView({
   enrollmentId,
-  apprenticeName = "Daniel Eze",
-  tradeTitle = "Welding & Metal Fabrication Apprenticeship",
+  apprenticeName = "Apprentice",
+  tradeTitle = "Apprenticeship Programme",
   onBack,
   onBackToDashboard,
   onOpenMessage,

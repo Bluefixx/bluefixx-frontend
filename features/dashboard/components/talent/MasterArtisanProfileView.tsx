@@ -108,23 +108,8 @@ export function MasterArtisanProfileView({
     };
   }, [programId]);
 
-  const portfolio = [
-    { title: "Burglary proof installation", img: "/images/workers.png" },
-    { title: "Industrial gate project", img: "/images/customers.png" },
-  ];
-
-  const reviews = [
-    {
-      name: "Kelechi N.",
-      role: "apprentice, 2025",
-      text: "He teaches patiently and makes sure you can do each step yourself before moving on.",
-    },
-    {
-      name: "Ifeanyi U.",
-      role: "apprentice, 2024",
-      text: "Very strict on safety. I got my first paid welding job two weeks after finishing.",
-    },
-  ];
+  const portfolio: Array<{ title: string; img: string }> = [];
+  const reviews: Array<{ name: string; role: string; text: string }> = [];
 
   return (
     <div className="space-y-6 pb-16 max-w-7xl mx-auto select-none animate-in fade-in duration-200">

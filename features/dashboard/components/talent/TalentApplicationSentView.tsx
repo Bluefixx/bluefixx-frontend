@@ -16,9 +16,9 @@ export function TalentApplicationSentView({
   onBack,
   onTrackApplication,
   onFindMore,
-  trade = "Welding & Metal Fabrication",
-  masterArtisan = "John Obiora",
-  workshop = "Enugu",
+  trade = "Apprenticeship Programme",
+  masterArtisan = "Master Artisan",
+  workshop = "Verified Workshop",
   duration = "6 months",
 }: TalentApplicationSentViewProps) {
   return (

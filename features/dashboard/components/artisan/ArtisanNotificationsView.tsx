@@ -15,6 +15,7 @@ export interface ArtisanNotificationItem {
   read: boolean;
   section: "today" | "earlier";
   actionView?: string;
+  reference?: string;
 }
 
 /** The inbox item may carry either the documented `kind`/`readAt` fields or the legacy `type`/`read` alias. */
@@ -27,7 +28,7 @@ type RawNotification = NotificationItem & {
 
 interface ArtisanNotificationsViewProps {
   onBack?: () => void;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, reference?: string) => void;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -72,7 +73,8 @@ function kindToView(kind?: string): string | undefined {
   if (/(APPLICATION|APPRENTICE|TRAINING|ENROL)/.test(k)) return "apprenticeships-hub";
   if (/(REVIEW|RATE)/.test(k)) return "rate-customer";
   if (/(VERIF|IDENTITY|APPROV)/.test(k)) return "verification";
-  if (/OFFER/.test(k)) return "jobs-list";
+  if (/OFFER_RECEIVED|QUOTE_/.test(k)) return "messages";
+  if (/OFFER_ACCEPTED|BOOKING_/.test(k)) return "active-jobs";
   return undefined;
 }
 
@@ -87,6 +89,7 @@ function mapNotification(raw: RawNotification): ArtisanNotificationItem {
     read: Boolean(raw.read || raw.readAt),
     section: raw.createdAt && isToday(raw.createdAt) ? "today" : "earlier",
     actionView: kindToView(kind),
+    reference: raw.reference ? String(raw.reference) : undefined,
   };
 }
 
@@ -155,7 +158,7 @@ export function ArtisanNotificationsView({
       });
     }
     if (notif.actionView && onNavigate) {
-      onNavigate(notif.actionView);
+      onNavigate(notif.actionView, notif.reference);
     }
   };
 

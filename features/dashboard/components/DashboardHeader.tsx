@@ -37,14 +37,27 @@ export default function DashboardHeader({
     setHasMounted(true);
   }, []);
 
-  const mapHeaderNotification = (it: any) => {
+  const mapHeaderNotification = React.useCallback((it: any) => {
     const rawKind = String(it?.kind || it?.type || "").toUpperCase();
+    const ref = it?.reference ? String(it.reference) : "";
     let type: "quote" | "job-completed" | "warranty" | "review" | "escrow" | "referral" = "quote";
     if (/(COMPLET|WORK_SUBMITTED)/.test(rawKind)) type = "job-completed";
     else if (/WARRANTY/.test(rawKind)) type = "warranty";
     else if (/REVIEW/.test(rawKind)) type = "review";
     else if (/(ESCROW|PAY|WALLET|WITHDRAW|FUND)/.test(rawKind)) type = "escrow";
     else if (/REFERRAL/.test(rawKind)) type = "referral";
+
+    let actionUrl = "/notifications";
+    if (/(OFFER_RECEIVED|QUOTE_REQUESTED|QUOTE_CLOSED|MESSAGE|CHAT)/.test(rawKind) && ref) {
+      actionUrl =
+        activeRole === "artisan"
+          ? `/artisan?view=messages&quoteId=${encodeURIComponent(ref)}`
+          : `/messages?quoteId=${encodeURIComponent(ref)}`;
+    } else if (/(OFFER_ACCEPTED|BOOKING_|ADDITION_|SCHEDULE_)/.test(rawKind)) {
+      actionUrl = activeRole === "artisan" ? "/artisan?view=active-jobs" : "/bookings?tab=active";
+    } else if (/(APPLICATION|APPRENTICE|TRAINING|ENROL)/.test(rawKind)) {
+      actionUrl = activeRole === "artisan" ? "/artisan?view=apprenticeships" : "/talent/applications";
+    }
 
     return {
       id: it.id,
@@ -59,9 +72,9 @@ export default function DashboardHeader({
       dateGroup: "Today" as const,
       isRead: Boolean(it.read || it.readAt),
       type,
-      actionUrl: "/notifications",
+      actionUrl,
     };
-  };
+  }, [activeRole]);
 
   const refreshNotifications = React.useCallback(() => {
     getNotificationsApi()
@@ -82,7 +95,9 @@ export default function DashboardHeader({
 
     const onNotification = (payload: any) => {
       if (!mounted || !payload?.id) return;
-      addNotification(mapHeaderNotification(payload));
+      const mapped = mapHeaderNotification(payload);
+      addNotification(mapped);
+      toast(mapped.title, { icon: "🔔", duration: 5000 });
     };
 
     const attachSocket = () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 import {
@@ -55,6 +56,8 @@ function formatShortTime(value?: string): string {
 
 export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: ArtisanMessagesViewProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const requestedQuoteId = searchParams.get("quoteId");
   const [threads, setThreads] = useState<ArtisanThread[]>([]);
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -119,7 +122,11 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
         });
 
         setThreads(list);
-        setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
+        if (requestedQuoteId && list.some((t) => t.key === `quote:${requestedQuoteId}`)) {
+          setSelectedKey(`quote:${requestedQuoteId}`);
+        } else {
+          setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
+        }
         setIsLoadingThreads(false);
       }
     );
@@ -127,7 +134,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [requestedQuoteId]);
 
   const activeThread = useMemo(
     () => threads.find((t) => t.key === selectedKey) ?? null,

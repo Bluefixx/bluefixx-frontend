@@ -21,21 +21,31 @@ export default function NotificationsPage() {
       .then((items) => {
         if (mounted && Array.isArray(items)) {
           setNotifications(
-            items.map((it: any) => ({
-              id: it.id,
-              title: it.title,
-              description: it.body || it.title,
-              time: it.createdAt
-                ? new Date(it.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Today",
-              dateGroup: "Today",
-              isRead: Boolean(it.read || it.readAt),
-              type: (it.type?.toLowerCase() as any) || "quote",
-              actionUrl: "/notifications",
-            }))
+            items.map((it: any) => {
+              const rawKind = String(it?.kind || it?.type || "").toUpperCase();
+              const ref = it?.reference ? String(it.reference) : "";
+              let actionUrl = "/notifications";
+              if (/(OFFER_RECEIVED|QUOTE_REQUESTED|QUOTE_CLOSED|MESSAGE|CHAT)/.test(rawKind) && ref) {
+                actionUrl = `/messages?quoteId=${encodeURIComponent(ref)}`;
+              } else if (/(OFFER_ACCEPTED|BOOKING_|ADDITION_|SCHEDULE_)/.test(rawKind)) {
+                actionUrl = "/bookings?tab=active";
+              }
+              return {
+                id: it.id,
+                title: it.title,
+                description: it.body || it.title,
+                time: it.createdAt
+                  ? new Date(it.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Today",
+                dateGroup: "Today",
+                isRead: Boolean(it.read || it.readAt),
+                type: (it.type?.toLowerCase() as any) || "quote",
+                actionUrl,
+              };
+            })
           );
         }
       })
@@ -76,7 +86,13 @@ export default function NotificationsPage() {
     return (
       <ArtisanNotificationsView
         onBack={() => router.back()}
-        onNavigate={(view) => router.push(`/artisan?view=${view}`)}
+        onNavigate={(view, reference) =>
+          router.push(
+            `/artisan?view=${view}${
+              reference && view === "messages" ? `&quoteId=${encodeURIComponent(reference)}` : ""
+            }`
+          )
+        }
       />
     );
   }

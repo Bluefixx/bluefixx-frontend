@@ -439,7 +439,7 @@ export type MediaPurpose =
   | "REVIEW"
   | "ASSESSMENT";
 
-export type MediaResourceType = "image" | "video";
+export type MediaResourceType = "image" | "video" | "raw";
 
 export interface MediaUploadInitiateRequest {
   purpose: MediaPurpose;

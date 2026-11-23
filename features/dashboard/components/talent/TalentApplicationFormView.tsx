@@ -74,7 +74,7 @@ export function TalentApplicationFormView({
       }
       setUploadedPhotos((prev) => [...prev, ...urls]);
       setUploadedMediaFiles((prev) => [...prev, ...newFiles]);
-      toast.success(`${files.length} sample photo(s) attached`);
+      toast.success(`${files.length} file(s) attached`);
     }
     e.target.value = "";
   };
@@ -121,12 +121,8 @@ export function TalentApplicationFormView({
       // Upload any work media files first
       const mediaIds: string[] = [];
       for (const file of uploadedMediaFiles) {
-        try {
-          const res = await uploadMediaFile(file, "JOB");
-          if (res?.id) mediaIds.push(res.id);
-        } catch {
-          // If media upload fails, proceed without blocking
-        }
+        const res = await uploadMediaFile(file, "PORTFOLIO");
+        if (res?.id) mediaIds.push(res.id);
       }
 
       await submitTalentApplicationApi(programId, {
@@ -162,7 +158,6 @@ export function TalentApplicationFormView({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
         multiple
         onChange={handlePhotoUpload}
         className="hidden"
@@ -354,12 +349,12 @@ export function TalentApplicationFormView({
                   <polyline points="17 8 12 3 7 8" />
                   <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
-                <span>Upload photos of your work</span>
+                <span>Upload work examples (any file type)</span>
               </button>
 
               {uploadedPhotos.length > 0 && (
                 <p className="text-[11px] font-semibold text-emerald-600 mt-1">
-                  ✓ {uploadedPhotos.length} photo(s) selected
+                  ✓ {uploadedPhotos.length} file(s) selected
                 </p>
               )}
             </div>

@@ -317,6 +317,7 @@ export interface SendTalentMessagePayload {
   clientId: string;
   text?: string;
   mediaIds?: string[];
+  talentId?: string;
 }
 
 export interface TalentConversationParticipant {

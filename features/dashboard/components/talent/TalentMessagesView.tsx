@@ -8,6 +8,7 @@ import {
   sendProgramMessageApi,
   markTalentProgramMessagesReadApi,
   getTalentConversationsApi,
+  getTalentProgramByIdApi,
 } from "@/lib/api/talent";
 import { TalentConversation } from "@/types/talent";
 import { getSocket, emitWithAck } from "@/lib/realtime/socket";
@@ -70,11 +71,30 @@ export function TalentMessagesView({
 
     const loadConvs = () => {
       getTalentConversationsApi()
-        .then((items) => {
+        .then(async (items) => {
           if (!isMounted) return;
-          const list = Array.isArray(items) ? items : [];
+          const list = Array.isArray(items) ? [...items] : [];
+          if (programId && !list.some((c) => c.programId === programId)) {
+            try {
+              const prog = await getTalentProgramByIdApi(programId);
+              if (prog && isMounted) {
+                list.unshift({
+                  programId: prog.id,
+                  programTitle: prog.title,
+                  peer: prog.artisan
+                    ? {
+                        id: prog.artisan.id,
+                        fullName: prog.artisan.fullName,
+                      }
+                    : undefined,
+                  unreadCount: 0,
+                });
+              }
+            } catch {}
+          }
+          if (!isMounted) return;
           setConversations(list);
-          setActiveProgramId((prev) => prev ?? list[0]?.programId);
+          setActiveProgramId((prev) => programId ?? prev ?? list[0]?.programId);
         })
         .catch(() => {
           if (isMounted) setConversations([]);

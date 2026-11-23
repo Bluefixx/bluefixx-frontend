@@ -16,7 +16,7 @@ export default function TalentMasterArtisanPage() {
       onApply={(programme) =>
         router.push(`/talent/discover/${programme.id || id}/apply`)
       }
-      onMessage={() => router.push("/talent/messages")}
+      onMessage={() => router.push(`/talent/messages?programId=${id}`)}
     />
   );
 }

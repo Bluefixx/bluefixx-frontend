@@ -394,6 +394,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
       sendProgramMessageApi(activeThread.programId, {
         text: textToSend,
         clientId,
+        talentId: activeThread.talentId,
       }).catch(() => {
         toast.error("Message could not be sent.");
       });

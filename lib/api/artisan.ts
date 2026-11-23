@@ -484,6 +484,45 @@ export async function getArtisanApplicationsApi(params?: {
   );
 }
 
+export interface ArtisanApplicationDetail {
+  id: string;
+  programId: string;
+  talentId: string;
+  motivation: string;
+  experience: string;
+  sixDayAvailability: boolean;
+  currentSituation: string;
+  workMediaIds: string[];
+  answers?: Record<string, string | boolean | string[]>;
+  status: string;
+  createdAt: string;
+  program?: {
+    id: string;
+    title: string;
+    location: string;
+    durationWeeks?: number;
+    durationMonths?: number;
+    fee?: string | number;
+    questions?: ProgramQuestionItem[];
+  };
+  talent?: {
+    id: string;
+    fullName: string;
+    CustomerProfile_userId?: { photoId?: string | null } | null;
+  };
+}
+
+/**
+ * Fetch full details, answers, and portfolio references for one application.
+ */
+export async function getArtisanApplicationDetailApi(
+  applicationId: string
+): Promise<ArtisanApplicationDetail> {
+  return apiClient.get<ArtisanApplicationDetail>(
+    `/artisan/training/applications/${applicationId}`
+  );
+}
+
 /**
  * Accept or decline an apprenticeship application.
  */

@@ -5,7 +5,19 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { submitTalentApplicationApi } from "@/lib/api/talent";
 import { uploadMediaFile } from "@/lib/api/media";
-import { TalentCurrentSituation } from "@/types/talent";
+import { TalentCurrentSituation, TalentProgramQuestion } from "@/types/talent";
+
+const isBuiltinQuestion = (prompt: string) => {
+  const lower = prompt.toLowerCase();
+  return (
+    lower.includes("why do you want") ||
+    lower.includes("experience") ||
+    lower.includes("six days") ||
+    lower.includes("six-day") ||
+    lower.includes("previous work") ||
+    lower.includes("work example")
+  );
+};
 
 interface TalentApplicationFormViewProps {
   onBack: () => void;
@@ -15,6 +27,7 @@ interface TalentApplicationFormViewProps {
   artisanAvatar?: string;
   duration?: string;
   fee?: string;
+  questions?: TalentProgramQuestion[];
   onSubmitSuccess?: () => void;
 }
 
@@ -26,6 +39,7 @@ export function TalentApplicationFormView({
   artisanAvatar,
   duration = "Flexible",
   fee = "₦0",
+  questions = [],
   onSubmitSuccess,
 }: TalentApplicationFormViewProps) {
   // Form fields state
@@ -35,8 +49,12 @@ export function TalentApplicationFormView({
   const [situation, setSituation] = useState<string>("");
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
   const [uploadedMediaFiles, setUploadedMediaFiles] = useState<File[]>([]);
+  const [extraAnswers, setExtraAnswers] = useState<Record<string, string | boolean>>({});
+  const [extraFiles, setExtraFiles] = useState<Record<string, File[]>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const extraQuestions = questions.filter((q) => !isBuiltinQuestion(q.prompt));
 
   // Validation error flags
   const [errors, setErrors] = useState<{
@@ -44,6 +62,7 @@ export function TalentApplicationFormView({
     experience?: string;
     attend?: string;
     situation?: string;
+    extra?: Record<string, string>;
   }>({});
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -55,13 +74,22 @@ export function TalentApplicationFormView({
     "Student",
   ];
 
-  // Calculate answered count out of 4 required questions
-  const answeredCount = [
-    whyAnswer.trim().length > 0,
-    experienceAnswer.trim().length > 0,
-    attendSixDays !== null,
-    situation.length > 0,
-  ].filter(Boolean).length;
+  // Calculate answered count out of required questions
+  const requiredExtraQuestions = extraQuestions.filter((q) => q.required);
+  const answeredExtraCount = requiredExtraQuestions.filter((q) => {
+    if (q.type === "FILE") return (extraFiles[q.id]?.length ?? 0) > 0;
+    const val = extraAnswers[q.id];
+    if (q.type === "YES_NO") return typeof val === "boolean";
+    return typeof val === "string" && val.trim().length > 0;
+  }).length;
+  const totalRequiredCount = 4 + requiredExtraQuestions.length;
+  const answeredCount =
+    [
+      whyAnswer.trim().length > 0,
+      experienceAnswer.trim().length > 0,
+      attendSixDays !== null,
+      situation.length > 0,
+    ].filter(Boolean).length + answeredExtraCount;
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -96,6 +124,27 @@ export function TalentApplicationFormView({
       newErrors.situation = "Please select your current situation";
     }
 
+    const extraErrs: Record<string, string> = {};
+    for (const q of requiredExtraQuestions) {
+      if (q.type === "FILE") {
+        if ((extraFiles[q.id]?.length ?? 0) === 0) {
+          extraErrs[q.id] = "Please attach at least one file";
+        }
+      } else if (q.type === "YES_NO") {
+        if (typeof extraAnswers[q.id] !== "boolean") {
+          extraErrs[q.id] = "Please select Yes or No";
+        }
+      } else {
+        const val = extraAnswers[q.id];
+        if (typeof val !== "string" || !val.trim()) {
+          extraErrs[q.id] = "This answer is required";
+        }
+      }
+    }
+    if (Object.keys(extraErrs).length > 0) {
+      newErrors.extra = extraErrs;
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       toast.error("Please answer all required questions");
@@ -125,12 +174,40 @@ export function TalentApplicationFormView({
         if (res?.id) mediaIds.push(res.id);
       }
 
+      const answersPayload: Record<string, string | boolean | string[]> = {};
+      for (const q of questions) {
+        const lower = q.prompt.toLowerCase();
+        if (lower.includes("why do you want")) {
+          answersPayload[q.id] = whyAnswer.trim();
+        } else if (lower.includes("experience")) {
+          answersPayload[q.id] = experienceAnswer.trim();
+        } else if (lower.includes("six days") || lower.includes("six-day")) {
+          answersPayload[q.id] = attendSixDays === "Yes";
+        } else if (lower.includes("previous work") || lower.includes("work example")) {
+          if (mediaIds.length > 0) answersPayload[q.id] = mediaIds;
+        } else if (q.type === "FILE") {
+          const filesForQ = extraFiles[q.id] ?? [];
+          if (filesForQ.length > 0) {
+            const uploadedIds: string[] = [];
+            for (const file of filesForQ) {
+              const res = await uploadMediaFile(file, "PORTFOLIO");
+              if (res?.id) uploadedIds.push(res.id);
+            }
+            answersPayload[q.id] = uploadedIds;
+          }
+        } else if (extraAnswers[q.id] !== undefined) {
+          const val = extraAnswers[q.id];
+          answersPayload[q.id] = typeof val === "string" ? val.trim() : val;
+        }
+      }
+
       await submitTalentApplicationApi(programId, {
         motivation: whyAnswer.trim(),
         experience: experienceAnswer.trim(),
         sixDayAvailability: attendSixDays === "Yes",
         currentSituation: currentSituationEnum,
         workMediaIds: mediaIds,
+        ...(Object.keys(answersPayload).length > 0 ? { answers: answersPayload } : {}),
       });
 
       setIsSubmitted(true);
@@ -191,10 +268,10 @@ export function TalentApplicationFormView({
           {/* Progress Tracker Pill */}
           <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
             <span className="text-xs font-semibold text-neutral-500">
-              {answeredCount} of 4 required questions answered
+              {answeredCount} of {totalRequiredCount} required questions answered
             </span>
             <div className="flex items-center gap-1">
-              {[1, 2, 3, 4].map((num) => (
+              {Array.from({ length: totalRequiredCount }, (_, idx) => idx + 1).map((num) => (
                 <div
                   key={num}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -358,6 +435,124 @@ export function TalentApplicationFormView({
                 </p>
               )}
             </div>
+
+            {/* Additional Questions from Master Artisan */}
+            {extraQuestions.map((q, idx) => {
+              const qError = errors.extra?.[q.id];
+              const qNumber = 6 + idx;
+              return (
+                <div key={q.id} className="space-y-2 pt-2 border-t border-neutral-100">
+                  <label className="font-sans font-bold text-xs sm:text-sm text-[#0F1115] block">
+                    {qNumber}. {q.prompt}{" "}
+                    {q.required ? (
+                      <span className="text-red-500">*</span>
+                    ) : (
+                      <span className="text-neutral-400 font-normal">(optional)</span>
+                    )}
+                  </label>
+
+                  {q.type === "TEXT" && (
+                    <textarea
+                      rows={2}
+                      value={typeof extraAnswers[q.id] === "string" ? (extraAnswers[q.id] as string) : ""}
+                      onChange={(e) => {
+                        setExtraAnswers((prev) => ({ ...prev, [q.id]: e.target.value }));
+                        if (qError) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            extra: { ...prev.extra, [q.id]: "" },
+                          }));
+                        }
+                      }}
+                      placeholder="Write your answer..."
+                      className={`w-full p-4 rounded-2xl bg-neutral-50/60 border text-xs sm:text-sm text-neutral-800 placeholder-neutral-400 focus:bg-white focus:outline-hidden transition-all resize-none ${
+                        qError ? "border-red-400 focus:border-red-500" : "border-neutral-200 focus:border-[#001B40]"
+                      }`}
+                    />
+                  )}
+
+                  {q.type === "YES_NO" && (
+                    <div className="flex items-center gap-3">
+                      {(["Yes", "No"] as const).map((opt) => {
+                        const isSelected =
+                          (opt === "Yes" && extraAnswers[q.id] === true) ||
+                          (opt === "No" && extraAnswers[q.id] === false);
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              setExtraAnswers((prev) => ({ ...prev, [q.id]: opt === "Yes" }));
+                              if (qError) {
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  extra: { ...prev.extra, [q.id]: "" },
+                                }));
+                              }
+                            }}
+                            className={`flex items-center gap-2.5 px-6 py-2.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer ${
+                              isSelected
+                                ? "border-[#001B40] bg-[#001B40] text-white shadow-xs"
+                                : "border-neutral-200 hover:bg-neutral-50 text-neutral-700 bg-white"
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                                isSelected ? "border-white" : "border-neutral-300"
+                              }`}
+                            >
+                              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </span>
+                            <span>{opt}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {q.type === "FILE" && (
+                    <div>
+                      <label className="w-full py-4 border-2 border-dashed border-neutral-200 hover:border-neutral-400 rounded-2xl text-center text-xs font-semibold text-neutral-600 hover:text-neutral-900 transition-colors flex items-center justify-center gap-2 cursor-pointer bg-neutral-50/50">
+                        <input
+                          type="file"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const files = e.target.files ? Array.from(e.target.files) : [];
+                            if (files.length > 0) {
+                              setExtraFiles((prev) => ({
+                                ...prev,
+                                [q.id]: [...(prev[q.id] ?? []), ...files],
+                              }));
+                              if (qError) {
+                                setErrors((prev) => ({
+                                  ...prev,
+                                  extra: { ...prev.extra, [q.id]: "" },
+                                }));
+                              }
+                              toast.success(`${files.length} file(s) attached`);
+                            }
+                            e.target.value = "";
+                          }}
+                        />
+                        <span>Upload files (any file type)</span>
+                      </label>
+                      {(extraFiles[q.id]?.length ?? 0) > 0 && (
+                        <p className="text-[11px] font-semibold text-emerald-600 mt-1">
+                          ✓ {extraFiles[q.id].length} file(s) selected
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {qError && (
+                    <p className="text-[11px] font-semibold text-red-600 flex items-center gap-1 mt-1">
+                      <span>⚠</span> {qError}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </form>
         </div>
 

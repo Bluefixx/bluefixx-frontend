@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TalentApplicationFormView } from "@/features/dashboard/components/talent/TalentApplicationFormView";
 import { getTalentProgramByIdApi } from "@/lib/api/talent";
+import { TalentProgramQuestion } from "@/types/talent";
 import { formatNaira } from "@/lib/utils/currency";
 
 export default function TalentApplyPage() {
@@ -16,6 +17,7 @@ export default function TalentApplyPage() {
   const [fee, setFee] = useState<string | undefined>();
   const [artisanName, setArtisanName] = useState<string | undefined>();
   const [artisanAvatar, setArtisanAvatar] = useState<string | undefined>();
+  const [questions, setQuestions] = useState<TalentProgramQuestion[] | undefined>();
 
   useEffect(() => {
     if (!id) return;
@@ -29,6 +31,7 @@ export default function TalentApplyPage() {
         setFee(formatNaira(Number(programme.fee || 0), true));
         setArtisanName(programme.artisan?.fullName);
         setArtisanAvatar(programme.artisan?.avatarUrl);
+        setQuestions(Array.isArray(programme.questions) ? programme.questions : undefined);
       })
       .catch(() => {
         // Defaults inside the form remain in place
@@ -47,6 +50,7 @@ export default function TalentApplyPage() {
       fee={fee}
       artisanName={artisanName}
       artisanAvatar={artisanAvatar}
+      questions={questions}
       onBack={() => router.push(`/talent/discover/${id}`)}
       onSubmitSuccess={() => router.push(`/talent/discover/${id}/apply/sent`)}
     />

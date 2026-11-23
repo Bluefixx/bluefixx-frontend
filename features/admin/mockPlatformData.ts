@@ -693,3 +693,320 @@ export const MOCK_ADMIN_AUDIT_LOGS: AdminAuditLog[] = [
     reason: "Temporary financial reconciliation authorization",
   },
 ];
+
+// ==========================================
+// Referrals & Growth Engine Mock Data
+// ==========================================
+
+import {
+  AdminReferralItem,
+  ReferralFraudRules,
+  AdminPlatformSettings,
+  AdminScheduledReport,
+} from "./types";
+
+export const MOCK_ADMIN_REFERRALS: AdminReferralItem[] = [
+  {
+    id: "REF-001",
+    referrerName: "Kunle Adebayo",
+    referrerRole: "Worker",
+    referredName: "Aseeyo Alimi",
+    referredRole: "Worker",
+    date: "24 Aug 2026",
+    conversionStatus: "Converted",
+    rewardKobo: 200000, // ₦2,000
+    payoutStatus: "Pending",
+    relatedActivity: "Completed 1 job",
+    trade: "Solar Installation",
+    tierBadge: "Priority Trade (₦3k)",
+    deviceFingerprint: "fp_88291a",
+    ipAddress: "102.89.44.12",
+  },
+  {
+    id: "REF-002",
+    referrerName: "Grace Uzoma",
+    referrerRole: "Customer",
+    referredName: "Chinedu Okafor",
+    referredRole: "Worker",
+    date: "20 Aug 2026",
+    conversionStatus: "Converted",
+    rewardKobo: 150000, // ₦1,500
+    payoutStatus: "Paid",
+    relatedActivity: "2 jobs posted",
+    trade: "Plumbing",
+    tierBadge: "Standard (₦1.5k–₦2k)",
+    deviceFingerprint: "fp_71291b",
+    ipAddress: "197.210.45.88",
+  },
+  {
+    id: "REF-003",
+    referrerName: "Blessing Adeyemi",
+    referrerRole: "Talent",
+    referredName: "Aisha Mohammed",
+    referredRole: "Talent",
+    date: "15 Aug 2026",
+    conversionStatus: "Converted",
+    rewardKobo: 150000, // ₦1,500
+    payoutStatus: "Pending",
+    relatedActivity: "Application under review",
+    trade: "Electrical Apprenticeship",
+    tierBadge: "Standard (₦1.5k–₦2k)",
+    deviceFingerprint: "fp_33910c",
+    ipAddress: "102.89.33.41",
+  },
+  {
+    id: "REF-004",
+    referrerName: "Segun Ajayi",
+    referrerRole: "Worker",
+    referredName: "Anonymous (5 accounts)",
+    referredRole: "Worker",
+    date: "10 Aug 2026",
+    conversionStatus: "Suspended",
+    rewardKobo: 1250000, // ₦12,500
+    payoutStatus: "Withheld",
+    relatedActivity: "Suspected self-referral ring",
+    trade: "Auto Mechanic",
+    fraudFlagReason: "5 accounts registered with matching IMEI/device hardware ID within 14 hours.",
+    deviceFingerprint: "fp_FLAGGED_RING_9921",
+    ipAddress: "105.112.98.14",
+  },
+  {
+    id: "REF-005",
+    referrerName: "Tobi Ogunleye",
+    referrerRole: "Talent",
+    referredName: "Sarah Olumeyo",
+    referredRole: "Talent",
+    date: "02 Jun 2026",
+    conversionStatus: "Converted",
+    rewardKobo: 300000, // ₦3,000
+    payoutStatus: "Paid",
+    relatedActivity: "Programme fee paid in full",
+    trade: "Solar Technician",
+    tierBadge: "Priority Trade (₦3k)",
+    deviceFingerprint: "fp_55102d",
+    ipAddress: "197.210.28.19",
+  },
+  {
+    id: "REF-006",
+    referrerName: "Pula Motors Ltd",
+    referrerRole: "Customer",
+    referredName: "Aniebo Chukwu",
+    referredRole: "Customer",
+    date: "21 Apr 2026",
+    conversionStatus: "Converted",
+    rewardKobo: 200000, // ₦2,000
+    payoutStatus: "Paid",
+    relatedActivity: "3 jobs posted",
+    tierBadge: "Standard (₦1.5k–₦2k)",
+    deviceFingerprint: "fp_11829e",
+    ipAddress: "102.89.55.90",
+  },
+];
+
+export const INITIAL_FRAUD_RULES: ReferralFraudRules = {
+  maxAccountsPerDevice: 2,
+  maxReferralsPer24h: 3,
+  autoHoldOnVpn: true,
+  requireFirstJobCompleted: true,
+};
+
+// ==========================================
+// Platform Settings Initial Values
+// ==========================================
+
+export const INITIAL_ADMIN_SETTINGS: AdminPlatformSettings = {
+  general: {
+    platformName: "Bluefixx Operations",
+    supportEmail: "support@bluefixx.ng",
+    supportPhone: "+234 1 888 2583",
+    defaultRegion: "Lagos region",
+  },
+  marketplace: {
+    requireVerificationBeforeMatching: true,
+    allowCustomerInviteSpecificWorker: true,
+    minimumJobValueKobo: 500000, // ₦5,000
+    freeCancellationWindowHours: 1,
+  },
+  payments: {
+    standardCommissionRate: 10,
+    singleTransactionLimitKobo: 50000000, // ₦500,000
+    autoReleaseEscrowOnCustomerConfirmation: true,
+    splitFeeForPreWorkDrawingOrMaterial: true,
+  },
+  withdrawals: {
+    minimumWithdrawalKobo: 200000, // ₦2,000
+    manualApprovalThresholdKobo: 20000000, // ₦200,000
+    payoutBank: "Providus Bank",
+    transactionPinRequired: "ALWAYS",
+  },
+  refunds: {
+    requireReasonOnEveryRefund: true,
+    removePlatformFeeOnFullRefunds: true,
+    refundRequestWindowHours: 48,
+  },
+  security: {
+    enforceMfaForAllAdmins: true,
+    sessionTimeoutMinutes: 30,
+    alertOnSensitiveActionOutsideWorkingHours: true,
+    maintenanceModeActive: false,
+  },
+};
+
+// ==========================================
+// Reports & Analytics Datasets
+// ==========================================
+
+export const MOCK_SCHEDULED_REPORTS: AdminScheduledReport[] = [
+  {
+    id: "REP-SCHED-01",
+    name: "Executive Weekly Performance Digest",
+    frequency: "WEEKLY",
+    dayOfWeek: "Monday",
+    time: "08:00 AM",
+    recipients: ["adebisi@bluefixx.ng", "garba.b@bluefixx.ng", "simeon.daniel@bluefixx.ng"],
+    sections: ["Users", "Marketplace", "Finance"],
+    lastSent: "18 Aug 2026",
+    status: "ACTIVE",
+  },
+  {
+    id: "REP-SCHED-02",
+    name: "Monthly Trust, Safety & Disputes Audit",
+    frequency: "MONTHLY",
+    dayOfWeek: "1st of month",
+    time: "09:00 AM",
+    recipients: ["bisi@bluefixx.ng", "ibrahim@bluefixx.ng"],
+    sections: ["Support", "Disputes"],
+    lastSent: "01 Aug 2026",
+    status: "ACTIVE",
+  },
+];
+
+export const MOCK_REPORTS_METRICS = {
+  userGrowth: [
+    { month: "Jan", customers: 1200, workers: 420, talent: 110 },
+    { month: "Feb", customers: 1540, workers: 560, talent: 180 },
+    { month: "Mar", customers: 1980, workers: 710, talent: 240 },
+    { month: "Apr", customers: 2541, workers: 874, talent: 312 },
+    { month: "May", customers: 3180, workers: 1040, talent: 390 },
+    { month: "Jun", customers: 3920, workers: 1240, talent: 480 },
+  ],
+  registrationsByLocation: [
+    { state: "Lagos", count: 4821, percentage: 62, lgas: [
+      { name: "Ikeja / Ogba", count: 1420 },
+      { name: "Lekki / Eti-Osa", count: 1680 },
+      { name: "Yaba / Surulere", count: 1120 },
+      { name: "Ikorodu", count: 601 },
+    ]},
+    { state: "Abuja", count: 1514, percentage: 20, lgas: [
+      { name: "Wuse / Maitama", count: 820 },
+      { name: "Garki / Asokoro", count: 694 },
+    ]},
+    { state: "Port Harcourt", count: 812, percentage: 11, lgas: [
+      { name: "Old GRA / Trans-Amadi", count: 520 },
+      { name: "Rumuokoro", count: 292 },
+    ]},
+    { state: "Ibadan", count: 742, percentage: 9, lgas: [
+      { name: "Bodija / UI", count: 440 },
+      { name: "Ring Road", count: 302 },
+    ]},
+    { state: "Kano", count: 316, percentage: 4, lgas: [
+      { name: "Nasarawa", count: 210 },
+      { name: "Fagge", count: 106 },
+    ]},
+  ],
+  retention: {
+    activeWorkers30d: 68,
+    activeWorkersDelta: "+4.2%",
+    customersWithRepeatJob: 41,
+    customersRepeatDelta: "+2.8%",
+    talentsCompletingModule: 73,
+    talentsModuleDelta: "+6.1%",
+    dormantAccounts90d: 1204,
+    dormantDelta: "-1.5%",
+  },
+  jobFunnel: [
+    { month: "Jan", posted: 140, accepted: 110, completed: 95, cancelled: 15 },
+    { month: "Feb", posted: 180, accepted: 145, completed: 130, cancelled: 18 },
+    { month: "Mar", posted: 220, accepted: 175, completed: 155, cancelled: 24 },
+    { month: "Apr", posted: 280, accepted: 210, completed: 182, cancelled: 34 },
+    { month: "May", posted: 340, accepted: 260, completed: 235, cancelled: 40 },
+    { month: "Jun", posted: 410, accepted: 320, completed: 290, cancelled: 48 },
+  ],
+  mostRequestedTrades: [
+    { trade: "Electrical", count: 2210, percentage: 88 },
+    { trade: "Plumbing", count: 1840, percentage: 74 },
+    { trade: "Cleaning", count: 1212, percentage: 48 },
+    { trade: "Carpentry", count: 1142, percentage: 45 },
+    { trade: "Painting", count: 842, percentage: 34 },
+  ],
+  avgJobValueByTrade: [
+    { trade: "Electrical", valueKobo: 4120000, formatted: "₦41.2k", percentage: 82 },
+    { trade: "Plumbing", valueKobo: 3850000, formatted: "₦38.5k", percentage: 76 },
+    { trade: "Cleaning", valueKobo: 2800000, formatted: "₦28k", percentage: 56 },
+    { trade: "Carpentry", valueKobo: 4500000, formatted: "₦45k", percentage: 90 },
+    { trade: "Painting", valueKobo: 3200000, formatted: "₦32k", percentage: 64 },
+  ],
+  financeTrends: [
+    { month: "Jan", gmvKobo: 520000000, commissionKobo: 52000000, refundsKobo: 3200000 },
+    { month: "Feb", gmvKobo: 680000000, commissionKobo: 68000000, refundsKobo: 4100000 },
+    { month: "Mar", gmvKobo: 890000000, commissionKobo: 89000000, refundsKobo: 5800000 },
+    { month: "Apr", gmvKobo: 1240000000, commissionKobo: 124000000, refundsKobo: 8200000 },
+    { month: "May", gmvKobo: 1580000000, commissionKobo: 158000000, refundsKobo: 9400000 },
+    { month: "Jun", gmvKobo: 1950000000, commissionKobo: 195000000, refundsKobo: 11200000 },
+  ],
+  financeKpis: {
+    takeRate: "10.0%",
+    takeRateDelta: "0.0%",
+    escrowDisputeRate: "2.1%",
+    escrowDisputeDelta: "-0.4%",
+    refundApprovalRate: "3.4%",
+    refundApprovalDelta: "+0.2%",
+    avgPayoutTurnaround: "1.8 days",
+    avgPayoutDelta: "-0.6 days",
+  },
+  verificationThroughput: [
+    { day: "Mon", approved: 24, rejected: 8, needsInfo: 12 },
+    { day: "Tue", approved: 32, rejected: 10, needsInfo: 15 },
+    { day: "Wed", approved: 28, rejected: 7, needsInfo: 18 },
+    { day: "Thu", approved: 41, rejected: 12, needsInfo: 14 },
+    { day: "Fri", approved: 36, rejected: 9, needsInfo: 20 },
+  ],
+  topEarningWorkers: [
+    { name: "Kunle Adebayo", trade: "Solar / Electrical", jobs: 42, earningsKobo: 395020000 },
+    { name: "Olumide Agboola", trade: "Carpentry", jobs: 31, earningsKobo: 218000000 },
+    { name: "Tobi Ogunleye", trade: "Plumbing", jobs: 28, earningsKobo: 200420000 },
+    { name: "Bright Osaze", trade: "Electrical", jobs: 26, earningsKobo: 185020000 },
+    { name: "Segun Ajayi", trade: "Auto Mechanic", jobs: 24, earningsKobo: 162000000 },
+  ],
+  apprenticeshipKpis: {
+    openSlots: 65,
+    openSlotsDelta: "+12 slots",
+    completionRate: "87%",
+    completionDelta: "+3.4%",
+    placementRate: "74%",
+    placementDelta: "+5.1%",
+    overdueMilestoneKobo: 18000000, // ₦180,000
+    overdueDelta: "-₦45,000",
+  },
+  supportKpis: {
+    resolvedInSla: "89.2%",
+    resolvedDelta: "+2.1%",
+    firstResponseMedian: "9.21 hrs",
+    firstResponseDelta: "-1.4 hrs",
+    escalatedToLead: 7,
+    escalatedDelta: "-3 tickets",
+    medianTicketLife: "7h",
+    ticketLifeDelta: "-1.5h",
+  },
+  disputesKpis: {
+    disputedJobsPercent: "2.4%",
+    disputedPercentDelta: "-0.3%",
+    disputeRate: "1.5%",
+    disputeRateDelta: "-0.2%",
+    medianTimeToClose: "4.2 days",
+    medianTimeDelta: "-0.8 days",
+    favorArtisanVsCustomerSplit: "56%",
+    favorArtisanDelta: "+2%",
+  },
+};
+

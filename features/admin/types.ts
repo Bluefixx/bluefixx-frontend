@@ -741,3 +741,86 @@ export interface AdminAuditLog {
   reason?: string;
 }
 
+// ==========================================
+// Referrals & Growth Engine Contracts
+// ==========================================
+
+export interface AdminReferralItem {
+  id: string;
+  referrerName: string;
+  referrerRole: "Worker" | "Customer" | "Talent";
+  referredName: string;
+  referredRole: "Worker" | "Customer" | "Talent";
+  date: string;
+  conversionStatus: "Converted" | "Pending" | "Suspended";
+  rewardKobo: number;
+  payoutStatus: "Paid" | "Pending" | "Withheld";
+  relatedActivity: string;
+  trade?: string;
+  tierBadge?: "Priority Trade (₦3k)" | "Standard (₦1.5k–₦2k)";
+  deviceFingerprint?: string;
+  ipAddress?: string;
+  fraudFlagReason?: string;
+}
+
+export interface ReferralFraudRules {
+  maxAccountsPerDevice: number;
+  maxReferralsPer24h: number;
+  autoHoldOnVpn: boolean;
+  requireFirstJobCompleted: boolean;
+}
+
+// ==========================================
+// Platform Settings Contracts
+// ==========================================
+
+export interface AdminPlatformSettings {
+  general: {
+    platformName: string;
+    supportEmail: string;
+    supportPhone: string;
+    defaultRegion: string;
+  };
+  marketplace: {
+    requireVerificationBeforeMatching: boolean;
+    allowCustomerInviteSpecificWorker: boolean;
+    minimumJobValueKobo: number;
+    freeCancellationWindowHours: number;
+  };
+  payments: {
+    standardCommissionRate: number;
+    singleTransactionLimitKobo: number;
+    autoReleaseEscrowOnCustomerConfirmation: boolean;
+    splitFeeForPreWorkDrawingOrMaterial: boolean;
+  };
+  withdrawals: {
+    minimumWithdrawalKobo: number;
+    manualApprovalThresholdKobo: number;
+    payoutBank: string;
+    transactionPinRequired: "ALWAYS" | "OVER_THRESHOLD" | "DISABLED";
+  };
+  refunds: {
+    requireReasonOnEveryRefund: boolean;
+    removePlatformFeeOnFullRefunds: boolean;
+    refundRequestWindowHours: number;
+  };
+  security: {
+    enforceMfaForAllAdmins: boolean;
+    sessionTimeoutMinutes: number;
+    alertOnSensitiveActionOutsideWorkingHours: boolean;
+    maintenanceModeActive: boolean;
+  };
+}
+
+export interface AdminScheduledReport {
+  id: string;
+  name: string;
+  frequency: "WEEKLY" | "MONTHLY" | "DAILY";
+  dayOfWeek?: string;
+  time: string;
+  recipients: string[];
+  sections: string[];
+  lastSent?: string;
+  status: "ACTIVE" | "PAUSED";
+}
+

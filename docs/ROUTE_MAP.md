@@ -67,6 +67,9 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 | `/ops/notifications` | Admin / Operations | Mass communication console with audience segmentation, multi-channel dispatch (in-app, email), live phone preview, PIN gate, and delivery history | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Notifications |
 | `/ops/admins` | Admin / Operations | Administrators and operational roles directory with 24-hour privilege rules, invite admin modal, and granular role management drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Administrators & roles |
 | `/ops/activity-logs` | Admin / Operations | Immutable audit trail with sensitive action tags, before/after transition diffs, object links, and full audit detail drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Activity logs |
+| `/ops/referrals` | Admin / Operations | Growth engine with anti-fraud safeguards, device-ring alert, single and batch payout modals, velocity rules, and priority trade tiers | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Referrals |
+| `/ops/reports` | Admin / Operations | Operational reporting across 7 tabs (Users, Marketplace, Finance, Workers, Apprenticeship, Support, Disputes), interactive charts with tooltips, period deltas, LGA drilldown, and automated report scheduling | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Reports & analytics |
+| `/ops/settings` | Admin / Operations | Platform configuration across 6 sections (General, Marketplace, Payments, Withdrawals, Refunds, Security), emergency maintenance mode kill-switch, and PIN-protected commits | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Settings |
 
 ---
 

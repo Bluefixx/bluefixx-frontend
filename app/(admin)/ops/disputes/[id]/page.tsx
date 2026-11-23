@@ -7,8 +7,15 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+export function generateStaticParams() {
+  return MOCK_ADMIN_DISPUTES.map((d) => ({
+    id: d.id,
+  }));
+}
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
+  const resolved = await params;
+  const id = resolved?.id || "Case";
   return {
     title: `Dispute ${id} Arbitration | Operations Console`,
     description: `Operations Console case workstation for dispute ${id}.`,
@@ -16,11 +23,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function OpsDisputeDetailPage({ params }: PageProps) {
-  const { id } = await params;
+  const resolved = await params;
+  const id = resolved?.id || "";
 
-  const dispute =
-    MOCK_ADMIN_DISPUTES.find((d) => d.id.toLowerCase() === id.toLowerCase()) ||
-    MOCK_ADMIN_DISPUTES[0];
+  const dispute = id
+    ? MOCK_ADMIN_DISPUTES.find((d) => d.id.toLowerCase() === id.toLowerCase()) ||
+      MOCK_ADMIN_DISPUTES[0]
+    : MOCK_ADMIN_DISPUTES[0];
 
   if (!dispute) {
     notFound();

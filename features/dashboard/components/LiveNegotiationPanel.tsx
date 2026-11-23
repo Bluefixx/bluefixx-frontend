@@ -92,8 +92,8 @@ export function LiveNegotiationPanel({
   const isMyTurn = state.turn === role && state.status === "OPEN" && offer.status === "OPEN";
   const displayAmount = role === "CUSTOMER" ? offer.customerTotal : offer.artisanEarnings;
 
-  const handleCounter = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCounter = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     const numeric = parseFloat(counterNaira.replace(/,/g, ""));
     if (!numeric || numeric <= 0) {
       toast.error("Enter a valid counter-offer amount in Naira.");
@@ -104,6 +104,7 @@ export function LiveNegotiationPanel({
       const next = await counterOfferApi(
         quoteId,
         nairaToKobo(numeric),
+        offer.version,
         generateIdempotencyKey()
       );
       setState(next);
@@ -174,14 +175,21 @@ export function LiveNegotiationPanel({
             <input
               type="number"
               min="1"
-              step="100"
+              step="1"
               value={counterNaira}
               onChange={(e) => setCounterNaira(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleCounter();
+                }
+              }}
               placeholder="Counter ₦"
               className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-neutral-200 bg-white text-xs text-neutral-900 focus:outline-hidden focus:border-[#001B40]"
             />
             <button
-              type="submit"
+              type="button"
+              onClick={() => void handleCounter()}
               disabled={isSubmitting}
               className="px-3 py-2 rounded-xl border border-[#001B40] text-[#001B40] hover:bg-[#001B40] hover:text-white text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer"
             >

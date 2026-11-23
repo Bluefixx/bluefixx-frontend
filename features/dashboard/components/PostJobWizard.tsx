@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
-import { createJobApi, getCatalogApi, getSavedAddressesApi, uploadMediaFile } from "@/lib/api";
+import { createJobApi, createSavedAddressApi, getCatalogApi, getSavedAddressesApi, uploadMediaFile } from "@/lib/api";
 import { UrgencyLevel } from "@/types/customer";
 
 export default function PostJobWizard() {
@@ -246,6 +246,20 @@ export default function PostJobWizard() {
           if (addrs && addrs.length > 0) {
             resolvedAddressId = addrs[0].id;
             setSelectedAddressId(resolvedAddressId);
+          } else {
+            const createdAddr = await createSavedAddressApi({
+              title: "Home",
+              street: locationName || "14 Admiralty Way, Lekki Phase 1",
+              city: "Lagos",
+              state: "Lagos",
+              latitude: 6.5244,
+              longitude: 3.3792,
+              isDefault: true,
+            });
+            if (createdAddr?.id) {
+              resolvedAddressId = createdAddr.id;
+              setSelectedAddressId(resolvedAddressId);
+            }
           }
         } catch {}
       }

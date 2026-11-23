@@ -304,6 +304,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   // Hydrate user profile & wallet on initial app load if authenticated
   useEffect(() => {
+    if (!getAccessToken()) return;
     let isMounted = true;
 
     // 1. Profile & Active Role from /account

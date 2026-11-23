@@ -148,19 +148,9 @@ export function TalentApplicationFormView({
           onSubmitSuccess();
         }, 1200);
       }
-    } catch {
-      // Resilient fallback for testing / offline API
-      setIsSubmitted(true);
-      toast.success("Application recorded for " + artisanName + "!", {
-        duration: 4000,
-        icon: "🎉",
-      });
-
-      if (onSubmitSuccess) {
-        setTimeout(() => {
-          onSubmitSuccess();
-        }, 1200);
-      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not submit application. Please try again.";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

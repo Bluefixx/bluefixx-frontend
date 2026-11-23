@@ -584,12 +584,14 @@ export interface CreateTrainingProgramPayload {
   latitude: number;
   longitude: number;
   startsAt: string;
-  durationWeeks?: number;
+  durationWeeks: number;
   durationMonths?: number;
   capacity: number;
   fee: KoboAmount; // Total fee in kobo
-  outcomes?: string[];
-  documentMediaIds?: string[];
+  outcomes: string[];
+  inclusions?: string[];
+  exclusions?: string[];
+  documentIds?: string[];
 }
 
 export interface ProgramQuestionItem {
@@ -600,18 +602,17 @@ export interface ProgramQuestionItem {
 }
 
 export interface ProgramMilestoneItem {
-  id?: string;
   title: string;
   amount: KoboAmount; // sum must equal total fee
-  order: number;
 }
 
 export interface PublishTrainingProgramPayload {
-  schedule: string;
+  schedule: Record<string, unknown>;
   sessions: Array<{
-    date: string;
     title: string;
-    time?: string;
+    startsAt: string;
+    endsAt: string;
+    location: string;
   }>;
   milestones: ProgramMilestoneItem[];
 }

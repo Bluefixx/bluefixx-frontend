@@ -43,6 +43,11 @@ function DashboardSidebarContent({
   const [isSettingsOpen, setIsSettingsOpen] = useState(
     pathname.includes("/settings")
   );
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Auto-expand accordion when navigating to a child page
   useEffect(() => {
@@ -1052,11 +1057,11 @@ function DashboardSidebarContent({
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-[#001B40] text-white flex items-center justify-center font-bold text-xs shrink-0">
-              {user?.fullName ? user.fullName[0].toUpperCase() : "D"}
+              {hasMounted && user?.fullName ? user.fullName[0].toUpperCase() : "D"}
             </div>
             <div className="min-w-0 text-left">
               <p className="font-sans font-bold text-xs text-[#0F1115] truncate">
-                {user?.fullName || "My account"}
+                {(hasMounted && user?.fullName) || "My account"}
               </p>
               <p className="font-sans text-[11px] text-neutral-500 capitalize">
                 {roleDisplay}

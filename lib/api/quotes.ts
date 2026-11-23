@@ -123,11 +123,12 @@ export async function getQuoteNegotiationApi(quoteId: string): Promise<Negotiati
 export async function counterOfferApi(
   quoteId: string,
   priceKobo: number,
+  expectedVersion: number,
   idempotencyKey?: string
 ): Promise<NegotiationState> {
   return apiClient.post<NegotiationState>(
     `/quotes/${quoteId}/counter`,
-    { price: priceKobo },
+    { price: priceKobo, expectedVersion },
     idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined
   );
 }

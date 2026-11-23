@@ -44,6 +44,18 @@ export default function JobProgressTrackerView({
   const [pendingAdditionId, setPendingAdditionId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const resolvedTitle =
+    (booking as any)?.job?.title ||
+    (booking?.offer as any)?.scope ||
+    "Service Booking";
+  const resolvedArtisanName =
+    booking?.artisan?.fullName ||
+    booking?.artisan?.businessName ||
+    "Assigned Artisan";
+  const resolvedAmount = booking?.base
+    ? `₦${Math.round(parseInt(booking.base, 10) / 100).toLocaleString()}`
+    : "₦0";
+
   // Current milestone state in tracker
   const [currentStage, setCurrentStage] = useState<TrackerStage>(initialStage);
 
@@ -321,19 +333,19 @@ export default function JobProgressTrackerView({
                 <div className="flex justify-between items-center pb-2">
                   <span className="text-neutral-500">Job</span>
                   <span className="font-semibold text-neutral-900 text-right">
-                    Bathroom Plumbing Repair
+                    {resolvedTitle}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-neutral-500">Artisan</span>
                   <span className="font-semibold text-neutral-900">
-                    Emeka Okafor
+                    {resolvedArtisanName}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-neutral-500">Amount held</span>
                   <span className="font-bold text-base text-[#001B40]">
-                    ₦120,000
+                    {resolvedAmount}
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-2">
@@ -705,17 +717,20 @@ export default function JobProgressTrackerView({
               <div className="flex items-center gap-3.5">
                 <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-200 ring-2 ring-neutral-100 shrink-0">
                   <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
-                    alt="Emeka Okafor"
+                    src={
+                      booking?.artisan?.photoUrl ||
+                      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80"
+                    }
+                    alt={resolvedArtisanName}
                     className="w-full h-full object-cover"
                   />
                 </div>
                 <div>
                   <h4 className="font-sans font-bold text-sm sm:text-base text-[#0F1115]">
-                    Emeka Okafor
+                    {resolvedArtisanName}
                   </h4>
                   <div className="flex items-center gap-1.5 text-xs text-neutral-500 mt-0.5">
-                    <span>Plumber</span>
+                    <span>{booking?.artisan?.businessName || "Verified Artisan"}</span>
                     <span>·</span>
                     <span className="flex items-center text-amber-500 font-semibold">
                       ★ 4.9
@@ -725,17 +740,17 @@ export default function JobProgressTrackerView({
               </div>
 
               <span className="text-xs font-medium text-neutral-400 capitalize">
-                {currentStage === "completed_by_artisan" ? "Completed" : "Scheduled"}
+                {booking?.status ? booking.status.replace(/_/g, " ").toLowerCase() : currentStage === "completed_by_artisan" ? "Completed" : "Scheduled"}
               </span>
             </div>
 
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => toast("Opening chat conversation with Emeka Okafor...", { icon: "💬" })}
+                onClick={() => router.push("/messages")}
                 className="w-full py-2.5 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
               >
-                Message Emeka
+                Message {resolvedArtisanName.split(" ")[0]}
               </button>
             </div>
           </div>

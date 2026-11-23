@@ -788,51 +788,82 @@ export function ArtisanCreateApprenticeshipView({
                   const tradeId = matchedTrade?.id || catalog[0]?.id || "welding";
                   const startsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
+                  const months = parseInt(durationMonths, 10) || 6;
+                  const parsedOutcomes = skillsTaught
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s.length >= 2);
+                  const outcomes =
+                    parsedOutcomes.length > 0 ? parsedOutcomes : ["Hands-on trade mastery"];
+                  const safeDescription =
+                    skillsTaught.trim().length >= 10
+                      ? skillsTaught.trim()
+                      : `Hands-on ${selectedTrade} apprenticeship covering ${outcomes.join(", ")}.`;
+
                   const created = await createTrainingProgramApi({
                     tradeId,
                     title: `${selectedTrade} Apprenticeship`,
-                    description: skillsTaught,
+                    description: safeDescription,
                     location: workplaceAddress,
                     latitude: 6.4584,
                     longitude: 7.5464,
                     startsAt,
-                    durationMonths: parseInt(durationMonths, 10) || 6,
+                    durationWeeks: months * 4,
+                    durationMonths: months,
                     capacity: parseInt(availableSlots, 10) || 3,
                     fee: totalKobo,
+                    outcomes,
                   });
 
-                  const mappedQuestions = questions.map((q) => ({
-                    id: q.id,
-                    prompt: q.question,
-                    type:
-                      q.type === "Yes/No"
-                        ? ("YES_NO" as const)
-                        : q.type === "File Upload"
-                        ? ("FILE" as const)
-                        : ("TEXT" as const),
-                    required: q.required,
-                  }));
+                  const uuidRe =
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                  const mappedQuestions = questions
+                    .filter((q) => q.question.trim().length >= 3)
+                    .map((q) => ({
+                      id: uuidRe.test(q.id) ? q.id : crypto.randomUUID(),
+                      prompt: q.question.trim(),
+                      type:
+                        q.type === "Yes/No"
+                          ? ("YES_NO" as const)
+                          : q.type === "File Upload"
+                          ? ("FILE" as const)
+                          : ("TEXT" as const),
+                      required: q.required,
+                    }));
                   if (mappedQuestions.length > 0) {
                     await patchProgramQuestionsApi(created.id, mappedQuestions);
                   }
 
+                  const session1Start = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                  const session1End = new Date(session1Start.getTime() + 3 * 60 * 60 * 1000);
+                  const session2Start = new Date(Date.now() + 9 * 24 * 60 * 60 * 1000);
+                  const session2End = new Date(session2Start.getTime() + 3 * 60 * 60 * 1000);
+
                   await publishTrainingProgramApi(created.id, {
-                    schedule: `${selectedDays.join(", ")} (${startTime} - ${closeTime})`,
+                    schedule: {
+                      days: selectedDays,
+                      startTime,
+                      endTime: closeTime,
+                    },
                     sessions: [
-                      { date: startsAt.slice(0, 10), title: "Orientation" },
                       {
-                        date: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000)
-                          .toISOString()
-                          .slice(0, 10),
+                        title: "Orientation",
+                        startsAt: session1Start.toISOString(),
+                        endsAt: session1End.toISOString(),
+                        location: workplaceAddress,
+                      },
+                      {
                         title: "Workshop Safety",
+                        startsAt: session2Start.toISOString(),
+                        endsAt: session2End.toISOString(),
+                        location: workplaceAddress,
                       },
                     ],
                     milestones: [
-                      { title: "Deposit / Milestone 1", amount: Math.round(totalKobo / 2), order: 1 },
+                      { title: "Deposit / Milestone 1", amount: Math.round(totalKobo / 2) },
                       {
                         title: "Completion / Milestone 2",
                         amount: totalKobo - Math.round(totalKobo / 2),
-                        order: 2,
                       },
                     ],
                   });

@@ -50,6 +50,7 @@ export function ArtisanApprenticeshipsHubView({
   >([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [programs, setPrograms] = useState<any[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -92,14 +93,21 @@ export function ArtisanApprenticeshipsHubView({
           if (mounted) setIsLoading(false);
         });
     } else {
-      getArtisanEnrollmentsApi()
-        .then((items) => {
-          if (!mounted || !Array.isArray(items)) return;
-          if (items.length === 0) setIsEmpty(true);
+      Promise.allSettled([getArtisanTrainingProgramsApi(), getArtisanEnrollmentsApi()])
+        .then(([progRes, enrollRes]) => {
+          if (!mounted) return;
+          const progList =
+            progRes.status === "fulfilled" && Array.isArray(progRes.value) ? progRes.value : [];
+          const enrollList =
+            enrollRes.status === "fulfilled" && Array.isArray(enrollRes.value)
+              ? enrollRes.value
+              : [];
+          setPrograms(progList);
+          if (progList.length === 0 && enrollList.length === 0) setIsEmpty(true);
           else setIsEmpty(false);
         })
         .catch((err) => {
-          console.debug("Enrollments API offline or mocked.", err);
+          console.debug("Programs/Enrollments API offline or mocked.", err);
         })
         .finally(() => {
           if (mounted) setIsLoading(false);
@@ -464,78 +472,54 @@ export function ArtisanApprenticeshipsHubView({
             })}
           </div>
 
-          {/* TAB 1: ACTIVE PROGRAMMES (Screenshot 3 Left) */}
+          {/* TAB 1: ACTIVE PROGRAMMES */}
           {activeTab === "active" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Programme 1: Welding */}
-              <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 hover:border-neutral-300 transition-all flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-heading font-extrabold text-base text-[#0F1115]">
-                      Welding & Metal Fabrication
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Active
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-500 flex items-center gap-1.5">
-                    <span>📍</span>
-                    <span>Enugu</span>
-                  </p>
-                  <div className="text-xs text-neutral-600 space-y-1">
-                    <p className="font-medium">6 months · 2 of 3 slots open</p>
-                    <p className="text-neutral-400">Monday - Saturday · 8:00 AM - 5:00 PM</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
-                  <span className="text-xs font-semibold text-neutral-500">
-                    7 applicants
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Welding & Metal Fabrication")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+              {programs.map((prog) => {
+                const openSlots = Math.max(0, (prog.capacity || 0) - (prog.enrolledCount || 0));
+                const durationLabel = prog.durationMonths
+                  ? `${prog.durationMonths} months`
+                  : `${prog.durationWeeks || 12} weeks`;
+                return (
+                  <div
+                    key={prog.id}
+                    className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 hover:border-neutral-300 transition-all flex flex-col justify-between"
                   >
-                    Manage
-                  </button>
-                </div>
-              </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-heading font-extrabold text-base text-[#0F1115]">
+                          {prog.title}
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {prog.status === "PUBLISHED" ? "Active" : prog.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-500 flex items-center gap-1.5">
+                        <span>📍</span>
+                        <span>{prog.location || "Workshop"}</span>
+                      </p>
+                      <div className="text-xs text-neutral-600 space-y-1">
+                        <p className="font-medium">
+                          {durationLabel} · {openSlots} of {prog.capacity || 0} slots open
+                        </p>
+                      </div>
+                    </div>
 
-              {/* Programme 2: Plumbing */}
-              <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 hover:border-neutral-300 transition-all flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-heading font-extrabold text-base text-[#0F1115]">
-                      Plumbing Basics
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Active
-                    </span>
+                    <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
+                      <span className="text-xs font-semibold text-neutral-500">
+                        {prog.enrolledCount || 0} enrolled
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProgrammeForApplicants(prog.title)}
+                        className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                      >
+                        Manage
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs text-neutral-500 flex items-center gap-1.5">
-                    <span>📍</span>
-                    <span>Enugu</span>
-                  </p>
-                  <div className="text-xs text-neutral-600 space-y-1">
-                    <p className="font-medium">4 months · 0 of 1 slots open</p>
-                    <p className="text-neutral-400">Monday - Friday · 8:00 AM - 4:00 PM</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
-                  <span className="text-xs font-semibold text-neutral-500">
-                    3 applicants
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Plumbing Basics")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    Manage
-                  </button>
-                </div>
-              </div>
+                );
+              })}
             </div>
           )}
 

@@ -63,33 +63,49 @@ export default function DashboardHeader({
     };
   };
 
+  const refreshNotifications = React.useCallback(() => {
+    getNotificationsApi()
+      .then((items) => {
+        if (Array.isArray(items)) {
+          setNotifications(items.map(mapHeaderNotification));
+        }
+      })
+      .catch((err) => {
+        console.debug("Notifications API offline, using cached notifications.", err);
+      });
+  }, [setNotifications]);
+
   useEffect(() => {
-    if (!hasMounted || !getAccessToken()) return;
+    if (!hasMounted) return;
     let mounted = true;
+    let attachedSocket: ReturnType<typeof getSocket> = null;
 
-    const refreshNotifications = () => {
-      getNotificationsApi()
-        .then((items) => {
-          if (mounted && Array.isArray(items)) {
-            setNotifications(items.map(mapHeaderNotification));
-          }
-        })
-        .catch((err) => {
-          console.debug("Notifications API offline, using cached notifications.", err);
-        });
-    };
-
-    refreshNotifications();
-
-    const socket = getSocket();
     const onNotification = (payload: any) => {
       if (!mounted || !payload?.id) return;
       addNotification(mapHeaderNotification(payload));
     };
-    if (socket) {
-      socket.on("notification", onNotification);
-      socket.on("connect", refreshNotifications);
-    }
+
+    const attachSocket = () => {
+      const sock = getSocket();
+      if (sock && sock !== attachedSocket) {
+        attachedSocket = sock;
+        sock.on("notification", onNotification);
+        sock.on("connect", refreshNotifications);
+      }
+    };
+
+    getNotificationsApi()
+      .then((items) => {
+        if (mounted && Array.isArray(items)) {
+          setNotifications(items.map(mapHeaderNotification));
+        }
+        if (mounted) attachSocket();
+      })
+      .catch((err) => {
+        console.debug("Notifications API offline, using cached notifications.", err);
+      });
+
+    attachSocket();
 
     // Hydrate user addresses for dynamic location
     getSavedAddressesApi()
@@ -106,12 +122,12 @@ export default function DashboardHeader({
 
     return () => {
       mounted = false;
-      if (socket) {
-        socket.off("notification", onNotification);
-        socket.off("connect", refreshNotifications);
+      if (attachedSocket) {
+        attachedSocket.off("notification", onNotification);
+        attachedSocket.off("connect", refreshNotifications);
       }
     };
-  }, [hasMounted, user?.id, setNotifications, addNotification, locationName, setLocationName]);
+  }, [hasMounted, user?.id, setNotifications, addNotification, refreshNotifications, locationName, setLocationName]);
 
   const displayLocation =
     locationName ||
@@ -364,7 +380,11 @@ export default function DashboardHeader({
         <div className="relative">
           <button
             type="button"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            onClick={() => {
+              const nextOpen = !isNotificationsOpen;
+              setIsNotificationsOpen(nextOpen);
+              if (nextOpen) refreshNotifications();
+            }}
             title={unreadCount > 0 ? `${unreadCount} unread notification(s)` : "Notifications"}
             className={`relative w-10 h-10 rounded-full border transition-all cursor-pointer shadow-2xs flex items-center justify-center ${
               unreadCount > 0

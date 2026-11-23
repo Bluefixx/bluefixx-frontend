@@ -120,7 +120,7 @@ export function OpsJobDetailsDrawer({
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
+      {/*Backdrop */}
       <div className="fixed inset-0 bg-neutral-950/40 backdrop-blur-2xs transition-opacity" onClick={onClose} />
 
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
@@ -223,11 +223,10 @@ export function OpsJobDetailsDrawer({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-3 text-xs font-bold border-b-2 transition-colors ${
-                    activeTab === tab.id
+                  className={`py-3 text-xs font-bold border-b-2 transition-colors ${activeTab === tab.id
                       ? "border-[#001B40] text-[#001B40]"
                       : "border-transparent text-neutral-500 hover:text-neutral-800"
-                  }`}
+                    }`}
                 >
                   {tab.label}
                 </button>

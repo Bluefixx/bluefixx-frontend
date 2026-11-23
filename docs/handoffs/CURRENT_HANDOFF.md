@@ -1,12 +1,52 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-23 (Activity Logs, Administrators & Roles, Content, Notifications, and Categories & Trades)*
+*Last updated: 2026-11-23 (Full Operations Console Complete: Reports & Analytics, Referrals & Anti-Fraud, Settings, Categories, Content, Notifications, Admins, Activity Logs)*
 
 ---
 
-## 0. Latest Session — Complete Platform Operations Suite & Enterprise Enhancements
+## 0. Latest Session — Complete Operations Console Suite: Reports, Referrals & Settings
 
 ### A. Core Deliverables & Route Mapping
+1. **Reports & Analytics (`/ops/reports`)**:
+   - Implemented `OpsReportsView.tsx` and `app/(admin)/ops/reports/page.tsx`.
+   - Top filter bar: Date Range (`Last 30 days`, `Last 90 days`, `This Year`, `All Time`), Region (`All regions`, `Lagos`, `Abuja`, `Rivers`), Trade (`All trades`, `Electrical`, `Plumbing`, `Cleaning`, `Carpentry`, `Solar`).
+   - 7 Comprehensive reporting tabs with interactive SVG charts, hover tooltips, and period-over-period delta badges:
+     - **Users**: User growth over 6 months line chart (Customers, Workers, Talents with hover data), Registrations by location with sub-district/LGA drill-downs (e.g. Lagos -> Ikeja, Lekki, Yaba, Ikorodu), and Retention signals with period deltas.
+     - **Marketplace**: Job funnel grouped bar chart (Posted, Accepted, Completed, Cancelled over Jan–Jun), Most requested trades, and Average job value per trade.
+     - **Finance**: Gross marketplace value, platform commission (10%), and refunds line chart, plus 4 KPI cards (Take rate, Escrow dispute rate, Refund approval rate, Avg payout turnaround) with period deltas.
+     - **Workers**: Verification throughput stacked bar chart (Approved, Rejected, Needs info across Mon–Fri) and Top earning workers leaderboard.
+     - **Apprenticeship**: KPI metrics (Open workshop slots, Completion rate, Placement rate, Overdue milestone payments).
+     - **Support**: SLA metrics (Resolved in SLA 89.2%, First response median 9.21 hrs, Escalated to lead, Median ticket life).
+     - **Disputes**: Resolution metrics (Disputed jobs %, Dispute rate, Median time to close, Favor artisan vs customer split).
+   - **Automated Report Scheduling (`OpsScheduleReportModal.tsx`)**: Configures recurring email delivery (Daily/Weekly/Monthly, time, recipient emails, and section checklists).
+   - CSV report export.
+
+2. **Referrals & Anti-Fraud Engine (`/ops/referrals`)**:
+   - Implemented `OpsReferralsView.tsx` and `app/(admin)/ops/referrals/page.tsx`.
+   - 5 KPI summary cards matching Figma: Total referrals (6), Completed (4), Conversion rate (67%), Total bonus paid (₦8,500), Pending payouts (₦24,500).
+   - **Device & IP Anti-Fraud Alert Banner**: Suspected self-referral ring warning with 1-click review trigger.
+   - Referrals table with search, role pills (`Worker`, `Customer`, `Talent`), status badges, reward amounts with **Priority Trade Tier badges** (e.g. ₦3,000 for Solar/HVAC vs standard ₦1,500), and related activity.
+   - **Pay Reward Modal (`OpsPayReferralModal.tsx`)**: Crediting referrer wallet with instant payout note and audit logging.
+   - **Investigate & Hold Reward Modal (`OpsInvestigateReferralModal.tsx`)**: Flagging suspicious accounts and freezing pending bonuses with mandatory reason logging.
+   - **Configurable Anti-Fraud Velocity Rules (`OpsFraudRulesModal.tsx`)**: Setting max accounts per device, max referrals per 24 hours, auto-hold on VPN, and mandatory verified transaction criteria.
+   - **1-Click Batch Payout**: Approving all verified pending bonuses protected by `OpsSecurityPinModal.tsx`.
+   - "How it works" educational modal.
+
+3. **Platform Settings & Governance (`/ops/settings`)**:
+   - Implemented `OpsSettingsView.tsx` and `app/(admin)/ops/settings/page.tsx`.
+   - 6 Sub-settings categories:
+     - **General**: Platform name, support email, phone numbers, default region (Lagos).
+     - **Marketplace**: Require verification before matching toggle, Allow customer to invite specific worker toggle, minimum job value (₦5,000), free cancellation window.
+     - **Payments (Finance Admin restricted)**: Standard platform commission (10%), single transaction cap (₦500,000), auto-release escrow on customer confirmation toggle, and split fee for materials toggle.
+     - **Withdrawals**: Minimum withdrawal limit (₦2,000), manual approval threshold (₦200,000), payout settlement bank (Providus Bank), and transaction PIN requirement.
+     - **Refunds**: Require reason on every refund toggle, remove platform fee on full refunds toggle, and refund request window (48 hours).
+     - **Security (Super Admin restricted)**: Enforce 2FA for all admins toggle, 30 min idle session timeout toggle, and alert on sensitive actions outside working hours toggle.
+   - **Emergency Maintenance Mode Kill-Switch**: Top-level system banner and toggle to halt new bookings and payouts platform-wide in emergencies.
+   - **Security PIN Authorization on Setting Changes**: Modifying financial parameters, withdrawal caps, security policies, or maintenance mode requires `OpsSecurityPinModal.tsx`.
+
+---
+
+## 1. Prior Session — Categories & Trades, Content, Notifications, Admins, Activity Logs
 1. **Trades and Categories (`/ops/categories`)**:
    - Implemented `OpsCategoriesView.tsx` and `app/(admin)/ops/categories/page.tsx`.
    - Data table displaying trade name, subcategory lists, defect warranty period (`🛡️ 7d–60d`), active worker counters, 30d job volume, demand level pills (`High`, `Medium`, `Low`), average job values (`formatNaira`), jobs per worker ratios, and active/inactive status badges.

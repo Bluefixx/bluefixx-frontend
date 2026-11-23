@@ -9,7 +9,9 @@ import {
   getArtisanApplicationsApi,
   getArtisanEnrollmentsApi,
   updateApplicationDecisionApi,
+  updateTrainingProgramApi,
 } from "@/lib/api/artisan";
+import { nairaToKobo } from "@/lib/utils/currency";
 
 type ApprenticeshipTab = "active" | "applications" | "completed";
 type ApplicationSubTab = "new" | "reviewing" | "accepted" | "declined";
@@ -51,6 +53,55 @@ export function ArtisanApprenticeshipsHubView({
 
   const [isLoading, setIsLoading] = useState(false);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [editingProgram, setEditingProgram] = useState<any | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editCapacity, setEditCapacity] = useState("3");
+  const [editDurationMonths, setEditDurationMonths] = useState("6");
+  const [editFeeNaira, setEditFeeNaira] = useState("150000");
+  const [editStatus, setEditStatus] = useState<"PUBLISHED" | "PAUSED" | "CLOSED">("PUBLISHED");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openEditModal = (prog: any) => {
+    setEditingProgram(prog);
+    setEditTitle(prog.title || "");
+    setEditDescription(prog.description || "");
+    setEditLocation(prog.location || "");
+    setEditCapacity(String(prog.capacity || 3));
+    setEditDurationMonths(String(prog.durationMonths || Math.max(1, Math.round((prog.durationWeeks || 24) / 4))));
+    setEditFeeNaira(prog.fee ? String(Math.round(Number(prog.fee) / 100)) : "0");
+    setEditStatus((prog.status === "PAUSED" || prog.status === "CLOSED" ? prog.status : "PUBLISHED"));
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProgram) return;
+    setIsSavingEdit(true);
+    try {
+      const months = parseInt(editDurationMonths, 10) || 6;
+      const updated = await updateTrainingProgramApi(editingProgram.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        location: editLocation.trim(),
+        capacity: parseInt(editCapacity, 10) || 1,
+        durationMonths: months,
+        durationWeeks: months * 4,
+        fee: nairaToKobo(parseInt(editFeeNaira.replace(/,/g, ""), 10) || 0),
+        status: editStatus,
+      });
+      setPrograms((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      if (selectedProgrammeForApplicants === editingProgram.title) {
+        setSelectedProgrammeForApplicants(updated.title);
+      }
+      setEditingProgram(null);
+      toast.success("Apprenticeship updated!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update apprenticeship");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -188,19 +239,154 @@ export function ArtisanApprenticeshipsHubView({
                 Hands-on placements at your workshop · {selectedProgrammeForApplicants}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onCreateNew}
-              className="w-10 h-10 rounded-full bg-[#001B40] hover:bg-[#074292] text-white flex items-center justify-center shadow-xs cursor-pointer transition-all"
-              title="Create apprenticeship"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2.5">
+              {(() => {
+                const matchedProg = programs.find(
+                  (p) => p.title === selectedProgrammeForApplicants
+                );
+                return matchedProg ? (
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(matchedProg)}
+                    className="px-4 py-2 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                  >
+                    Edit programme
+                  </button>
+                ) : null;
+              })()}
+              <button
+                type="button"
+                onClick={onCreateNew}
+                className="w-10 h-10 rounded-full bg-[#001B40] hover:bg-[#074292] text-white flex items-center justify-center shadow-xs cursor-pointer transition-all"
+                title="Create apprenticeship"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+
+        {editingProgram && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-xs">
+            <form
+              onSubmit={handleSaveEdit}
+              className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="font-heading font-extrabold text-lg text-[#001B40]">
+                  Edit apprenticeship
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setEditingProgram(null)}
+                  className="text-neutral-400 hover:text-neutral-700 text-sm font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    required
+                    minLength={3}
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Description</label>
+                  <textarea
+                    rows={3}
+                    required
+                    minLength={10}
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Workshop address</label>
+                  <input
+                    type="text"
+                    required
+                    minLength={3}
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-bold text-neutral-700 mb-1">Slots</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={editCapacity}
+                      onChange={(e) => setEditCapacity(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-neutral-700 mb-1">Months</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={24}
+                      value={editDurationMonths}
+                      onChange={(e) => setEditDurationMonths(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-neutral-700 mb-1">Fee (₦)</label>
+                    <input
+                      type="number"
+                      min={100}
+                      value={editFeeNaira}
+                      onChange={(e) => setEditFeeNaira(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Status</label>
+                  <select
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white focus:border-[#001B40] focus:outline-hidden"
+                  >
+                    <option value="PUBLISHED">Active (Published)</option>
+                    <option value="PAUSED">Paused</option>
+                    <option value="CLOSED">Closed</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingProgram(null)}
+                  className="px-4 py-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-neutral-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingEdit ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* Subtabs: New, Reviewing, Accepted, Declined */}
         <div className="flex items-center gap-6 border-b border-neutral-200">

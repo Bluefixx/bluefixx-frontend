@@ -447,6 +447,29 @@ export async function getArtisanTrainingProgramsApi(): Promise<TrainingProgramDe
 }
 
 /**
+ * Update an owned training programme.
+ */
+export async function updateTrainingProgramApi(
+  programId: string,
+  payload: {
+    title?: string;
+    description?: string;
+    location?: string;
+    capacity?: number;
+    fee?: number;
+    durationWeeks?: number;
+    durationMonths?: number;
+    outcomes?: string[];
+    status?: "DRAFT" | "PUBLISHED" | "PAUSED" | "CLOSED";
+  }
+): Promise<TrainingProgramDetail> {
+  return apiClient.patch<TrainingProgramDetail>(
+    `/artisan/training/programs/${programId}`,
+    payload
+  );
+}
+
+/**
  * List training applications filtered by programme and status (SUBMITTED, UNDER_REVIEW, ACCEPTED, DECLINED).
  */
 export async function getArtisanApplicationsApi(params?: {

@@ -667,13 +667,17 @@ export function ArtisanCreateApprenticeshipView({
               <div className="flex items-center justify-between text-xs pb-3 border-b border-neutral-100">
                 <span className="text-neutral-500">Amount per apprentice</span>
                 <span className="font-heading font-extrabold text-[#001B40] text-sm">
-                  ₦{trainingFee}
+                  ₦{(parseInt(trainingFee.replace(/,/g, ""), 10) || 0).toLocaleString("en-NG")}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs pt-1">
                 <span className="text-neutral-700 font-bold">Total</span>
                 <span className="font-heading font-extrabold text-[#001B40] text-base sm:text-lg">
-                  ₦450,000
+                  ₦
+                  {(
+                    (parseInt(trainingFee.replace(/,/g, ""), 10) || 0) *
+                    (parseInt(availableSlots, 10) || 1)
+                  ).toLocaleString("en-NG")}
                 </span>
               </div>
             </div>
@@ -744,7 +748,13 @@ export function ArtisanCreateApprenticeshipView({
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Start date</span>
-                <span className="font-heading font-bold text-[#0F1115]">1 September 2026</span>
+                <span className="font-heading font-bold text-[#0F1115]">
+                  {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Capacity</span>
@@ -752,7 +762,9 @@ export function ArtisanCreateApprenticeshipView({
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Fee</span>
-                <span className="font-heading font-bold text-[#0F1115]">₦{trainingFee}</span>
+                <span className="font-heading font-bold text-[#0F1115]">
+                  ₦{(parseInt(trainingFee.replace(/,/g, ""), 10) || 0).toLocaleString("en-NG")}
+                </span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Payment</span>

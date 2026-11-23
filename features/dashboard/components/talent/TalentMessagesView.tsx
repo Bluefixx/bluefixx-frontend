@@ -64,26 +64,37 @@ export function TalentMessagesView({
   const [messagesProgramId, setMessagesProgramId] = useState<string | null>(null);
   const [isLoadingConversations, setIsLoadingConversations] = useState(true);
 
-  // Load the Talent's real programme conversations.
+  // Load the Talent's real programme conversations and refresh on live notifications.
   useEffect(() => {
     let isMounted = true;
 
-    getTalentConversationsApi()
-      .then((items) => {
-        if (!isMounted) return;
-        const list = Array.isArray(items) ? items : [];
-        setConversations(list);
-        setActiveProgramId((prev) => prev ?? list[0]?.programId);
-      })
-      .catch(() => {
-        if (isMounted) setConversations([]);
-      })
-      .finally(() => {
-        if (isMounted) setIsLoadingConversations(false);
-      });
+    const loadConvs = () => {
+      getTalentConversationsApi()
+        .then((items) => {
+          if (!isMounted) return;
+          const list = Array.isArray(items) ? items : [];
+          setConversations(list);
+          setActiveProgramId((prev) => prev ?? list[0]?.programId);
+        })
+        .catch(() => {
+          if (isMounted) setConversations([]);
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingConversations(false);
+        });
+    };
+
+    loadConvs();
+
+    const socket = getSocket();
+    const onNotif = () => {
+      if (isMounted) loadConvs();
+    };
+    if (socket) socket.on("notification", onNotif);
 
     return () => {
       isMounted = false;
+      if (socket) socket.off("notification", onNotif);
     };
   }, []);
 
@@ -247,7 +258,8 @@ export function TalentMessagesView({
             Apprenticeship agreement
           </h1>
           <p className="font-sans text-xs sm:text-sm text-neutral-400 font-medium mt-0.5">
-            Welding & Metal Fabrication · Master artisan: John Obiora
+            {activeConversation?.programTitle || "Apprenticeship Programme"} · Master artisan:{" "}
+            {activeConversation?.peer?.fullName || "Master Artisan"}
           </p>
         </div>
 

@@ -23,26 +23,29 @@ export function ApprenticeshipCompletedModal({
   onClose,
   onReviewMaster,
   onViewCertificate,
-  userName = "Daniel",
-  programmeName = "Welding & Metal Fabrication",
-  masterName = "John Obiora",
-  enrollmentId = "cd23ca35-8dac-409e-922b-43c5ef62c7d8",
+  userName = "Apprentice",
+  programmeName = "Apprenticeship Programme",
+  masterName = "Master Artisan",
+  enrollmentId = "",
 }: ApprenticeshipCompletedModalProps) {
   const [isConfirming, setIsConfirming] = useState(false);
 
   if (!isOpen) return null;
 
   const handleConfirmAndCertificate = async () => {
+    if (!enrollmentId) {
+      toast.error("No active enrollment selected.");
+      return;
+    }
     setIsConfirming(true);
     try {
       const res = await confirmTalentCompletionApi(enrollmentId);
-      const code = res?.certificateCode || "BFX-TAL-8D23CA358DAC";
+      const code = res?.certificateCode || "Issued";
       await getTalentCertificateApi(enrollmentId).catch(() => {});
       toast.success(`Certificate ${code} issued to your profile!`, { icon: "🎓" });
       onViewCertificate?.();
-    } catch {
-      toast.success("Certificate BFX-TAL-8D23CA358DAC issued to your profile!", { icon: "🎓" });
-      onViewCertificate?.();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Could not issue certificate yet.");
     } finally {
       setIsConfirming(false);
       onClose();

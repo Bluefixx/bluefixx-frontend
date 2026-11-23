@@ -246,59 +246,22 @@ export function MasterArtisanProfileView({
             </h3>
 
             <div className="space-y-3">
-              {/* Option 1 */}
               <div
-                onClick={() =>
-                  setSelectedProgramme({
-                    id: "prog-welding-1",
-                    title: "Welding & Metal Fabrication Apprenticeship",
-                    fee: "₦50,000",
-                    duration: "3 months",
-                  })
-                }
                 className="p-5 rounded-2xl border-2 border-blue-900 bg-blue-50/20 cursor-pointer transition-all space-y-2"
               >
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="font-sans font-bold text-sm text-[#0F1115]">
-                    Welding & Metal Fabrication Apprenticeship
+                    {selectedProgramme.title}
                   </h4>
                   <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0">
-                    1 place left
+                    {placesRemaining} {placesRemaining === 1 ? "place" : "places"} left
                   </span>
                 </div>
                 <p className="font-sans text-xs text-neutral-500">
-                  3 months · Mon–Sat, 8am–5pm · Emene workshop
+                  {selectedProgramme.duration} · {artisanData.location}
                 </p>
                 <p className="font-sans text-xs text-neutral-700 font-medium">
-                  ₦50,000 paid once · 1 place left
-                </p>
-                <p className="font-sans text-xs text-neutral-500 leading-relaxed pt-1">
-                  Hands-on training from workshop safety to building and fitting a burglar gate.
-                </p>
-              </div>
-
-              {/* Option 2 */}
-              <div
-                onClick={() =>
-                  setSelectedProgramme({
-                    id: "prog-welding-2",
-                    title: "Gate & Burglary-Proof Fabrication",
-                    fee: "₦30,000",
-                    duration: "1 month",
-                  })
-                }
-                className="p-5 rounded-2xl border border-neutral-200 hover:border-neutral-300 bg-white cursor-pointer transition-all space-y-2 opacity-90"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <h4 className="font-sans font-bold text-sm text-[#0F1115]">
-                    Gate & Burglary-Proof Fabrication
-                  </h4>
-                  <span className="text-[11px] font-semibold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full shrink-0">
-                    Next intake: Oct 2026
-                  </span>
-                </div>
-                <p className="font-sans text-xs text-neutral-500">
-                  1 month short course · For apprentices who can already weld.
+                  {selectedProgramme.fee} · {placesRemaining} {placesRemaining === 1 ? "place" : "places"} left
                 </p>
               </div>
             </div>
@@ -385,10 +348,10 @@ export function MasterArtisanProfileView({
 
               <button
                 type="button"
-                onClick={onMessage || (() => toast.success("Opening chat with John Obiora"))}
+                onClick={onMessage || (() => toast.success(`Opening chat with ${artisanData.name}`))}
                 className="w-full py-3 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-semibold text-xs transition-colors cursor-pointer"
               >
-                Message John
+                Message {artisanData.name.split(" ")[0]}
               </button>
             </div>
           </div>
@@ -421,10 +384,10 @@ export function MasterArtisanProfileView({
                 </svg>
               </div>
               <p className="font-sans font-bold text-xs text-[#001B40]">
-                Emene Industrial Layout
+                {artisanData.location}
               </p>
               <p className="font-sans text-[11px] text-neutral-500">
-                Enugu, Nigeria
+                Verified Workshop
               </p>
             </div>
           </div>

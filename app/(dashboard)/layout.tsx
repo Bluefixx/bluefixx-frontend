@@ -36,7 +36,9 @@ export default function CustomerDashboardLayout({
 
         {/* Page Content Body with Mobile-Optimized Padding */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          {children}
+          <React.Suspense fallback={<div className="p-6 text-xs text-neutral-400">Loading...</div>}>
+            {children}
+          </React.Suspense>
         </main>
       </div>
 

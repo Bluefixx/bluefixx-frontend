@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TalentApplicationFormView } from "@/features/dashboard/components/talent/TalentApplicationFormView";
 import { getTalentProgramByIdApi } from "@/lib/api/talent";
 import { TalentProgramQuestion } from "@/types/talent";
 import { formatNaira } from "@/lib/utils/currency";
 
-export default function TalentApplyPage() {
+function TalentApplyContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -54,5 +54,13 @@ export default function TalentApplyPage() {
       onBack={() => router.push(`/talent/discover/${id}`)}
       onSubmitSuccess={() => router.push(`/talent/discover/${id}/apply/sent`)}
     />
+  );
+}
+
+export default function TalentApplyPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs text-neutral-400">Loading application form...</div>}>
+      <TalentApplyContent />
+    </Suspense>
   );
 }

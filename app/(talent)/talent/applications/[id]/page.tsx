@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { TalentApplicationAcceptedDetailView } from "@/features/dashboard/components/talent/TalentApplicationAcceptedDetailView";
 import { TalentApplicationDeclinedDetailView } from "@/features/dashboard/components/talent/TalentApplicationDeclinedDetailView";
@@ -10,7 +10,7 @@ import { TalentApplicationListItem } from "@/types/talent";
 
 type DetailState = "loading" | "accepted" | "declined" | "redirect";
 
-export default function TalentApplicationDetailPage() {
+function TalentApplicationDetailContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -112,5 +112,19 @@ export default function TalentApplicationDetailPage() {
       onBack={() => router.push("/talent/applications")}
       onFindOther={() => router.push("/talent/discover")}
     />
+  );
+}
+
+export default function TalentApplicationDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-5xl mx-auto py-12 text-center text-xs text-neutral-400 font-sans">
+          Loading application...
+        </div>
+      }
+    >
+      <TalentApplicationDetailContent />
+    </Suspense>
   );
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -6,7 +7,7 @@ import { TalentPaymentFailedView } from "@/features/dashboard/components/talent/
 import { getTalentEnrollmentByIdApi } from "@/lib/api/talent";
 import { formatNaira } from "@/lib/utils/currency";
 
-export default function TalentPaymentFailedPage() {
+function TalentPaymentFailedPageContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -38,5 +39,14 @@ export default function TalentPaymentFailedPage() {
       onUseWallet={() => router.push(`/talent/enrollments/${id}/payment`)}
       onTryAgain={() => router.push(`/talent/enrollments/${id}/payment`)}
     />
+  );
+}
+
+
+export default function TalentPaymentFailedPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs text-neutral-400">Loading...</div>}>
+      <TalentPaymentFailedPageContent />
+    </Suspense>
   );
 }

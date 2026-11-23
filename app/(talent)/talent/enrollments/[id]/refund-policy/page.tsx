@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -6,7 +7,7 @@ import { TalentRefundPolicyView } from "@/features/dashboard/components/talent/T
 import { getTalentEnrollmentByIdApi } from "@/lib/api/talent";
 import { formatNaira } from "@/lib/utils/currency";
 
-export default function TalentRefundPolicyPage() {
+function TalentRefundPolicyPageContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -40,5 +41,14 @@ export default function TalentRefundPolicyPage() {
       onBack={() => router.push("/talent/enrollments")}
       onRequestRefund={() => router.push(`/talent/enrollments/${id}/request-refund`)}
     />
+  );
+}
+
+
+export default function TalentRefundPolicyPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs text-neutral-400">Loading...</div>}>
+      <TalentRefundPolicyPageContent />
+    </Suspense>
   );
 }

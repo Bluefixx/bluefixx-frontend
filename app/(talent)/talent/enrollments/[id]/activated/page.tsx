@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -6,7 +7,7 @@ import { TalentApprenticeshipActivatedView } from "@/features/dashboard/componen
 import { getTalentEnrollmentByIdApi } from "@/lib/api/talent";
 import { formatNaira } from "@/lib/utils/currency";
 
-export default function TalentApprenticeshipActivatedPage() {
+function TalentApprenticeshipActivatedPageContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -44,5 +45,14 @@ export default function TalentApprenticeshipActivatedPage() {
       onViewApprenticeship={() => router.push("/talent/progress")}
       onManageArtisan={() => router.push("/talent/discover")}
     />
+  );
+}
+
+
+export default function TalentApprenticeshipActivatedPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs text-neutral-400">Loading...</div>}>
+      <TalentApprenticeshipActivatedPageContent />
+    </Suspense>
   );
 }

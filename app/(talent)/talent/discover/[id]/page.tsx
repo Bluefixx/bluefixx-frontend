@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MasterArtisanProfileView } from "@/features/dashboard/components/talent/MasterArtisanProfileView";
 
-export default function TalentMasterArtisanPage() {
+function TalentMasterArtisanContent() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -18,5 +18,13 @@ export default function TalentMasterArtisanPage() {
       }
       onMessage={() => router.push(`/talent/messages?programId=${id}`)}
     />
+  );
+}
+
+export default function TalentMasterArtisanPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs text-neutral-400">Loading...</div>}>
+      <TalentMasterArtisanContent />
+    </Suspense>
   );
 }

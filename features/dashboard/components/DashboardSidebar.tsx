@@ -456,7 +456,7 @@ function DashboardSidebarContent({
                 {isArtisanJobsOpen && (
                   <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
                     <Link
-                      href="/dashboard?view=find-jobs"
+                      href="/artisan?view=find-jobs"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanFindJobsActive
@@ -467,7 +467,7 @@ function DashboardSidebarContent({
                       {t("findJobs")}
                     </Link>
                     <Link
-                      href="/dashboard?view=requests"
+                      href="/artisan?view=requests"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanRequestsActive
@@ -478,7 +478,7 @@ function DashboardSidebarContent({
                       {t("requests")}
                     </Link>
                     <Link
-                      href="/dashboard?view=quotes"
+                      href="/artisan?view=quotes"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanQuotesActive
@@ -489,7 +489,7 @@ function DashboardSidebarContent({
                       {t("quotes")}
                     </Link>
                     <Link
-                      href="/dashboard?view=active-jobs"
+                      href="/artisan?view=active-jobs"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanActiveJobsActive
@@ -500,7 +500,7 @@ function DashboardSidebarContent({
                       {t("activeJobs")}
                     </Link>
                     <Link
-                      href="/dashboard?view=completed-jobs"
+                      href="/artisan?view=completed-jobs"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanCompletedJobsActive
@@ -548,7 +548,7 @@ function DashboardSidebarContent({
                 {isArtisanTalentOpen && (
                   <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
                     <Link
-                      href="/dashboard?view=training-programmes"
+                      href="/artisan?view=training-programmes"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanProgrammesActive
@@ -559,7 +559,7 @@ function DashboardSidebarContent({
                       {t("trainingProgrammes")}
                     </Link>
                     <Link
-                      href="/dashboard?view=apprentice-applications"
+                      href="/artisan?view=apprentice-applications"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanApprenticeAppsActive
@@ -570,7 +570,7 @@ function DashboardSidebarContent({
                       {t("apprenticeApplications")}
                     </Link>
                     <Link
-                      href="/dashboard?view=active-apprentices"
+                      href="/artisan?view=active-apprentices"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanActiveApprenticesActive
@@ -584,9 +584,9 @@ function DashboardSidebarContent({
                 )}
               </div>
 
-              {/* 4. Messages (with badge '1') */}
+              {/* 4. Messages */}
               <Link
-                href="/messages"
+                href="/artisan?view=messages"
                 onClick={handleLinkClick}
                 className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-xs sm:text-sm transition-all ${
                   isMessagesActive
@@ -641,7 +641,7 @@ function DashboardSidebarContent({
                 {isArtisanProfileOpen && (
                   <div className="pl-11 pr-2 pt-1 pb-1 space-y-1">
                     <Link
-                      href="/profile"
+                      href="/artisan?view=profile"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanMyProfileActive
@@ -652,7 +652,7 @@ function DashboardSidebarContent({
                       {t("myProfile")}
                     </Link>
                     <Link
-                      href="/dashboard?view=verification"
+                      href="/artisan?view=verification"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanVerificationActive
@@ -663,7 +663,7 @@ function DashboardSidebarContent({
                       {t("verification")}
                     </Link>
                     <Link
-                      href="/wallet"
+                      href="/artisan?view=earnings"
                       onClick={handleLinkClick}
                       className={`block px-3 py-2 rounded-xl text-xs sm:text-sm transition-all ${
                         isArtisanEarningsActive

@@ -696,10 +696,10 @@ export function ArtisanCreateApprenticeshipView({
             <div className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/80 shadow-xs space-y-5">
               <div className="space-y-2">
                 <h3 className="font-heading font-extrabold text-lg sm:text-xl text-[#001B40]">
-                  {selectedTrade} & Metal Fabrication Apprenticeship
+                  {selectedTrade} Apprenticeship
                 </h3>
                 <p className="text-xs text-neutral-500 leading-relaxed">
-                  A hands-on three-month programme in my Enugu workshop, working on real customer jobs under supervision.
+                  A hands-on {durationMonths || "6"}-month programme at {workplaceAddress || "your workshop"}, working on real customer jobs under supervision.
                 </p>
               </div>
 
@@ -734,12 +734,12 @@ export function ArtisanCreateApprenticeshipView({
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Duration</span>
-                <span className="font-heading font-bold text-[#0F1115]">3 months</span>
+                <span className="font-heading font-bold text-[#0F1115]">{durationMonths || 6} months</span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Location</span>
                 <span className="font-heading font-bold text-[#0F1115] truncate max-w-[200px]">
-                  Emene Industrial Layout, Enugu
+                  {workplaceAddress || "Workshop"}
                 </span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">

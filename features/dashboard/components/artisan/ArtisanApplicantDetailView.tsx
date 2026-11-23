@@ -82,12 +82,12 @@ export function ArtisanApplicantDetailView({
         note: "Please confirm your place within 72 hours",
       });
       toast.success("Applicant accepted! Payment invitation dispatched.");
-    } catch {
-      toast.success("Applicant accepted! Payment invitation dispatched.");
-    } finally {
       setIsAcceptModalOpen(false);
       setStatus("accepted");
       setSuccessMode("accepted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not accept applicant.");
+      setIsAcceptModalOpen(false);
     }
   };
 
@@ -97,12 +97,12 @@ export function ArtisanApplicantDetailView({
         decision: "DECLINED",
       });
       toast("Application declined. Slot restored for other applicants.");
-    } catch {
-      toast("Application declined. Slot restored for other applicants.");
-    } finally {
       setIsDeclineModalOpen(false);
       setStatus("declined");
       setSuccessMode("declined");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not decline applicant.");
+      setIsDeclineModalOpen(false);
     }
   };
 

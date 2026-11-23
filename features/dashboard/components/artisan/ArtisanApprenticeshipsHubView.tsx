@@ -31,7 +31,10 @@ export function ArtisanApprenticeshipsHubView({
 }: ArtisanApprenticeshipsHubViewProps) {
   const [activeTab, setActiveTab] = useState<ApprenticeshipTab>(initialTab);
   const [isEmpty, setIsEmpty] = useState(initialEmpty);
-  const [selectedProgrammeForApplicants, setSelectedProgrammeForApplicants] = useState<string | null>(null);
+  const [selectedProgrammeForApplicants, setSelectedProgrammeForApplicants] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [applicantSubTab, setApplicantSubTab] = useState<ApplicationSubTab>("new");
   const [selectedApplicant, setSelectedApplicant] = useState<{
     id: string;
@@ -91,8 +94,8 @@ export function ArtisanApprenticeshipsHubView({
         status: editStatus,
       });
       setPrograms((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-      if (selectedProgrammeForApplicants === editingProgram.title) {
-        setSelectedProgrammeForApplicants(updated.title);
+      if (selectedProgrammeForApplicants?.id === editingProgram.id) {
+        setSelectedProgrammeForApplicants({ id: updated.id, title: updated.title });
       }
       setEditingProgram(null);
       toast.success("Apprenticeship updated!");
@@ -107,24 +110,28 @@ export function ArtisanApprenticeshipsHubView({
     let mounted = true;
     setIsLoading(true);
 
-    if (activeTab === "applications") {
-      const statusMapping: Record<ApplicationSubTab, "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "DECLINED"> = {
-        new: "SUBMITTED",
-        reviewing: "UNDER_REVIEW",
-        accepted: "ACCEPTED",
-        declined: "DECLINED",
-      };
-      getArtisanApplicationsApi({ status: statusMapping[applicantSubTab] })
+    if (selectedProgrammeForApplicants || activeTab === "applications") {
+      getArtisanApplicationsApi(
+        selectedProgrammeForApplicants ? { programId: selectedProgrammeForApplicants.id } : undefined
+      )
         .then((res) => {
-          if (!mounted || !res || !Array.isArray(res.items)) return;
-          const mapped = res.items.map((item) => ({
+          if (!mounted || !res) return;
+          const rawItems = Array.isArray(res)
+            ? res
+            : Array.isArray((res as { items?: unknown[] }).items)
+            ? (res as { items: any[] }).items
+            : [];
+          const mapped = rawItems.map((item: any) => ({
             id: item.id,
-            name: item.talentName || "Applicant",
-            location: item.programTitle || "Apprenticeship",
-            appliedDate: item.submittedAt
+            name: item.talent?.fullName || item.talentName || "Applicant",
+            location:
+              item.program?.location || item.program?.title || item.programTitle || "Apprenticeship",
+            appliedDate: item.createdAt
+              ? new Date(item.createdAt).toLocaleDateString()
+              : item.submittedAt
               ? new Date(item.submittedAt).toLocaleDateString()
               : "Recent",
-            experience: item.priorExperience || "No prior experience noted",
+            experience: item.experience || item.priorExperience || "No prior experience noted",
             status:
               item.status === "ACCEPTED"
                 ? ("accepted" as const)
@@ -138,12 +145,14 @@ export function ArtisanApprenticeshipsHubView({
           setApplicants(mapped);
         })
         .catch((err) => {
-          console.debug("Applications API offline or mocked.", err);
+          console.debug("Applications API error.", err);
         })
         .finally(() => {
           if (mounted) setIsLoading(false);
         });
-    } else {
+    }
+
+    if (!selectedProgrammeForApplicants) {
       Promise.allSettled([getArtisanTrainingProgramsApi(), getArtisanEnrollmentsApi()])
         .then(([progRes, enrollRes]) => {
           if (!mounted) return;
@@ -168,7 +177,7 @@ export function ArtisanApprenticeshipsHubView({
     return () => {
       mounted = false;
     };
-  }, [activeTab, applicantSubTab]);
+  }, [activeTab, selectedProgrammeForApplicants]);
 
   const handleAcceptApplicant = async (id: string, name: string) => {
     try {
@@ -236,7 +245,7 @@ export function ArtisanApprenticeshipsHubView({
                 My apprenticeships
               </h1>
               <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
-                Hands-on placements at your workshop · {selectedProgrammeForApplicants}
+                Hands-on placements at your workshop · {selectedProgrammeForApplicants.title}
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -268,125 +277,6 @@ export function ArtisanApprenticeshipsHubView({
             </div>
           </div>
         </div>
-
-        {editingProgram && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-xs">
-            <form
-              onSubmit={handleSaveEdit}
-              className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-2xl space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-heading font-extrabold text-lg text-[#001B40]">
-                  Edit apprenticeship
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setEditingProgram(null)}
-                  className="text-neutral-400 hover:text-neutral-700 text-sm font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block font-bold text-neutral-700 mb-1">Title</label>
-                  <input
-                    type="text"
-                    required
-                    minLength={3}
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-neutral-700 mb-1">Description</label>
-                  <textarea
-                    rows={3}
-                    required
-                    minLength={10}
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-neutral-700 mb-1">Workshop address</label>
-                  <input
-                    type="text"
-                    required
-                    minLength={3}
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-bold text-neutral-700 mb-1">Slots</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={editCapacity}
-                      onChange={(e) => setEditCapacity(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-neutral-700 mb-1">Months</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={24}
-                      value={editDurationMonths}
-                      onChange={(e) => setEditDurationMonths(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-neutral-700 mb-1">Fee (₦)</label>
-                    <input
-                      type="number"
-                      min={100}
-                      value={editFeeNaira}
-                      onChange={(e) => setEditFeeNaira(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block font-bold text-neutral-700 mb-1">Status</label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value as any)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white focus:border-[#001B40] focus:outline-hidden"
-                  >
-                    <option value="PUBLISHED">Active (Published)</option>
-                    <option value="PAUSED">Paused</option>
-                    <option value="CLOSED">Closed</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingProgram(null)}
-                  className="px-4 py-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-neutral-700 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingEdit}
-                  className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold disabled:opacity-50 cursor-pointer"
-                >
-                  {isSavingEdit ? "Saving..." : "Save changes"}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
 
         {/* Subtabs: New, Reviewing, Accepted, Declined */}
         <div className="flex items-center gap-6 border-b border-neutral-200">
@@ -695,13 +585,24 @@ export function ArtisanApprenticeshipsHubView({
                       <span className="text-xs font-semibold text-neutral-500">
                         {prog.enrolledCount || 0} enrolled
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedProgrammeForApplicants(prog.title)}
-                        className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                      >
-                        Manage
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedProgrammeForApplicants({ id: prog.id, title: prog.title })
+                          }
+                          className="px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-xs font-semibold text-neutral-700 transition-colors cursor-pointer"
+                        >
+                          Applications
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(prog)}
+                          className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                        >
+                          Manage
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -750,7 +651,9 @@ export function ArtisanApprenticeshipsHubView({
                         </span>
                         <button
                           type="button"
-                          onClick={() => setSelectedProgrammeForApplicants(prog.title)}
+                          onClick={() =>
+                            setSelectedProgrammeForApplicants({ id: prog.id, title: prog.title })
+                          }
                           className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
                         >
                           View applications
@@ -770,6 +673,125 @@ export function ArtisanApprenticeshipsHubView({
             </div>
           )}
         </>
+      )}
+
+      {editingProgram && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-xs">
+          <form
+            onSubmit={handleSaveEdit}
+            className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading font-extrabold text-lg text-[#001B40]">
+                Edit apprenticeship
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingProgram(null)}
+                className="text-neutral-400 hover:text-neutral-700 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  required
+                  minLength={10}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Workshop address</label>
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Slots</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={editCapacity}
+                    onChange={(e) => setEditCapacity(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Months</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={editDurationMonths}
+                    onChange={(e) => setEditDurationMonths(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Fee (₦)</label>
+                  <input
+                    type="number"
+                    min={100}
+                    value={editFeeNaira}
+                    onChange={(e) => setEditFeeNaira(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white focus:border-[#001B40] focus:outline-hidden"
+                >
+                  <option value="PUBLISHED">Active (Published)</option>
+                  <option value="PAUSED">Paused</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingProgram(null)}
+                className="px-4 py-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-neutral-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEdit}
+                className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold disabled:opacity-50 cursor-pointer"
+              >
+                {isSavingEdit ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

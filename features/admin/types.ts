@@ -630,3 +630,79 @@ export interface AdminApprenticeshipPayment {
   status: "Paid in full" | "In Escrow" | "Overdue" | "Pending release" | "Partial";
   lastPaidDate?: string;
 }
+
+// ==========================================
+// Platform Management Modules Contracts
+// ==========================================
+
+export interface AdminTradeCategory {
+  id: string;
+  name: string;
+  subcategories: string[];
+  activeWorkers: number;
+  jobs30d: number;
+  demand: "High" | "Medium" | "Low";
+  avgJobValueKobo: number;
+  jobsPerWorker: number;
+  status: "Active" | "Inactive";
+  commissionOverride?: string;
+  verificationRequirements?: string[];
+  deactivationReason?: string;
+}
+
+export type ContentKind = "FAQ" | "TESTIMONIAL" | "ANNOUNCEMENT";
+
+export interface AdminContentItem {
+  id: string;
+  kind: ContentKind;
+  title: string;
+  snippet?: string;
+  content: string;
+  category?: string;
+  authorName?: string;
+  authorRole?: string;
+  targetAudience: string;
+  status: "Published" | "Pending review" | "Draft" | "Pending";
+  updatedAt: string;
+  scheduledDate?: string;
+}
+
+export interface AdminBroadcastNotification {
+  id: string;
+  subject: string;
+  message: string;
+  audience: string;
+  segmentFilter: string;
+  channels: string[];
+  callToAction?: string;
+  delivery: string;
+  sentAt: string;
+  deliveredCount: number;
+  failedCount: number;
+  status: "Successful" | "Pending" | "Failed";
+}
+
+export interface AdminRoleUser {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl?: string;
+  role: "Super Administrator" | "Finance Admin" | "Support Lead" | "Operations Admin" | "Verification Admin" | "Support Agent" | "Compliance Lead";
+  status: "Active" | "Invited" | "Suspended";
+  lastActive: string;
+  permissions?: string[];
+}
+
+export interface AdminAuditLog {
+  id: string;
+  dateTime: string;
+  adminName: string;
+  action: string;
+  isSensitive: boolean;
+  object: string;
+  objectId: string;
+  change: string;
+  ipAddress?: string;
+  reason?: string;
+}
+

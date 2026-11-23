@@ -62,6 +62,11 @@ This document tracks all implemented routes in `bluefixx-frontend`.
 | `/ops/reviews` | Admin / Operations | Reviews & Ratings moderation queue with priority reported banner, rating velocity detection, and full investigation/moderation drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Reviews & ratings (3) |
 | `/ops/talents` | Admin / Operations | Talents & Apprenticeship suite with 6 subtabs (Applications, Active talents, Master artisans, Programmes, Certifications, Apprenticeship payments), application review drawer, and certification issuance modal | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Talents / apprenticeship (2) |
 | `/ops/users/[id]` | Admin / Operations | 360° User Profile Workstation across 9 tabs (Overview, Jobs, Payments, Wallet, Reviews, Complaints, Disputes, Documents, Activity) with suspend and contact actions | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · User Profile (Kunle Adebayo, Samuel Etim, Blessing Adeyemi) |
+| `/ops/categories` | Admin / Operations | Trades and categories taxonomy with active worker counters, 30-day jobs volume, demand signals, average job values, create/edit trade modal, and deactivate trade modal | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Categories / trades |
+| `/ops/content` | Admin / Operations | Public-facing copy management for FAQs, testimonials, and broadcast announcements with status tracking and editor modal | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Content |
+| `/ops/notifications` | Admin / Operations | Mass communication console with audience segmentation, multi-channel dispatch (in-app, email), live phone preview, PIN gate, and delivery history | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Notifications |
+| `/ops/admins` | Admin / Operations | Administrators and operational roles directory with 24-hour privilege rules, invite admin modal, and granular role management drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Administrators & roles |
+| `/ops/activity-logs` | Admin / Operations | Immutable audit trail with sensitive action tags, before/after transition diffs, object links, and full audit detail drawer | `app/(admin)/ops/layout.tsx` | Complete | Operations Console · Activity logs |
 
 ---
 

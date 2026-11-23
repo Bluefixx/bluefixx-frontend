@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { useAuth } from "@/lib/stores/auth-store";
 import {
@@ -19,6 +20,7 @@ import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 import { uploadMediaFile } from "@/lib/api/media";
 import { ChatAttachments, extractChatAttachments } from "@/components/chat/ChatAttachments";
 import type { ChatMessageAttachment } from "@/types/customer";
+import { LiveNegotiationPanel } from "@/features/dashboard/components/LiveNegotiationPanel";
 
 type ThreadKind = "quote" | "talent" | "support";
 
@@ -58,6 +60,8 @@ function formatShortTime(value?: string): string {
 
 export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: ArtisanMessagesViewProps) {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const requestedQuoteId = searchParams.get("quoteId");
   const [threads, setThreads] = useState<ArtisanThread[]>([]);
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -80,63 +84,82 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
   // Load real quote + talent programme conversations
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([getConversationsApi(), getTalentConversationsApi()]).then(
-      ([quoteRes, talentRes]) => {
-        if (!mounted) return;
-        const list: ArtisanThread[] = [];
+    const loadThreads = () => {
+      Promise.allSettled([getConversationsApi(), getTalentConversationsApi()]).then(
+        ([quoteRes, talentRes]) => {
+          if (!mounted) return;
+          const list: ArtisanThread[] = [];
 
-        if (quoteRes.status === "fulfilled" && Array.isArray(quoteRes.value)) {
-          for (const c of quoteRes.value) {
-            list.push({
-              key: `quote:${c.quoteId}`,
-              kind: "quote",
-              quoteId: c.quoteId,
-              peerName: c.peer?.fullName || "Customer",
-              subtitle: `Quote with ${c.peer?.fullName || "Customer"}`,
-              lastMessage: c.latestMessage?.text || "Quote conversation",
-              time: formatShortTime(c.latestMessage?.createdAt),
-              unread: c.unread || 0,
-            });
+          if (quoteRes.status === "fulfilled" && Array.isArray(quoteRes.value)) {
+            for (const c of quoteRes.value) {
+              list.push({
+                key: `quote:${c.quoteId}`,
+                kind: "quote",
+                quoteId: c.quoteId,
+                peerName: c.peer?.fullName || "Customer",
+                subtitle: `Quote with ${c.peer?.fullName || "Customer"}`,
+                lastMessage: c.latestMessage?.text || "Quote conversation",
+                time: formatShortTime(c.latestMessage?.createdAt),
+                unread: c.unread || 0,
+              });
+            }
           }
-        }
 
-        if (talentRes.status === "fulfilled" && Array.isArray(talentRes.value)) {
-          for (const t of talentRes.value) {
-            const tId = t.talentId || t.peer?.id || t.participant?.id;
-            list.push({
-              key: `talent:${t.programId}:${tId || "all"}`,
-              kind: "talent",
-              programId: t.programId,
-              talentId: tId,
-              peerName: t.peer?.fullName || t.participant?.fullName || t.programTitle || "Talent Apprentice",
-              subtitle: t.programTitle || "Apprenticeship Programme",
-              lastMessage: t.latestMessage?.text || t.lastMessage || "Programme conversation",
-              time: formatShortTime(t.latestMessage?.createdAt || t.lastMessageAt),
-              unread: t.unread ?? t.unreadCount ?? 0,
-            });
+          if (talentRes.status === "fulfilled" && Array.isArray(talentRes.value)) {
+            for (const t of talentRes.value) {
+              const tId = t.talentId || t.peer?.id || t.participant?.id;
+              list.push({
+                key: `talent:${t.programId}:${tId || "all"}`,
+                kind: "talent",
+                programId: t.programId,
+                talentId: tId,
+                peerName: t.peer?.fullName || t.participant?.fullName || t.programTitle || "Talent Apprentice",
+                subtitle: t.programTitle || "Apprenticeship Programme",
+                lastMessage: t.latestMessage?.text || t.lastMessage || "Programme conversation",
+                time: formatShortTime(t.latestMessage?.createdAt || t.lastMessageAt),
+                unread: t.unread ?? t.unreadCount ?? 0,
+              });
+            }
           }
+
+          list.push({
+            key: "support",
+            kind: "support",
+            peerName: "BlueFixx Support",
+            subtitle: "Official BlueFixx Safety & Support",
+            lastMessage: "24/7 Safety & Assistance",
+            time: "",
+            unread: 0,
+          });
+
+          setThreads(list);
+          if (requestedQuoteId && list.some((t) => t.key === `quote:${requestedQuoteId}`)) {
+            setSelectedKey(`quote:${requestedQuoteId}`);
+          } else {
+            setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
+          }
+          setIsLoadingThreads(false);
         }
+      );
+    };
 
-        list.push({
-          key: "support",
-          kind: "support",
-          peerName: "BlueFixx Support",
-          subtitle: "Official BlueFixx Safety & Support",
-          lastMessage: "24/7 Safety & Assistance",
-          time: "",
-          unread: 0,
-        });
+    loadThreads();
 
-        setThreads(list);
-        setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
-        setIsLoadingThreads(false);
-      }
-    );
+    const socket = getSocket();
+    const onNotif = () => {
+      if (mounted) loadThreads();
+    };
+    if (socket) {
+      socket.on("notification", onNotif);
+    }
 
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotif);
+      }
     };
-  }, []);
+  }, [requestedQuoteId]);
 
   const activeThread = useMemo(
     () => threads.find((t) => t.key === selectedKey) ?? null,
@@ -385,6 +408,7 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
       sendProgramMessageApi(activeThread.programId, {
         text: textToSend,
         clientId,
+        talentId: activeThread.talentId,
       }).catch(() => {
         toast.error("Message could not be sent.");
       });
@@ -792,6 +816,12 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
 
               {/* Chat Messages Timeline */}
               <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 bg-neutral-50/50">
+                {activeThread.kind === "quote" && activeThread.quoteId && (
+                  <LiveNegotiationPanel
+                    quoteId={activeThread.quoteId}
+                    role="ARTISAN"
+                  />
+                )}
                 <div className="flex justify-center">
                   <span className="text-[11px] font-medium text-neutral-500 bg-white border border-neutral-200/80 px-3.5 py-1 rounded-full shadow-2xs">
                     {activeThread.subtitle}

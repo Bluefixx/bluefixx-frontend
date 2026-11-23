@@ -37,6 +37,11 @@ export const notificationStore = {
     notifications = items;
     emitChange();
   },
+  addNotification(item: NotificationItem) {
+    if (notifications.some((n) => n.id === item.id)) return;
+    notifications = [item, ...notifications];
+    emitChange();
+  },
   markAsRead(id: string) {
     notifications = notifications.map((n) =>
       n.id === id ? { ...n, isRead: true } : n
@@ -71,6 +76,7 @@ export function useNotifications() {
     notifications: currentNotifications,
     unreadCount,
     setNotifications: notificationStore.setNotifications,
+    addNotification: notificationStore.addNotification,
     markAsRead: notificationStore.markAsRead,
     markAllAsRead: notificationStore.markAllAsRead,
     clearAll: notificationStore.clearAll,

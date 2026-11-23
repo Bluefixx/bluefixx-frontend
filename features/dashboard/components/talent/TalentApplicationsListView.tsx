@@ -75,7 +75,9 @@ export function TalentApplicationsListView({
             status: uiStatus,
             startDate: "Upcoming intake",
             schedule: "Monday - Saturday · 8:00 AM - 5:00 PM",
-            declineReason: app.decisionReason || "Places were filled on this apprenticeship intake.",
+            declineReason:
+              app.decisionReason ||
+              (uiStatus === "accepted" ? undefined : "Places were filled on this apprenticeship intake."),
             fee: feeNgn,
             duration: app.program?.durationWeeks ? `${app.program.durationWeeks} weeks` : "Flexible",
           };
@@ -203,6 +205,9 @@ export function TalentApplicationsListView({
                     <span className="font-sans font-bold text-sm text-emerald-900 block">
                       You&apos;re accepted! 🎉
                     </span>
+                    {app.declineReason && (
+                      <p className="text-xs text-emerald-800">{app.declineReason}</p>
+                    )}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 text-xs text-emerald-800">
                       <div>
                         <span className="text-emerald-700/80">Start date: </span>

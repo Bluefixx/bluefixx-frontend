@@ -13,9 +13,9 @@ interface TalentSafetyCenterViewProps {
 
 export function TalentSafetyCenterView({
   onBack,
-  programmeTitle = "Welding & Metal Fabrication",
-  artisanName = "John Obiora",
-  workshopAddress = "14 Ziks Avenue, Independence Layout, Enugu",
+  programmeTitle = "Apprenticeship Programme",
+  artisanName = "Master Artisan",
+  workshopAddress = "Verified Workshop",
 }: TalentSafetyCenterViewProps) {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState("I feel unsafe at the workshop");
@@ -186,7 +186,7 @@ export function TalentSafetyCenterView({
                 📍
               </div>
               <span className="font-sans font-bold text-xs bg-white px-3 py-1 rounded-full shadow-xs border border-neutral-200 text-[#001B40]">
-                Emene Workshop · John Obiora
+                {workshopAddress} · {artisanName}
               </span>
             </div>
           </div>

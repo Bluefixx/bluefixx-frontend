@@ -12,6 +12,7 @@ import {
 import { getServicesApi } from "@/lib/api/customer";
 import { formatNaira } from "@/lib/utils/currency";
 import { TalentAlert } from "@/types/talent";
+import { useAuth } from "@/lib/stores/auth-store";
 
 export interface ApprenticeshipProgramme {
   id: string;
@@ -37,6 +38,7 @@ export function TalentDiscoveryView({
   onBack,
   onSelectProgramme,
 }: TalentDiscoveryViewProps) {
+  const { locationName } = useAuth();
   const [selectedTradeId, setSelectedTradeId] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [trades, setTrades] = useState<{ id: string; name: string }[]>([
@@ -220,7 +222,7 @@ export function TalentDiscoveryView({
           Learn from a master artisan
         </h1>
         <p className="font-sans text-xs sm:text-sm text-neutral-500 mt-1">
-          Verified apprenticeship programmes in Enugu
+          Verified apprenticeship programmes{locationName ? ` in ${locationName}` : ""}
         </p>
       </div>
 

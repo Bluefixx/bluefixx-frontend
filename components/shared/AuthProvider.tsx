@@ -288,13 +288,16 @@ export default function AuthProvider({ children }: AuthProviderProps) {
       resetAuth();
       if (typeof window !== "undefined") {
         const path = window.location.pathname;
-        if (
-          !path.startsWith("/login") &&
-          !path.startsWith("/register") &&
-          !path.startsWith("/forgot-password") &&
-          !path.startsWith("/ops") &&
-          !path.startsWith("/admin")
-        ) {
+        const isPublicRoute =
+          path === "/" ||
+          path.startsWith("/login") ||
+          path.startsWith("/register") ||
+          path.startsWith("/signup") ||
+          path.startsWith("/onboarding") ||
+          path.startsWith("/forgot-password") ||
+          path.startsWith("/ops") ||
+          path.startsWith("/admin");
+        if (!isPublicRoute) {
           window.location.href = "/login";
         }
       }
@@ -303,6 +306,7 @@ export default function AuthProvider({ children }: AuthProviderProps) {
 
   // Hydrate user profile & wallet on initial app load if authenticated
   useEffect(() => {
+    if (!getAccessToken()) return;
     let isMounted = true;
 
     // Skip customer profile hydration when viewing the admin console

@@ -30,7 +30,12 @@ import { ArtisanReportProblemView } from "./ArtisanReportProblemView";
 import { ArtisanRateCustomerView } from "./ArtisanRateCustomerView";
 import { ArtisanNotificationsView } from "./ArtisanNotificationsView";
 import { ArtisanNotificationSettingsView } from "./ArtisanNotificationSettingsView";
-import { getArtisanDashboardApi, updateArtisanAvailabilityApi } from "@/lib/api/artisan";
+import {
+  getArtisanApplicationsApi,
+  getArtisanDashboardApi,
+  getArtisanJobsApi,
+  updateArtisanAvailabilityApi,
+} from "@/lib/api/artisan";
 import { ArtisanDashboardResponse } from "@/types/artisan";
 import { formatNaira } from "@/lib/utils/currency";
 
@@ -184,11 +189,65 @@ function ArtisanHomeViewContent({
 
   // Availability toggle
   const [isAvailable, setIsAvailable] = useState(true);
+  const [recommendedJobs, setRecommendedJobs] = useState<JobDetailData[]>([]);
+  const [waitingApps, setWaitingApps] = useState<{ count: number; programTitle: string }>({
+    count: 0,
+    programTitle: "",
+  });
 
   // Fetch live artisan dashboard metrics from backend
   useEffect(() => {
     let mounted = true;
     setIsLoadingDashboard(true);
+    getArtisanApplicationsApi({ status: "SUBMITTED" })
+      .then((res) => {
+        if (!mounted || !Array.isArray(res?.items)) return;
+        setWaitingApps({
+          count: res.items.length,
+          programTitle: res.items[0]?.programTitle || "Apprenticeship Programme",
+        });
+      })
+      .catch(() => {});
+    getArtisanJobsApi({ limit: 2 })
+      .then((jobsRes) => {
+        if (!mounted || !jobsRes?.items) return;
+        const mapped: JobDetailData[] = jobsRes.items.map((it) => {
+          const minNaira = it.budgetMinimum ? Math.round(parseInt(it.budgetMinimum, 10) / 100) : 0;
+          const maxNaira = it.budgetMaximum ? Math.round(parseInt(it.budgetMaximum, 10) / 100) : 0;
+          const budgetStr =
+            minNaira > 0 && maxNaira > 0
+              ? `₦${minNaira.toLocaleString()} - ₦${maxNaira.toLocaleString()}`
+              : minNaira > 0
+              ? `₦${minNaira.toLocaleString()}+`
+              : "Negotiable";
+          return {
+            id: it.id,
+            code: `BFX-${it.id.slice(0, 5).toUpperCase()}`,
+            title: it.title || it.service?.name || "Service Request",
+            category: it.trade?.name || it.service?.name || "Service",
+            subCategory: it.service?.name || "General",
+            postedTime: it.createdAt ? new Date(it.createdAt).toLocaleDateString() : "Recent",
+            isUrgent: it.urgency === "EMERGENCY" || it.urgency === "WITHIN_TWO_DAYS",
+            status: "Receiving Quotes",
+            description: it.description || "",
+            service: `${it.trade?.name || "Trade"} · ${it.service?.name || "Service"}`,
+            date: it.preferredStart ? new Date(it.preferredStart).toLocaleDateString() : "Flexible",
+            time: "Morning · 9am - 1pm",
+            budget: budgetStr,
+            urgency: it.urgency || "STANDARD",
+            customerName: it.customer?.displayName || "Customer",
+            customerLocation: it.area?.city ? `${it.area.city}, Nigeria` : "Nearby",
+            distance: it.distanceKm !== undefined ? `${it.distanceKm.toFixed(1)} km away` : "Nearby",
+            driveTime: "In your service area",
+            photoUrl: it.media?.[0]?.url || "/images/workers.png",
+            photoCaption: "",
+            audioDuration: "",
+            questions: [],
+          };
+        });
+        setRecommendedJobs(mapped);
+      })
+      .catch(() => {});
     getArtisanDashboardApi()
       .then((res) => {
         if (!mounted || !res) return;
@@ -926,8 +985,6 @@ function ArtisanHomeViewContent({
             <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
               {dashboardData?.earnings?.available !== undefined
                 ? formatNaira(dashboardData.earnings.available, true)
-                : isVerified
-                ? "₦168,000"
                 : "₦0"}
             </span>
           </div>
@@ -947,10 +1004,8 @@ function ArtisanHomeViewContent({
               Held in escrow
             </span>
             <span className="font-heading font-extrabold text-xl sm:text-2xl text-[#0F1115]">
-              {dashboardData?.earnings?.escrow !== undefined
-                ? formatNaira(dashboardData.earnings.escrow, true)
-                : isVerified
-                ? "₦46,500"
+              {dashboardData?.earnings?.held !== undefined
+                ? formatNaira(dashboardData.earnings.held, true)
                 : "₦0"}
             </span>
           </div>
@@ -988,19 +1043,19 @@ function ArtisanHomeViewContent({
                   setSelectedJob({
                     id: job.id,
                     code: `BFX-${job.id.slice(0, 5).toUpperCase()}`,
-                    title: job.title || "Bathroom Plumbing Repair",
-                    category: job.trade || "Plumbing",
-                    subCategory: "Repair",
+                    title: job.title || "Active Job",
+                    category: "Service",
+                    subCategory: "Booking",
                     postedTime: "Scheduled",
                     isUrgent: false,
-                    status: "Scheduled",
+                    status: job.status || "Scheduled",
                     description: "Active job in progress.",
-                    service: job.trade || "Plumbing",
-                    date: job.scheduledFor ? new Date(job.scheduledFor).toLocaleDateString() : "Scheduled",
+                    service: job.title || "Service",
+                    date: job.visitStart ? new Date(job.visitStart).toLocaleDateString() : "Scheduled",
                     time: "Agreed time",
                     budget: "In escrow",
                     urgency: "Scheduled",
-                    customerName: job.customerName || "Daniel C.",
+                    customerName: job.customer?.fullName || "Customer",
                     customerLocation: "Enugu, Nigeria",
                     distance: "2.5 km away",
                     driveTime: "10 mins",
@@ -1018,7 +1073,7 @@ function ArtisanHomeViewContent({
                     {job.title || "Active Job"}
                   </h3>
                   <p className="font-sans text-xs text-neutral-400">
-                    {job.customerName || "Customer"} · {job.scheduledFor ? new Date(job.scheduledFor).toLocaleString() : "Scheduled"}
+                    {job.customer?.fullName || "Customer"} · {job.visitStart ? new Date(job.visitStart).toLocaleString() : "Scheduled"}
                   </p>
                 </div>
 
@@ -1028,27 +1083,8 @@ function ArtisanHomeViewContent({
               </div>
             ))}
           </div>
-        ) : isVerified ? (
-          /* Active Job Card */
-          <div
-            onClick={() => setCurrentView("active-job-detail")}
-            className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-neutral-300 transition-all"
-          >
-            <div className="space-y-1.5">
-              <h3 className="font-heading font-bold text-base sm:text-lg text-[#0F1115]">
-                Bathroom Plumbing Repair
-              </h3>
-              <p className="font-sans text-xs text-neutral-400">
-                Daniel C. · Tomorrow · 9:00 AM
-              </p>
-            </div>
-
-            <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full self-start sm:self-center shrink-0">
-              ● Scheduled
-            </span>
-          </div>
         ) : (
-          /* Empty State for Unverified / Just Verified */
+          /* Empty State */
           <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-2xs text-center space-y-2">
             <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
               No active jobs yet
@@ -1075,177 +1111,82 @@ function ArtisanHomeViewContent({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Recommended Job 1 */}
-          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5">
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                    Kitchen Plumbing Repair
-                  </h3>
-                  <p className="font-sans text-xs text-neutral-400">
-                    Plumbing · Pipe repair
-                  </p>
-                </div>
-                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
-                  <Image
-                    src="/images/workers.png"
-                    alt="Plumbing"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
-                  Receiving Quotes
-                </span>
-                <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
-                  Urgent
-                </span>
-              </div>
-
-              <div className="space-y-0.5 pt-1">
-                <p className="font-sans text-xs text-neutral-600 font-medium">
-                  2.8 km away · Tomorrow · Sat 23 Aug
-                </p>
-                <p className="font-heading font-extrabold text-sm text-[#001B40]">
-                  ₦25,000 - ₦65,000
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-              <span className="font-sans text-[11px] text-neutral-400">
-                Posted 10 minutes ago
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedJob({
-                    id: "job-1",
-                    code: "BFX-72810",
-                    title: "Kitchen Plumbing Repair",
-                    category: "Plumbing",
-                    subCategory: "Pipe repair",
-                    postedTime: "posted 10 minutes ago",
-                    isUrgent: true,
-                    status: "Receiving Quotes",
-                    description:
-                      "Kitchen pipe underneath the sink is leaking. Water collects inside the cabinet every time we run the tap, and the wood is starting to swell.",
-                    service: "Plumbing · Pipe repair",
-                    date: "Tomorrow · Sat 23 Aug",
-                    time: "Morning · 9am - 12pm",
-                    budget: "₦25,000 - ₦65,000",
-                    urgency: "Urgent",
-                    customerName: "Daniel C.",
-                    customerLocation: "Enugu, Nigeria",
-                    distance: "approx 2.8 km away",
-                    driveTime: "8 min from your base",
-                    photoUrl: "/images/workers.png",
-                    photoCaption: "Leak under the sink",
-                    audioDuration: "0:41",
-                    questions: [
-                      { question: "Is water currently leaking?", answer: "Yes" },
-                      { question: "Is the affected area accessible?", answer: "Yes" },
-                    ],
-                  });
-                  setCurrentView("job-detail");
-                }}
-                className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
-              >
-                View job
-              </button>
-            </div>
+        {recommendedJobs.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-2xs text-center space-y-2">
+            <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
+              No open jobs near you right now
+            </h3>
+            <p className="font-sans text-xs text-neutral-400">
+              New customer job requests matching your trade will appear here.
+            </p>
           </div>
-
-          {/* Recommended Job 2 */}
-          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5">
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                    Generator Repair, 7.5 KVA
-                  </h3>
-                  <p className="font-sans text-xs text-neutral-400">
-                    Generator Repair · Servicing
-                  </p>
-                </div>
-                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
-                  <Image
-                    src="/images/james.jpg"
-                    alt="Generator"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
-                  Receiving Quotes
-                </span>
-                <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
-                  Urgent
-                </span>
-              </div>
-
-              <div className="space-y-0.5 pt-1">
-                <p className="font-sans text-xs text-neutral-600 font-medium">
-                  5.2 km away · Today · Fri 22 Aug
-                </p>
-                <p className="font-heading font-extrabold text-sm text-[#001B40]">
-                  ₦10,000 - ₦25,000
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-              <span className="font-sans text-[11px] text-neutral-400">
-                Posted 10 minutes ago
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedJob({
-                    id: "job-2",
-                    code: "BFX-90145",
-                    title: "Generator Repair, 7.5 KVA",
-                    category: "Generator Repair",
-                    subCategory: "Servicing",
-                    postedTime: "posted 10 minutes ago",
-                    isUrgent: true,
-                    status: "Receiving Quotes",
-                    description:
-                      "7.5 KVA Sumec Firman generator making loud coughing sound and shutting down after 5 minutes under load.",
-                    service: "Generator Repair · Servicing",
-                    date: "Today · Fri 22 Aug",
-                    time: "Morning · 10am - 1pm",
-                    budget: "₦10,000 - ₦25,000",
-                    urgency: "Urgent",
-                    customerName: "Chijioke E.",
-                    customerLocation: "Enugu, Nigeria",
-                    distance: "approx 5.2 km away",
-                    driveTime: "15 min from your base",
-                    photoUrl: "/images/james.jpg",
-                    photoCaption: "Generator unit in outdoor shed",
-                    audioDuration: "0:30",
-                    questions: [
-                      { question: "When was it last serviced?", answer: "3 months ago" },
-                      { question: "Is power output zero?", answer: "Yes" },
-                    ],
-                  });
-                  setCurrentView("job-detail");
-                }}
-                className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {recommendedJobs.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5"
               >
-                View job
-              </button>
-            </div>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                        {job.title}
+                      </h3>
+                      <p className="font-sans text-xs text-neutral-400">
+                        {job.category} · {job.subCategory}
+                      </p>
+                    </div>
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
+                      <Image
+                        src={job.photoUrl || "/images/workers.png"}
+                        alt={job.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                      {job.status}
+                    </span>
+                    {job.isUrgent && (
+                      <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
+                        Urgent
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5 pt-1">
+                    <p className="font-sans text-xs text-neutral-600 font-medium">
+                      {job.distance} · {job.date}
+                    </p>
+                    <p className="font-heading font-extrabold text-sm text-[#001B40]">
+                      {job.budget}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+                  <span className="font-sans text-[11px] text-neutral-400">
+                    Posted {job.postedTime}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedJob(job);
+                      setCurrentView("job-detail");
+                    }}
+                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    View job
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* SECTION 3: 2-Column Split (Training + Recent Earnings) */}
@@ -1266,61 +1207,63 @@ function ArtisanHomeViewContent({
           </div>
 
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-5">
-            {/* Waiting applications callout */}
-            <div
-              onClick={() => setCurrentView("apprenticeships-hub")}
-              className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3 cursor-pointer hover:bg-neutral-100/70 transition-colors"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
+            {/* Waiting applications callout (only shown for real pending applications) */}
+            {waitingApps.count > 0 && (
+              <div
+                onClick={() => setCurrentView("apprenticeships-hub")}
+                className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3 cursor-pointer hover:bg-neutral-100/70 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                    {waitingApps.count} application{waitingApps.count === 1 ? "" : "s"} waiting
+                  </h4>
+                  <p className="font-sans text-[11px] text-neutral-400">
+                    {waitingApps.programTitle}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                  3 applications waiting
-                </h4>
-                <p className="font-sans text-[11px] text-neutral-400">
-                  Welding & Metal Fabrication Apprenticeship
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* In Training Progress Bars */}
             <div className="space-y-3 pt-1">
-              <div className="flex items-center justify-between text-xs text-neutral-500 font-medium">
-                <span className="font-bold text-neutral-800">2 apprentices in training</span>
-                <span>Daniel (65%) · Samuel (40%)</span>
-              </div>
-
-              {/* Daniel bar */}
-              <div
-                onClick={() => setCurrentView("apprentice-progress")}
-                className="space-y-1 cursor-pointer group"
-                title="View Daniel Eze's progress"
-              >
-                <div className="flex justify-between text-[11px] text-neutral-500 font-medium group-hover:text-[#001B40]">
-                  <span className="group-hover:underline font-bold">Daniel Eze</span>
-                  <span>85%</span>
-                </div>
-                <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#001B40] h-full rounded-full w-[85%]" />
-                </div>
-              </div>
-
-              {/* Samuel bar */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-[11px] text-neutral-500 font-medium">
-                  <span>Samuel</span>
-                  <span>40%</span>
-                </div>
-                <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
-                  <div className="bg-[#001B40] h-full rounded-full w-[40%]" />
-                </div>
-              </div>
+              {dashboardData?.training?.apprentices && dashboardData.training.apprentices.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between text-xs text-neutral-500 font-medium">
+                    <span className="font-bold text-neutral-800">
+                      {dashboardData.training.apprentices.length} apprentice
+                      {dashboardData.training.apprentices.length === 1 ? "" : "s"} in training
+                    </span>
+                  </div>
+                  {dashboardData.training.apprentices.map((apprentice) => (
+                    <div
+                      key={apprentice.enrollmentId}
+                      onClick={() => setCurrentView("apprentice-progress")}
+                      className="space-y-1 cursor-pointer group"
+                    >
+                      <div className="flex justify-between text-[11px] text-neutral-500 font-medium group-hover:text-[#001B40]">
+                        <span className="group-hover:underline font-bold">{apprentice.name}</span>
+                        <span>{apprentice.progress}%</span>
+                      </div>
+                      <div className="w-full bg-neutral-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-[#001B40] h-full rounded-full"
+                          style={{ width: `${Math.min(100, Math.max(0, apprentice.progress))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : (
+                <p className="text-xs text-neutral-400">No active apprentices yet.</p>
+              )}
             </div>
           </div>
         </div>
@@ -1341,8 +1284,8 @@ function ArtisanHomeViewContent({
           </div>
 
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-3.5">
-            {dashboardData?.recentEarnings && dashboardData.recentEarnings.length > 0 ? (
-              dashboardData.recentEarnings.map((earning) => (
+            {dashboardData?.earnings?.recent && dashboardData.earnings.recent.length > 0 ? (
+              dashboardData.earnings.recent.map((earning) => (
                 <div
                   key={earning.id}
                   className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3"
@@ -1356,89 +1299,18 @@ function ArtisanHomeViewContent({
                     </div>
                     <div>
                       <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        {earning.description}
+                        {earning.title}
                       </h4>
                       <p className="font-sans text-[11px] text-neutral-400">
-                        {earning.date}
+                        {new Date(earning.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +{formatNaira(earning.amount)}
+                    +{formatNaira(earning.amount, true)}
                   </span>
                 </div>
               ))
-            ) : isVerified ? (
-              <>
-                {/* Earning 1 */}
-                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="14" x="2" y="5" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        Shower line replacement
-                      </h4>
-                      <p className="font-sans text-[11px] text-neutral-400">
-                        Festus M. · Aug 19
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +₦85,000
-                  </span>
-                </div>
-
-                {/* Earning 2 */}
-                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="14" x="2" y="5" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        Kitchen sink installation
-                      </h4>
-                      <p className="font-sans text-[11px] text-neutral-400">
-                        Ngozi A. · Aug 18
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +₦62,000
-                  </span>
-                </div>
-
-                {/* Earning 3 */}
-                <div className="p-3.5 rounded-2xl border border-neutral-100 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect width="20" height="14" x="2" y="5" rx="2" />
-                        <line x1="2" y1="10" x2="22" y2="10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                        Bathroom re-piping
-                      </h4>
-                      <p className="font-sans text-[11px] text-neutral-400">
-                        Chidiadi O. · Aug 17
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-heading font-extrabold text-sm text-emerald-700">
-                    +₦48,000
-                  </span>
-                </div>
-              </>
             ) : (
               <div className="py-6 text-center text-xs text-neutral-400 font-sans">
                 Earnings from completed jobs will appear here.

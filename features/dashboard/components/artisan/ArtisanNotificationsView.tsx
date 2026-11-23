@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { getNotificationsApi, markNotificationReadApi } from "@/lib/api/notifications";
+import { getSocket } from "@/lib/realtime/socket";
 import type { NotificationItem } from "@/types/customer";
 
 export interface ArtisanNotificationItem {
@@ -14,6 +15,7 @@ export interface ArtisanNotificationItem {
   read: boolean;
   section: "today" | "earlier";
   actionView?: string;
+  reference?: string;
 }
 
 /** The inbox item may carry either the documented `kind`/`readAt` fields or the legacy `type`/`read` alias. */
@@ -26,7 +28,7 @@ type RawNotification = NotificationItem & {
 
 interface ArtisanNotificationsViewProps {
   onBack?: () => void;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: string, reference?: string) => void;
 }
 
 function formatRelativeTime(iso: string): string {
@@ -71,7 +73,8 @@ function kindToView(kind?: string): string | undefined {
   if (/(APPLICATION|APPRENTICE|TRAINING|ENROL)/.test(k)) return "apprenticeships-hub";
   if (/(REVIEW|RATE)/.test(k)) return "rate-customer";
   if (/(VERIF|IDENTITY|APPROV)/.test(k)) return "verification";
-  if (/OFFER/.test(k)) return "jobs-list";
+  if (/OFFER_RECEIVED|QUOTE_/.test(k)) return "messages";
+  if (/OFFER_ACCEPTED|BOOKING_/.test(k)) return "active-jobs";
   return undefined;
 }
 
@@ -86,6 +89,7 @@ function mapNotification(raw: RawNotification): ArtisanNotificationItem {
     read: Boolean(raw.read || raw.readAt),
     section: raw.createdAt && isToday(raw.createdAt) ? "today" : "earlier",
     actionView: kindToView(kind),
+    reference: raw.reference ? String(raw.reference) : undefined,
   };
 }
 
@@ -110,8 +114,21 @@ export function ArtisanNotificationsView({
         if (mounted) setIsLoading(false);
       }
     })();
+    const socket = getSocket();
+    const onNotification = (payload: RawNotification) => {
+      if (!mounted || !payload?.id) return;
+      const mapped = mapNotification(payload);
+      setNotifications((prev) => (prev.some((n) => n.id === mapped.id) ? prev : [mapped, ...prev]));
+    };
+    if (socket) {
+      socket.on("notification", onNotification);
+    }
+
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotification);
+      }
     };
   }, []);
 
@@ -141,7 +158,7 @@ export function ArtisanNotificationsView({
       });
     }
     if (notif.actionView && onNavigate) {
-      onNavigate(notif.actionView);
+      onNavigate(notif.actionView, notif.reference);
     }
   };
 

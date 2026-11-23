@@ -17,16 +17,25 @@ const VIDEO_PURPOSES: ReadonlySet<MediaPurpose> = new Set<MediaPurpose>([
   "ASSESSMENT",
 ]);
 
-/** Map an upload purpose (and optional file) to the Cloudinary resource type the backend expects. */
-export function mediaResourceTypeFor(
-  purpose: MediaPurpose,
-  file?: File
-): MediaResourceType {
-  if (VIDEO_PURPOSES.has(purpose)) return "video";
-  if (purpose === "CHAT" && file && !file.type.startsWith("image/")) {
+const SUPPORTED_IMAGE_MIME_TYPES: ReadonlySet<string> = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/avif",
+]);
+
+/** Map an upload purpose to the Cloudinary resource type the backend expects. */
+export function mediaResourceTypeFor(purpose: MediaPurpose, file?: File): MediaResourceType {
+  if (purpose === "VOICE") return "video";
+  if (file && (purpose === "PORTFOLIO" || purpose === "CHAT")) {
+    const mime = file.type.toLowerCase();
+    if (SUPPORTED_IMAGE_MIME_TYPES.has(mime)) return "image";
+    if (mime.startsWith("video/") || mime.startsWith("audio/")) return "video";
     return "raw";
   }
-  return "image";
+  return VIDEO_PURPOSES.has(purpose) ? "video" : "image";
 }
 
 /**
@@ -66,7 +75,7 @@ export async function uploadMediaFile(
   try {
     const initRes = await initiateMediaUploadApi({
       purpose,
-      resourceType,
+      resourceType: mediaResourceTypeFor(purpose, file),
     });
 
     // Upload the binary to the signed provider URL using the returned fields.

@@ -10,6 +10,7 @@ import {
   postBookingUpdateApi,
   proposeBookingAdditionApi,
   submitBookingCompletionApi,
+  submitCustomerReviewApi,
 } from "@/lib/api/artisan";
 import { uploadMediaFile } from "@/lib/api/media";
 import { ArtisanBookingDetail } from "@/types/artisan";
@@ -951,8 +952,26 @@ export function ArtisanActiveJobDetailView({
                     <>
                       <button
                         type="button"
-                        onClick={() => toast.success("Review submitted for Daniel C.!")}
-                        className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs sm:text-sm font-bold text-[#001B40] transition-colors"
+                        onClick={async () => {
+                          const targetBookingId = booking?.id || bookingId;
+                          if (!targetBookingId) {
+                            toast.error("Booking ID missing");
+                            return;
+                          }
+                          try {
+                            await submitCustomerReviewApi(targetBookingId, {
+                              stars: 5,
+                              tags: ["RESPECTFUL"],
+                              text: `Great experience working with ${customerName}.`,
+                            });
+                            toast.success(`Review submitted for ${customerName}!`);
+                          } catch (err) {
+                            toast.error(
+                              err instanceof Error ? err.message : "Could not submit review"
+                            );
+                          }
+                        }}
+                        className="w-full py-2.5 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs sm:text-sm font-bold text-[#001B40] transition-colors cursor-pointer"
                       >
                         Rate {customerName}
                       </button>

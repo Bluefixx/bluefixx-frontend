@@ -123,9 +123,8 @@ test.describe("Bluefixx E2E: OAuth, OTP Channel, Role Switching, Customer <-> Ar
       const url = route.request().url();
       if (url.includes("/auth/options")) {
         return jsonResponse(route, {
-          providers: {
-            google: { enabled: true, clientId: "e2e-google-client-id" },
-          },
+          google: { enabled: true, clientId: "e2e-google-client-id" },
+          apple: { enabled: false },
         });
       }
       if (url.includes("/auth/google") && route.request().method() === "POST") {

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import toast from "react-hot-toast";
 import {
   createTrainingProgramApi,
+  getServicesCatalogApi,
   patchProgramQuestionsApi,
   publishTrainingProgramApi,
 } from "@/lib/api/artisan";
@@ -666,13 +667,17 @@ export function ArtisanCreateApprenticeshipView({
               <div className="flex items-center justify-between text-xs pb-3 border-b border-neutral-100">
                 <span className="text-neutral-500">Amount per apprentice</span>
                 <span className="font-heading font-extrabold text-[#001B40] text-sm">
-                  ₦{trainingFee}
+                  ₦{(parseInt(trainingFee.replace(/,/g, ""), 10) || 0).toLocaleString("en-NG")}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs pt-1">
                 <span className="text-neutral-700 font-bold">Total</span>
                 <span className="font-heading font-extrabold text-[#001B40] text-base sm:text-lg">
-                  ₦450,000
+                  ₦
+                  {(
+                    (parseInt(trainingFee.replace(/,/g, ""), 10) || 0) *
+                    (parseInt(availableSlots, 10) || 1)
+                  ).toLocaleString("en-NG")}
                 </span>
               </div>
             </div>
@@ -695,10 +700,10 @@ export function ArtisanCreateApprenticeshipView({
             <div className="lg:col-span-6 bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200/80 shadow-xs space-y-5">
               <div className="space-y-2">
                 <h3 className="font-heading font-extrabold text-lg sm:text-xl text-[#001B40]">
-                  {selectedTrade} & Metal Fabrication Apprenticeship
+                  {selectedTrade} Apprenticeship
                 </h3>
                 <p className="text-xs text-neutral-500 leading-relaxed">
-                  A hands-on three-month programme in my Enugu workshop, working on real customer jobs under supervision.
+                  A hands-on {durationMonths || "6"}-month programme at {workplaceAddress || "your workshop"}, working on real customer jobs under supervision.
                 </p>
               </div>
 
@@ -733,17 +738,23 @@ export function ArtisanCreateApprenticeshipView({
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Duration</span>
-                <span className="font-heading font-bold text-[#0F1115]">3 months</span>
+                <span className="font-heading font-bold text-[#0F1115]">{durationMonths || 6} months</span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Location</span>
                 <span className="font-heading font-bold text-[#0F1115] truncate max-w-[200px]">
-                  Emene Industrial Layout, Enugu
+                  {workplaceAddress || "Workshop"}
                 </span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Start date</span>
-                <span className="font-heading font-bold text-[#0F1115]">1 September 2026</span>
+                <span className="font-heading font-bold text-[#0F1115]">
+                  {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString("en-NG", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Capacity</span>
@@ -751,7 +762,9 @@ export function ArtisanCreateApprenticeshipView({
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Fee</span>
-                <span className="font-heading font-bold text-[#0F1115]">₦{trainingFee}</span>
+                <span className="font-heading font-bold text-[#0F1115]">
+                  ₦{(parseInt(trainingFee.replace(/,/g, ""), 10) || 0).toLocaleString("en-NG")}
+                </span>
               </div>
               <div className="flex items-center justify-between py-3 text-xs sm:text-sm">
                 <span className="text-neutral-500">Payment</span>
@@ -780,23 +793,99 @@ export function ArtisanCreateApprenticeshipView({
               onClick={async () => {
                 const totalKobo = nairaToKobo(parseInt(trainingFee.replace(/,/g, "")) || 150000);
                 try {
-                  await publishTrainingProgramApi("mock-prog-uuid", {
-                    schedule: selectedDays.join(", "),
+                  const catalog = await getServicesCatalogApi().catch(() => []);
+                  const matchedTrade = catalog.find((t) =>
+                    t.name.toLowerCase().includes(selectedTrade.toLowerCase())
+                  );
+                  const tradeId = matchedTrade?.id || catalog[0]?.id || "welding";
+                  const startsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+                  const months = parseInt(durationMonths, 10) || 6;
+                  const parsedOutcomes = skillsTaught
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter((s) => s.length >= 2);
+                  const outcomes =
+                    parsedOutcomes.length > 0 ? parsedOutcomes : ["Hands-on trade mastery"];
+                  const safeDescription =
+                    skillsTaught.trim().length >= 10
+                      ? skillsTaught.trim()
+                      : `Hands-on ${selectedTrade} apprenticeship covering ${outcomes.join(", ")}.`;
+
+                  const created = await createTrainingProgramApi({
+                    tradeId,
+                    title: `${selectedTrade} Apprenticeship`,
+                    description: safeDescription,
+                    location: workplaceAddress,
+                    latitude: 6.4584,
+                    longitude: 7.5464,
+                    startsAt,
+                    durationWeeks: months * 4,
+                    durationMonths: months,
+                    capacity: parseInt(availableSlots, 10) || 3,
+                    fee: totalKobo,
+                    outcomes,
+                  });
+
+                  const uuidRe =
+                    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+                  const mappedQuestions = questions
+                    .filter((q) => q.question.trim().length >= 3)
+                    .map((q) => ({
+                      id: uuidRe.test(q.id) ? q.id : crypto.randomUUID(),
+                      prompt: q.question.trim(),
+                      type:
+                        q.type === "Yes/No"
+                          ? ("YES_NO" as const)
+                          : q.type === "File Upload"
+                          ? ("FILE" as const)
+                          : ("TEXT" as const),
+                      required: q.required,
+                    }));
+                  if (mappedQuestions.length > 0) {
+                    await patchProgramQuestionsApi(created.id, mappedQuestions);
+                  }
+
+                  const session1Start = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+                  const session1End = new Date(session1Start.getTime() + 3 * 60 * 60 * 1000);
+                  const session2Start = new Date(Date.now() + 9 * 24 * 60 * 60 * 1000);
+                  const session2End = new Date(session2Start.getTime() + 3 * 60 * 60 * 1000);
+
+                  await publishTrainingProgramApi(created.id, {
+                    schedule: {
+                      days: selectedDays,
+                      startTime,
+                      endTime: closeTime,
+                    },
                     sessions: [
-                      { date: "2026-09-01", title: "Orientation" },
-                      { date: "2026-09-03", title: "Workshop Safety" },
+                      {
+                        title: "Orientation",
+                        startsAt: session1Start.toISOString(),
+                        endsAt: session1End.toISOString(),
+                        location: workplaceAddress,
+                      },
+                      {
+                        title: "Workshop Safety",
+                        startsAt: session2Start.toISOString(),
+                        endsAt: session2End.toISOString(),
+                        location: workplaceAddress,
+                      },
                     ],
                     milestones: [
-                      { title: "Deposit / Milestone 1", amount: Math.round(totalKobo / 2), order: 1 },
-                      { title: "Completion / Milestone 2", amount: Math.round(totalKobo / 2), order: 2 },
+                      { title: "Deposit / Milestone 1", amount: Math.round(totalKobo / 2) },
+                      {
+                        title: "Completion / Milestone 2",
+                        amount: totalKobo - Math.round(totalKobo / 2),
+                      },
                     ],
                   });
                   toast.success("Apprenticeship published successfully!");
-                } catch {
-                  toast.success("Apprenticeship published successfully!");
-                } finally {
                   setCurrentStep("published");
                   if (onSuccess) onSuccess();
+                } catch (err) {
+                  toast.error(
+                    err instanceof Error ? err.message : "Could not publish apprenticeship"
+                  );
                 }
               }}
               className="px-8 py-3 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer"

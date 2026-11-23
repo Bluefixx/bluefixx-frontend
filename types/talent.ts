@@ -67,6 +67,13 @@ export interface TalentProgramReview {
   createdAt: string;
 }
 
+export interface TalentProgramQuestion {
+  id: string;
+  prompt: string;
+  type: "TEXT" | "YES_NO" | "FILE";
+  required: boolean;
+}
+
 export interface TalentProgramDetail {
   id: string;
   title: string;
@@ -81,6 +88,7 @@ export interface TalentProgramDetail {
   artisan?: TalentArtisan;
   sessions?: TalentProgramSession[];
   reviews?: TalentProgramReview[];
+  questions?: TalentProgramQuestion[];
 }
 
 // ── Home Summary ────────────────────────────────────────────────
@@ -120,7 +128,7 @@ export interface CreateTalentApplicationPayload {
   sixDayAvailability: boolean;
   currentSituation: TalentCurrentSituation;
   workMediaIds?: string[];
-  answers?: Record<string, unknown>;
+  answers?: Record<string, string | boolean | string[]>;
 }
 
 export interface CreateTalentApplicationResponse {
@@ -317,6 +325,7 @@ export interface SendTalentMessagePayload {
   clientId: string;
   text?: string;
   mediaIds?: string[];
+  talentId?: string;
 }
 
 export interface TalentConversationParticipant {

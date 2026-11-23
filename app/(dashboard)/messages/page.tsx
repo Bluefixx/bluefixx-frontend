@@ -15,6 +15,7 @@ import {
 } from "@/lib/api";
 import { ArtisanMessagesView } from "@/features/dashboard/components/artisan/ArtisanMessagesView";
 import { ChatAttachments, extractChatAttachments } from "@/components/chat/ChatAttachments";
+import { LiveNegotiationPanel } from "@/features/dashboard/components/LiveNegotiationPanel";
 import { ChatMessageAttachment, Conversation } from "@/types/customer";
 import { getSocket, emitWithAck } from "@/lib/realtime/socket";
 
@@ -57,41 +58,61 @@ function CustomerMessagesView() {
   const recordTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const currentAudioRef = React.useRef<HTMLAudioElement | null>(null);
 
-  // Fetch real conversations from API
+  // Fetch real conversations from API and refresh on live notifications
   useEffect(() => {
     let mounted = true;
-    getConversationsApi()
-      .then((items) => {
-        if (!mounted || !Array.isArray(items)) return;
-        setConversations(items);
-        const convParam = searchParams.get("conversation") || searchParams.get("quoteId");
-        if (convParam === "support") {
-          setActiveConversation("support");
-          setActivePeerName("Bluefixx Support");
-          setActivePeerRole("24/7 Safety & Assistance");
-          setActiveBookingTitle("Safety & Support Desk");
-        } else if (convParam && items.some((c) => c.quoteId === convParam)) {
-          const match = items.find((c) => c.quoteId === convParam)!;
-          setActiveConversation(match.quoteId);
-          setActivePeerName(match.peer?.fullName || "Verified Artisan");
-          setActivePeerRole(match.status || "Quote Discussion");
-          setActivePeerAvatar(match.peer?.photoUrl || "/images/david.jpg");
-          setActiveBookingTitle(`Quote with ${match.peer?.fullName || "Verified Artisan"}`);
-        } else if (items.length > 0) {
-          const first = items[0];
-          setActiveConversation(first.quoteId);
-          setActivePeerName(first.peer?.fullName || "Verified Artisan");
-          setActivePeerRole(first.status || "Quote Discussion");
-          setActivePeerAvatar(first.peer?.photoUrl || "/images/david.jpg");
-          setActiveBookingTitle(`Quote with ${first.peer?.fullName || "Verified Artisan"}`);
-        }
-      })
-      .catch((err) => {
-        console.debug("Conversations endpoint offline:", err);
-      });
+    const loadConversations = () => {
+      getConversationsApi()
+        .then((items) => {
+          if (!mounted || !Array.isArray(items)) return;
+          setConversations(items);
+          const convParam = searchParams.get("conversation") || searchParams.get("quoteId");
+          if (convParam === "support") {
+            setActiveConversation("support");
+            setActivePeerName("Bluefixx Support");
+            setActivePeerRole("24/7 Safety & Assistance");
+            setActiveBookingTitle("Safety & Support Desk");
+          } else if (convParam && items.some((c) => c.quoteId === convParam)) {
+            const match = items.find((c) => c.quoteId === convParam)!;
+            setActiveConversation(match.quoteId);
+            setActivePeerName(match.peer?.fullName || "Verified Artisan");
+            setActivePeerRole(match.status || "Quote Discussion");
+            setActivePeerAvatar(match.peer?.photoUrl || "/images/david.jpg");
+            setActiveBookingTitle(`Quote with ${match.peer?.fullName || "Verified Artisan"}`);
+          } else if (items.length > 0) {
+            setActiveConversation((prev) => {
+              if (prev && prev !== "support" && items.some((c) => c.quoteId === prev)) {
+                return prev;
+              }
+              const first = items[0];
+              setActivePeerName(first.peer?.fullName || "Verified Artisan");
+              setActivePeerRole(first.status || "Quote Discussion");
+              setActivePeerAvatar(first.peer?.photoUrl || "/images/david.jpg");
+              setActiveBookingTitle(`Quote with ${first.peer?.fullName || "Verified Artisan"}`);
+              return first.quoteId;
+            });
+          }
+        })
+        .catch((err) => {
+          console.debug("Conversations endpoint offline:", err);
+        });
+    };
+
+    loadConversations();
+
+    const socket = getSocket();
+    const onNotif = () => {
+      if (mounted) loadConversations();
+    };
+    if (socket) {
+      socket.on("notification", onNotif);
+    }
 
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotif);
+      }
     };
   }, [searchParams]);
 
@@ -819,6 +840,13 @@ function CustomerMessagesView() {
               {activePeerRole}
             </span>
           </div>
+
+          {activeConversation !== "support" && (
+            <LiveNegotiationPanel
+              quoteId={activeConversation}
+              role="CUSTOMER"
+            />
+          )}
 
           {/* Action button */}
           <Link

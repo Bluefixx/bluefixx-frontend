@@ -8,7 +8,10 @@ import {
   getArtisanTrainingProgramsApi,
   getArtisanApplicationsApi,
   getArtisanEnrollmentsApi,
+  updateApplicationDecisionApi,
+  updateTrainingProgramApi,
 } from "@/lib/api/artisan";
+import { nairaToKobo } from "@/lib/utils/currency";
 
 type ApprenticeshipTab = "active" | "applications" | "completed";
 type ApplicationSubTab = "new" | "reviewing" | "accepted" | "declined";
@@ -28,7 +31,10 @@ export function ArtisanApprenticeshipsHubView({
 }: ArtisanApprenticeshipsHubViewProps) {
   const [activeTab, setActiveTab] = useState<ApprenticeshipTab>(initialTab);
   const [isEmpty, setIsEmpty] = useState(initialEmpty);
-  const [selectedProgrammeForApplicants, setSelectedProgrammeForApplicants] = useState<string | null>(null);
+  const [selectedProgrammeForApplicants, setSelectedProgrammeForApplicants] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [applicantSubTab, setApplicantSubTab] = useState<ApplicationSubTab>("new");
   const [selectedApplicant, setSelectedApplicant] = useState<{
     id: string;
@@ -36,69 +42,132 @@ export function ArtisanApprenticeshipsHubView({
     status: ApplicantStatus;
   } | null>(null);
 
-  // Sample Applicants Matching Figma Screens
-  const [applicants, setApplicants] = useState([
-    {
-      id: "app-chidera",
-      name: "Chidera Okwu",
-      location: "Abakpa Enugu East · Age 21",
-      appliedDate: "18 Aug 2026, 10:12",
-      experience: "Two years helping in my uncle's workshop in Nsukka",
-      status: "new" as ApplicationSubTab,
-      avatar: "👨🏾",
-    },
-    {
-      id: "app-1",
-      name: "Chinedu Agu",
-      location: "Abakpa Nike, Enugu",
-      appliedDate: "3 Aug 2026",
-      experience: "No formal experience. Finished secondary school in 2025.",
-      status: "declined" as ApplicationSubTab,
-      avatar: "👨🏾",
-    },
-    {
-      id: "app-2",
-      name: "Ifeanyi Ugwu",
-      location: "New Haven, Enugu",
-      appliedDate: "10 Aug 2026",
-      experience: "No formal experience. Finished secondary school in 2021.",
-      status: "new" as ApplicationSubTab,
-      avatar: "👨🏿",
-    },
-  ]);
+  const [applicants, setApplicants] = useState<
+    Array<{
+      id: string;
+      name: string;
+      location: string;
+      appliedDate: string;
+      experience: string;
+      status: ApplicationSubTab;
+      avatar: string;
+    }>
+  >([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [editingProgram, setEditingProgram] = useState<any | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editCapacity, setEditCapacity] = useState("3");
+  const [editDurationMonths, setEditDurationMonths] = useState("6");
+  const [editFeeNaira, setEditFeeNaira] = useState("150000");
+  const [editStatus, setEditStatus] = useState<"PUBLISHED" | "PAUSED" | "CLOSED">("PUBLISHED");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const openEditModal = (prog: any) => {
+    setEditingProgram(prog);
+    setEditTitle(prog.title || "");
+    setEditDescription(prog.description || "");
+    setEditLocation(prog.location || "");
+    setEditCapacity(String(prog.capacity || 3));
+    setEditDurationMonths(String(prog.durationMonths || Math.max(1, Math.round((prog.durationWeeks || 24) / 4))));
+    setEditFeeNaira(prog.fee ? String(Math.round(Number(prog.fee) / 100)) : "0");
+    setEditStatus((prog.status === "PAUSED" || prog.status === "CLOSED" ? prog.status : "PUBLISHED"));
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProgram) return;
+    setIsSavingEdit(true);
+    try {
+      const months = parseInt(editDurationMonths, 10) || 6;
+      const updated = await updateTrainingProgramApi(editingProgram.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        location: editLocation.trim(),
+        capacity: parseInt(editCapacity, 10) || 1,
+        durationMonths: months,
+        durationWeeks: months * 4,
+        fee: nairaToKobo(parseInt(editFeeNaira.replace(/,/g, ""), 10) || 0),
+        status: editStatus,
+      });
+      setPrograms((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      if (selectedProgrammeForApplicants?.id === editingProgram.id) {
+        setSelectedProgrammeForApplicants({ id: updated.id, title: updated.title });
+      }
+      setEditingProgram(null);
+      toast.success("Apprenticeship updated!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not update apprenticeship");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
 
-    if (activeTab === "applications") {
-      const statusMapping: Record<ApplicationSubTab, "SUBMITTED" | "UNDER_REVIEW" | "ACCEPTED" | "DECLINED"> = {
-        new: "SUBMITTED",
-        reviewing: "UNDER_REVIEW",
-        accepted: "ACCEPTED",
-        declined: "DECLINED",
-      };
-      getArtisanApplicationsApi({ status: statusMapping[applicantSubTab] })
+    if (selectedProgrammeForApplicants || activeTab === "applications") {
+      getArtisanApplicationsApi(
+        selectedProgrammeForApplicants ? { programId: selectedProgrammeForApplicants.id } : undefined
+      )
         .then((res) => {
-          if (!mounted || !res || !Array.isArray(res.items)) return;
-          console.debug(`Loaded ${res.items.length} applications`);
+          if (!mounted || !res) return;
+          const rawItems = Array.isArray(res)
+            ? res
+            : Array.isArray((res as { items?: unknown[] }).items)
+            ? (res as { items: any[] }).items
+            : [];
+          const mapped = rawItems.map((item: any) => ({
+            id: item.id,
+            name: item.talent?.fullName || item.talentName || "Applicant",
+            location:
+              item.program?.location || item.program?.title || item.programTitle || "Apprenticeship",
+            appliedDate: item.createdAt
+              ? new Date(item.createdAt).toLocaleDateString()
+              : item.submittedAt
+              ? new Date(item.submittedAt).toLocaleDateString()
+              : "Recent",
+            experience: item.experience || item.priorExperience || "No prior experience noted",
+            status:
+              item.status === "ACCEPTED"
+                ? ("accepted" as const)
+                : item.status === "DECLINED"
+                ? ("declined" as const)
+                : item.status === "UNDER_REVIEW"
+                ? ("reviewing" as const)
+                : ("new" as const),
+            avatar: "👨🏾",
+          }));
+          setApplicants(mapped);
         })
         .catch((err) => {
-          console.debug("Applications API offline or mocked.", err);
+          console.debug("Applications API error.", err);
         })
         .finally(() => {
           if (mounted) setIsLoading(false);
         });
-    } else {
-      getArtisanEnrollmentsApi()
-        .then((items) => {
-          if (!mounted || !Array.isArray(items)) return;
-          console.debug(`Loaded ${items.length} apprentice enrollments`);
+    }
+
+    if (!selectedProgrammeForApplicants) {
+      Promise.allSettled([getArtisanTrainingProgramsApi(), getArtisanEnrollmentsApi()])
+        .then(([progRes, enrollRes]) => {
+          if (!mounted) return;
+          const progList =
+            progRes.status === "fulfilled" && Array.isArray(progRes.value) ? progRes.value : [];
+          const enrollList =
+            enrollRes.status === "fulfilled" && Array.isArray(enrollRes.value)
+              ? enrollRes.value
+              : [];
+          setPrograms(progList);
+          if (progList.length === 0 && enrollList.length === 0) setIsEmpty(true);
+          else setIsEmpty(false);
         })
         .catch((err) => {
-          console.debug("Enrollments API offline or mocked.", err);
+          console.debug("Programs/Enrollments API offline or mocked.", err);
         })
         .finally(() => {
           if (mounted) setIsLoading(false);
@@ -108,20 +177,30 @@ export function ArtisanApprenticeshipsHubView({
     return () => {
       mounted = false;
     };
-  }, [activeTab, applicantSubTab]);
+  }, [activeTab, selectedProgrammeForApplicants]);
 
-  const handleAcceptApplicant = (id: string, name: string) => {
-    setApplicants((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "accepted" } : a))
-    );
-    toast.success(`${name} accepted! Invoice and reservation sent.`);
+  const handleAcceptApplicant = async (id: string, name: string) => {
+    try {
+      await updateApplicationDecisionApi(id, { decision: "ACCEPTED" });
+      setApplicants((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: "accepted" } : a))
+      );
+      toast.success(`${name} accepted! Invoice and reservation sent.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to accept applicant");
+    }
   };
 
-  const handleDeclineApplicant = (id: string, name: string) => {
-    setApplicants((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "declined" } : a))
-    );
-    toast(`${name} application declined.`);
+  const handleDeclineApplicant = async (id: string, name: string) => {
+    try {
+      await updateApplicationDecisionApi(id, { decision: "DECLINED" });
+      setApplicants((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: "declined" } : a))
+      );
+      toast(`${name} application declined.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to decline applicant");
+    }
   };
 
   // ═══════════════════════════════════════════════════════════
@@ -166,20 +245,36 @@ export function ArtisanApprenticeshipsHubView({
                 My apprenticeships
               </h1>
               <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
-                Hands-on placements at your workshop · {selectedProgrammeForApplicants}
+                Hands-on placements at your workshop · {selectedProgrammeForApplicants.title}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onCreateNew}
-              className="w-10 h-10 rounded-full bg-[#001B40] hover:bg-[#074292] text-white flex items-center justify-center shadow-xs cursor-pointer transition-all"
-              title="Create apprenticeship"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2.5">
+              {(() => {
+                const matchedProg = programs.find(
+                  (p) => p.title === selectedProgrammeForApplicants
+                );
+                return matchedProg ? (
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(matchedProg)}
+                    className="px-4 py-2 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                  >
+                    Edit programme
+                  </button>
+                ) : null;
+              })()}
+              <button
+                type="button"
+                onClick={onCreateNew}
+                className="w-10 h-10 rounded-full bg-[#001B40] hover:bg-[#074292] text-white flex items-center justify-center shadow-xs cursor-pointer transition-all"
+                title="Create apprenticeship"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -262,7 +357,7 @@ export function ArtisanApprenticeshipsHubView({
                       {applicant.name}
                     </h3>
                     <p className="text-[11px] text-neutral-400 mt-0.5">
-                      Welding & Metal Fabrication · Applied {applicant.appliedDate}
+                      {applicant.location} · Applied {applicant.appliedDate}
                     </p>
                   </div>
                 </div>
@@ -453,182 +548,121 @@ export function ArtisanApprenticeshipsHubView({
             })}
           </div>
 
-          {/* TAB 1: ACTIVE PROGRAMMES (Screenshot 3 Left) */}
+          {/* TAB 1: ACTIVE PROGRAMMES */}
           {activeTab === "active" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Programme 1: Welding */}
-              <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 hover:border-neutral-300 transition-all flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-heading font-extrabold text-base text-[#0F1115]">
-                      Welding & Metal Fabrication
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Active
-                    </span>
-                  </div>
-                  <p className="text-xs text-neutral-500 flex items-center gap-1.5">
-                    <span>📍</span>
-                    <span>Enugu</span>
-                  </p>
-                  <div className="text-xs text-neutral-600 space-y-1">
-                    <p className="font-medium">6 months · 2 of 3 slots open</p>
-                    <p className="text-neutral-400">Monday - Saturday · 8:00 AM - 5:00 PM</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
-                  <span className="text-xs font-semibold text-neutral-500">
-                    7 applicants
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Welding & Metal Fabrication")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+              {programs.map((prog) => {
+                const openSlots = Math.max(0, (prog.capacity || 0) - (prog.enrolledCount || 0));
+                const durationLabel = prog.durationMonths
+                  ? `${prog.durationMonths} months`
+                  : `${prog.durationWeeks || 12} weeks`;
+                return (
+                  <div
+                    key={prog.id}
+                    className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 hover:border-neutral-300 transition-all flex flex-col justify-between"
                   >
-                    Manage
-                  </button>
-                </div>
-              </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-heading font-extrabold text-base text-[#0F1115]">
+                          {prog.title}
+                        </h3>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {prog.status === "PUBLISHED" ? "Active" : prog.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-500 flex items-center gap-1.5">
+                        <span>📍</span>
+                        <span>{prog.location || "Workshop"}</span>
+                      </p>
+                      <div className="text-xs text-neutral-600 space-y-1">
+                        <p className="font-medium">
+                          {durationLabel} · {openSlots} of {prog.capacity || 0} slots open
+                        </p>
+                      </div>
+                    </div>
 
-              {/* Programme 2: Plumbing */}
-              <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-4 hover:border-neutral-300 transition-all flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-heading font-extrabold text-base text-[#0F1115]">
-                      Plumbing Basics
-                    </h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Active
-                    </span>
+                    <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
+                      <span className="text-xs font-semibold text-neutral-500">
+                        {prog.enrolledCount || 0} enrolled
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedProgrammeForApplicants({ id: prog.id, title: prog.title })
+                          }
+                          className="px-3.5 py-2 rounded-xl border border-neutral-200 hover:bg-neutral-50 text-xs font-semibold text-neutral-700 transition-colors cursor-pointer"
+                        >
+                          Applications
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(prog)}
+                          className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                        >
+                          Manage
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-neutral-500 flex items-center gap-1.5">
-                    <span>📍</span>
-                    <span>Enugu</span>
-                  </p>
-                  <div className="text-xs text-neutral-600 space-y-1">
-                    <p className="font-medium">4 months · 0 of 1 slots open</p>
-                    <p className="text-neutral-400">Monday - Friday · 8:00 AM - 4:00 PM</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
-                  <span className="text-xs font-semibold text-neutral-500">
-                    3 applicants
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Plumbing Basics")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    Manage
-                  </button>
-                </div>
-              </div>
+                );
+              })}
             </div>
           )}
 
-          {/* TAB 2: APPLICATIONS OVERVIEW (Screenshot 5 Left) */}
+          {/* TAB 2: APPLICATIONS OVERVIEW */}
           {activeTab === "applications" && (
             <div className="space-y-3.5">
-              {/* Item 1 */}
-              <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      Welding & Metal Fabrication Apprenticeship
-                    </h4>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      3 months · 3 slots · 4 applications
-                    </p>
-                  </div>
+              {programs.length === 0 ? (
+                <div className="p-12 text-center bg-white rounded-3xl border border-neutral-200 text-xs text-neutral-400">
+                  No apprenticeship programmes yet.
                 </div>
+              ) : (
+                programs.map((prog) => {
+                  const openSlots = Math.max(0, (prog.capacity || 0) - (prog.enrolledCount || 0));
+                  const durationLabel = prog.durationMonths
+                    ? `${prog.durationMonths} months`
+                    : `${prog.durationWeeks || 12} weeks`;
+                  return (
+                    <div
+                      key={prog.id}
+                      className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
+                            {prog.title}
+                          </h4>
+                          <p className="text-xs text-neutral-400 mt-0.5">
+                            {durationLabel} · {openSlots} of {prog.capacity || 0} slots open
+                          </p>
+                        </div>
+                      </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
-                    2 new
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Welding & Metal Fabrication Apprenticeship")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    View applications
-                  </button>
-                </div>
-              </div>
-
-              {/* Item 2 */}
-              <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      Gate & Burglary-Proof Fabrication
-                    </h4>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      1 month short course · 2 slots · 1 application
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
-                    1 new
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Gate & Burglary-Proof Fabrication")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    View applications
-                  </button>
-                </div>
-              </div>
-
-              {/* Item 3 */}
-              <div className="bg-white rounded-2xl p-5 border border-neutral-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-neutral-600 shrink-0">
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="font-heading font-extrabold text-sm sm:text-base text-[#0F1115]">
-                      Plumbing Basics
-                    </h4>
-                    <p className="text-xs text-neutral-400 mt-0.5">
-                      2 months · Full: 0 open slots
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 self-end sm:self-center">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-neutral-100 text-neutral-600">
-                    Filled
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProgrammeForApplicants("Plumbing Basics")}
-                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
-                  >
-                    View applications
-                  </button>
-                </div>
-              </div>
+                      <div className="flex items-center gap-3 self-end sm:self-center">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700">
+                          {prog.enrolledCount || 0} enrolled
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedProgrammeForApplicants({ id: prog.id, title: prog.title })
+                          }
+                          className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-xs font-bold text-[#001B40] transition-colors cursor-pointer"
+                        >
+                          View applications
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
 
@@ -639,6 +673,125 @@ export function ArtisanApprenticeshipsHubView({
             </div>
           )}
         </>
+      )}
+
+      {editingProgram && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-900/50 backdrop-blur-xs">
+          <form
+            onSubmit={handleSaveEdit}
+            className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 border border-neutral-200 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-heading font-extrabold text-lg text-[#001B40]">
+                Edit apprenticeship
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingProgram(null)}
+                className="text-neutral-400 hover:text-neutral-700 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  required
+                  minLength={10}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Workshop address</label>
+                <input
+                  type="text"
+                  required
+                  minLength={3}
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Slots</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={editCapacity}
+                    onChange={(e) => setEditCapacity(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Months</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={editDurationMonths}
+                    onChange={(e) => setEditDurationMonths(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-neutral-700 mb-1">Fee (₦)</label>
+                  <input
+                    type="number"
+                    min={100}
+                    value={editFeeNaira}
+                    onChange={(e) => setEditFeeNaira(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl border border-neutral-200 focus:border-[#001B40] focus:outline-hidden"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block font-bold text-neutral-700 mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as any)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 bg-white focus:border-[#001B40] focus:outline-hidden"
+                >
+                  <option value="PUBLISHED">Active (Published)</option>
+                  <option value="PAUSED">Paused</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingProgram(null)}
+                className="px-4 py-2.5 rounded-xl border border-neutral-300 text-xs font-bold text-neutral-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEdit}
+                className="px-5 py-2.5 rounded-xl bg-[#001B40] hover:bg-[#074292] text-white text-xs font-bold disabled:opacity-50 cursor-pointer"
+              >
+                {isSavingEdit ? "Saving..." : "Save changes"}
+              </button>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

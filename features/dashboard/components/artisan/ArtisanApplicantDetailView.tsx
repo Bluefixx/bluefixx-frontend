@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { updateApplicationDecisionApi } from "@/lib/api/artisan";
+import {
+  ArtisanApplicationDetail,
+  getArtisanApplicationDetailApi,
+  updateApplicationDecisionApi,
+} from "@/lib/api/artisan";
+import { getMediaUrlApi } from "@/lib/api/media";
 
 export type ApplicantStatus = "submitted" | "accepted" | "declined";
 
@@ -28,6 +33,47 @@ export function ArtisanApplicantDetailView({
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [isDeclineModalOpen, setIsDeclineModalOpen] = useState(false);
   const [successMode, setSuccessMode] = useState<"accepted" | "declined" | null>(null);
+  const [detail, setDetail] = useState<ArtisanApplicationDetail | null>(null);
+  const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!applicantId) return;
+    let mounted = true;
+    getArtisanApplicationDetailApi(applicantId)
+      .then(async (res) => {
+        if (!mounted || !res) return;
+        setDetail(res);
+        if (res.status === "ACCEPTED") setStatus("accepted");
+        else if (res.status === "DECLINED") setStatus("declined");
+
+        const allIds = new Set<string>(res.workMediaIds ?? []);
+        if (res.answers) {
+          for (const val of Object.values(res.answers)) {
+            if (Array.isArray(val)) {
+              for (const id of val) if (typeof id === "string") allIds.add(id);
+            }
+          }
+        }
+        const resolved: Record<string, string> = {};
+        await Promise.all(
+          Array.from(allIds).map(async (id) => {
+            try {
+              const u = await getMediaUrlApi(id);
+              if (u?.url) resolved[id] = u.url;
+            } catch {
+              // ignore unresolved media
+            }
+          })
+        );
+        if (mounted) setMediaUrls(resolved);
+      })
+      .catch(() => {
+        // ignore if unavailable
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [applicantId]);
 
   const handleConfirmAccept = async () => {
     try {
@@ -36,12 +82,12 @@ export function ArtisanApplicantDetailView({
         note: "Please confirm your place within 72 hours",
       });
       toast.success("Applicant accepted! Payment invitation dispatched.");
-    } catch {
-      toast.success("Applicant accepted! Payment invitation dispatched.");
-    } finally {
       setIsAcceptModalOpen(false);
       setStatus("accepted");
       setSuccessMode("accepted");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not accept applicant.");
+      setIsAcceptModalOpen(false);
     }
   };
 
@@ -51,12 +97,12 @@ export function ArtisanApplicantDetailView({
         decision: "DECLINED",
       });
       toast("Application declined. Slot restored for other applicants.");
-    } catch {
-      toast("Application declined. Slot restored for other applicants.");
-    } finally {
       setIsDeclineModalOpen(false);
       setStatus("declined");
       setSuccessMode("declined");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not decline applicant.");
+      setIsDeclineModalOpen(false);
     }
   };
 
@@ -165,7 +211,8 @@ export function ArtisanApplicantDetailView({
           Applications
         </h1>
         <p className="text-xs sm:text-sm text-neutral-500 font-medium mt-0.5">
-          Welding & Metal Fabrication · Enugu
+          {detail?.program?.title || "Apprenticeship Programme"}
+          {detail?.program?.location ? ` · ${detail.program.location}` : ""}
         </p>
       </div>
 
@@ -218,7 +265,7 @@ export function ArtisanApplicantDetailView({
                   Why do you want to learn this trade?
                 </span>
                 <p className="text-neutral-800 leading-relaxed font-medium">
-                  I have watched my uncle fabricate gates since I was a boy and I want to do it properly with a certificate that customers can trust. I want my own workshop in Nsukka by 2028.
+                  {detail?.motivation || "—"}
                 </p>
               </div>
 
@@ -227,7 +274,7 @@ export function ArtisanApplicantDetailView({
                   What experience do you already have?
                 </span>
                 <p className="text-neutral-800 leading-relaxed font-medium">
-                  Two years assisting, mostly cutting and grinding.
+                  {detail?.experience || "—"}
                 </p>
               </div>
 
@@ -236,7 +283,7 @@ export function ArtisanApplicantDetailView({
                   Can you attend the workshop six days a week?
                 </span>
                 <p className="text-neutral-800 leading-relaxed font-medium">
-                  Yes
+                  {detail ? (detail.sixDayAvailability ? "Yes" : "No") : "—"}
                 </p>
               </div>
 
@@ -245,7 +292,7 @@ export function ArtisanApplicantDetailView({
                   Which best describes your current situation?
                 </span>
                 <p className="text-neutral-800 leading-relaxed font-medium">
-                  Currently unemployed
+                  {detail?.currentSituation?.replace(/_/g, " ") || "—"}
                 </p>
               </div>
 
@@ -254,9 +301,84 @@ export function ArtisanApplicantDetailView({
                   Upload examples of previous work (Optional)
                 </span>
                 <p className="text-neutral-800 leading-relaxed font-medium">
-                  2 photos attached
+                  {detail?.workMediaIds?.length
+                    ? `${detail.workMediaIds.length} file(s) attached`
+                    : "None attached"}
                 </p>
+                {detail?.workMediaIds && detail.workMediaIds.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {detail.workMediaIds.map((id, i) =>
+                      mediaUrls[id] ? (
+                        <a
+                          key={id}
+                          href={mediaUrls[id]}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-[#001B40] underline"
+                        >
+                          View attachment {i + 1}
+                        </a>
+                      ) : null
+                    )}
+                  </div>
+                )}
               </div>
+
+              {(detail?.program?.questions ?? [])
+                .filter((q) => {
+                  const lower = q.prompt.toLowerCase();
+                  return (
+                    !lower.includes("why do you want") &&
+                    !lower.includes("experience") &&
+                    !lower.includes("six days") &&
+                    !lower.includes("six-day") &&
+                    !lower.includes("previous work") &&
+                    !lower.includes("work example")
+                  );
+                })
+                .map((q) => {
+                  const ans = detail?.answers?.[q.id];
+                  return (
+                    <div key={q.id} className="pt-3 space-y-1">
+                      <span className="text-neutral-400 text-xs block">{q.prompt}</span>
+                      {q.type === "FILE" && Array.isArray(ans) ? (
+                        <div className="flex flex-wrap gap-2">
+                          {ans.length === 0 ? (
+                            <p className="text-neutral-800 font-medium">None attached</p>
+                          ) : (
+                            ans.map((id, idx) =>
+                              typeof id === "string" && mediaUrls[id] ? (
+                                <a
+                                  key={id}
+                                  href={mediaUrls[id]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-semibold text-[#001B40] underline"
+                                >
+                                  View attachment {idx + 1}
+                                </a>
+                              ) : (
+                                <span key={String(id)} className="text-xs text-neutral-500">
+                                  Attachment {idx + 1}
+                                </span>
+                              )
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-neutral-800 leading-relaxed font-medium">
+                          {typeof ans === "boolean"
+                            ? ans
+                              ? "Yes"
+                              : "No"
+                            : ans
+                            ? String(ans)
+                            : "—"}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </div>
 

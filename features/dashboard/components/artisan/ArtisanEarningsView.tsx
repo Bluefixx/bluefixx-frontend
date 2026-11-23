@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { getArtisanEarningsApi } from "@/lib/api/artisan";
 import { formatNaira } from "@/lib/utils/currency";
-import { ArtisanEarningsSummary } from "@/types/artisan";
+import { ArtisanEarnings } from "@/types/artisan";
 
 interface ArtisanEarningsViewProps {
   onWithdrawToBank: () => void;
@@ -20,7 +20,7 @@ export function ArtisanEarningsView({
   initialHasEarnings = true,
 }: ArtisanEarningsViewProps) {
   const [hasEarnings, setHasEarnings] = useState(initialHasEarnings);
-  const [earningsData, setEarningsData] = useState<ArtisanEarningsSummary | null>(null);
+  const [earningsData, setEarningsData] = useState<ArtisanEarnings | null>(null);
   const [isLoadingEarnings, setIsLoadingEarnings] = useState(false);
 
   useEffect(() => {
@@ -30,6 +30,16 @@ export function ArtisanEarningsView({
       .then((res) => {
         if (!mounted || !res) return;
         setEarningsData(res);
+        const total =
+          parseFloat(res.available || "0") +
+          parseFloat(res.held || "0") +
+          parseFloat(res.paid || "0") +
+          parseFloat(res.lifetimeEarnings || "0");
+        if (total === 0 && (!res.recent || res.recent.length === 0)) {
+          setHasEarnings(false);
+        } else {
+          setHasEarnings(true);
+        }
       })
       .catch((err) => {
         console.debug("Artisan earnings API offline or mocked.", err);
@@ -42,50 +52,43 @@ export function ArtisanEarningsView({
       mounted = false;
     };
   }, []);
-  const transactions = [
-    {
-      id: "tx-1",
-      title: "Job payout · Insured",
-      subtitle: "BF-2910 · 7% fee + 1% insurance deducted",
-      amount: "₦55,242",
-      badge: "Net payout",
-      badgeColor: "bg-emerald-50 text-emerald-700",
-    },
-    {
-      id: "tx-2",
-      title: "Pressure pump servicing",
-      subtitle: "Aaron D. · Booking #BF-7281",
-      amount: "₦38,000",
-      badge: "Available",
-      badgeColor: "bg-emerald-50 text-emerald-700",
-    },
-    {
-      id: "tx-3",
-      title: "Bathroom re-piping",
-      subtitle: "Chukwudi O. · Booking #BF-0711",
-      amount: "₦45,000",
-      badge: "Withdrawn",
-      badgeColor: "bg-neutral-100 text-neutral-600",
-    },
-    {
-      id: "tx-4",
-      title: "Shower line replacement",
-      subtitle: "Henry N. · Booking #BF-2710",
-      amount: "₦85,000",
-      badge: "Withdrawn",
-      badgeColor: "bg-neutral-100 text-neutral-600",
-    },
-  ];
+  const transactions = (earningsData?.recent ?? []).map((item) => ({
+    id: item.id,
+    title: item.title || "Job payout",
+    subtitle: `${item.reference || item.bookingId || "Ledger"} · ${new Date(item.createdAt).toLocaleDateString()}`,
+    amount: formatNaira(item.amount, true),
+    badge: item.status || item.kind,
+    badgeColor:
+      item.status === "RELEASED" || item.status === "PAID" || item.status === "AVAILABLE"
+        ? "bg-emerald-50 text-emerald-700"
+        : "bg-neutral-100 text-neutral-600",
+  }));
 
-  const weeklyData = [
-    { day: "Mon", height: "h-6", amount: "₦0" },
-    { day: "Tue", height: "h-14", amount: "₦25,000" },
-    { day: "Wed", height: "h-10", amount: "₦18,000" },
-    { day: "Thu", height: "h-28", amount: "₦38,000", isHighest: true },
-    { day: "Fri", height: "h-8", amount: "₦12,000" },
-    { day: "Sat", height: "h-4", amount: "₦0" },
-    { day: "Sun", height: "h-4", amount: "₦0" },
-  ];
+  const weeklyAmounts = (earningsData?.weekly ?? []).map((w) => parseFloat(w.amount || "0"));
+  const maxWeekly = Math.max(...weeklyAmounts, 1);
+  const weeklyData =
+    earningsData?.weekly && earningsData.weekly.length > 0
+      ? earningsData.weekly.map((w) => {
+          const val = parseFloat(w.amount || "0");
+          const ratio = val / maxWeekly;
+          const height =
+            ratio >= 0.8 ? "h-28" : ratio >= 0.5 ? "h-20" : ratio >= 0.25 ? "h-12" : "h-4";
+          return {
+            day: new Date(w.date).toLocaleDateString("en-NG", { weekday: "short" }),
+            height,
+            amount: formatNaira(w.amount, true),
+            isHighest: val > 0 && val === maxWeekly,
+          };
+        })
+      : [
+          { day: "Mon", height: "h-4", amount: "₦0", isHighest: false },
+          { day: "Tue", height: "h-4", amount: "₦0", isHighest: false },
+          { day: "Wed", height: "h-4", amount: "₦0", isHighest: false },
+          { day: "Thu", height: "h-4", amount: "₦0", isHighest: false },
+          { day: "Fri", height: "h-4", amount: "₦0", isHighest: false },
+          { day: "Sat", height: "h-4", amount: "₦0", isHighest: false },
+          { day: "Sun", height: "h-4", amount: "₦0", isHighest: false },
+        ];
 
   return (
     <div className="max-w-6xl mx-auto py-6 px-4 sm:px-6 select-none animate-in fade-in duration-200 space-y-6">
@@ -161,7 +164,7 @@ export function ArtisanEarningsView({
             Withdrawable balance
           </span>
           <div className="text-3xl sm:text-4xl font-heading font-extrabold text-white">
-            ₦168,000
+            {isLoadingEarnings ? "..." : formatNaira(earningsData?.available ?? "0", true)}
           </div>
           <button
             type="button"
@@ -177,19 +180,19 @@ export function ArtisanEarningsView({
           <div className="space-y-1">
             <span className="text-[11px] sm:text-xs text-neutral-300">In escrow</span>
             <p className="text-base sm:text-xl font-heading font-extrabold text-white">
-              ₦46,500
+              {formatNaira(earningsData?.held ?? "0", true)}
             </p>
           </div>
           <div className="space-y-1">
             <span className="text-[11px] sm:text-xs text-neutral-300">Paid out this month</span>
             <p className="text-base sm:text-xl font-heading font-extrabold text-white">
-              ₦412,000
+              {formatNaira(earningsData?.monthlyEarnings ?? "0", true)}
             </p>
           </div>
           <div className="space-y-1">
-            <span className="text-[11px] sm:text-xs text-neutral-300">Apprentice earnings</span>
+            <span className="text-[11px] sm:text-xs text-neutral-300">Lifetime earnings</span>
             <p className="text-base sm:text-xl font-heading font-extrabold text-white">
-              ₦212,000
+              {formatNaira(earningsData?.lifetimeEarnings ?? "0", true)}
             </p>
           </div>
         </div>

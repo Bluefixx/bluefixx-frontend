@@ -21,9 +21,9 @@ export function TalentReviewsSuite({
   onSubmitSuccess,
   onViewCertificate,
   onBackToApprenticeship,
-  programmeTitle = "Welding & Metal Fabrication",
-  artisanName = "John Obiora",
-  duration = "3 months",
+  programmeTitle = "Apprenticeship Programme",
+  artisanName = "Master Artisan",
+  duration = "Flexible",
   initialState = "form",
   enrollmentId,
 }: TalentReviewsSuiteProps) {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { getReferralSummaryApi } from "@/lib/api/referrals";
+import { getReferralHistoryApi, getReferralSummaryApi } from "@/lib/api/referrals";
 
 interface ReferralItem {
   id: string;
@@ -24,75 +24,47 @@ export function TalentReferralView({
 }: TalentReferralViewProps) {
   const [activeTab, setActiveTab] = useState<"all" | "in_progress" | "reward_earned" | "not_qualified">("all");
   const [code, setCode] = useState<string>(defaultCode);
+  const [referrals, setReferrals] = useState<ReferralItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
-    getReferralSummaryApi()
-      .then((data) => {
-        if (!isMounted || !data) return;
-        if (data.referralCode) setCode(data.referralCode);
-      })
-      .catch(() => {
-        // Retain default code
-      });
+    Promise.allSettled([getReferralSummaryApi(), getReferralHistoryApi()]).then(
+      ([summaryRes, historyRes]) => {
+        if (!isMounted) return;
+        if (summaryRes.status === "fulfilled" && summaryRes.value?.referralCode) {
+          setCode(summaryRes.value.referralCode);
+        }
+        if (historyRes.status === "fulfilled" && Array.isArray(historyRes.value)) {
+          const mapped: ReferralItem[] = historyRes.value.map((item: any) => ({
+            id: item.id,
+            name: item.referredName || item.name || item.maskedPhone || "Invited user",
+            meta: item.createdAt
+              ? `Joined ${new Date(item.createdAt).toLocaleDateString()}`
+              : "Referral",
+            status:
+              item.status === "REWARD_EARNED" || item.status === "PAID"
+                ? "reward_earned"
+                : item.status === "PENDING_PAYOUT"
+                ? "reward_pending"
+                : item.status === "EXPIRED"
+                ? "expired"
+                : item.status === "DENIED" || item.status === "REJECTED"
+                ? "denied"
+                : item.status === "INVITED"
+                ? "invited"
+                : "in_progress",
+            amount: item.rewardAmount ? `₦${(Number(item.rewardAmount) / 100).toLocaleString()}` : undefined,
+            note: item.note || item.reason,
+          }));
+          setReferrals(mapped);
+        }
+      }
+    );
 
     return () => {
       isMounted = false;
     };
   }, []);
-
-  const referrals: ReferralItem[] = [
-    {
-      id: "ref-1",
-      name: "Daniel John",
-      meta: "Enugu · Joined Aug 24",
-      status: "reward_earned",
-      amount: "₦3,000",
-    },
-    {
-      id: "ref-2",
-      name: "Daniel John",
-      meta: "Enugu · Joined Aug 24",
-      status: "in_progress",
-      amount: "₦3,000",
-    },
-    {
-      id: "ref-3",
-      name: "Fatima Yusuf",
-      meta: "Enugu · Joined Aug 16",
-      status: "in_progress",
-      amount: "₦3,000",
-      note: "Approval unlocks once their 30-day refund window closes",
-    },
-    {
-      id: "ref-4",
-      name: "Peter Adamu",
-      meta: "Joined Aug 15",
-      status: "reward_pending",
-      amount: "₦3,000",
-      note: "Payment to your bank account is currently pending final compliance transaction.",
-    },
-    {
-      id: "ref-5",
-      name: "+234 813 ••• 42",
-      meta: "Invite sent 14 Aug",
-      status: "invited",
-    },
-    {
-      id: "ref-6",
-      name: "Idris A.",
-      meta: "Joined 2 Aug",
-      status: "expired",
-      note: "Refund window elapsed before 30-day apprenticeship milestone completion.",
-    },
-    {
-      id: "ref-7",
-      name: "Emmanuel Okeke",
-      meta: "Joined 29 Jul",
-      status: "denied",
-      note: "Declined: the account already belongs to an existing user on another Bluefixx marketplace role.",
-    },
-  ];
 
   const filteredReferrals = referrals.filter((r) => {
     if (activeTab === "all") return true;

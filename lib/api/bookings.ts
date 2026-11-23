@@ -77,3 +77,23 @@ export async function decideAdditionApi(additionId: string, accept: boolean): Pr
 export async function confirmBookingScheduleVisitApi(bookingId: string): Promise<unknown> {
   return apiClient.post(`/bookings/${bookingId}/schedule/confirm`, {});
 }
+
+/**
+ * Create payment/work milestones for a booking
+ */
+export async function createBookingMilestonesApi(
+  bookingId: string,
+  milestones: Array<{ title: string; amount: number; dueAt?: string }>
+): Promise<unknown> {
+  return apiClient.post(`/bookings/${bookingId}/milestones`, { milestones });
+}
+
+/**
+ * Update a booking milestone status or details
+ */
+export async function updateBookingMilestoneApi(
+  milestoneId: string,
+  payload: { status?: string; title?: string }
+): Promise<unknown> {
+  return apiClient.patch(`/milestones/${milestoneId}`, payload);
+}

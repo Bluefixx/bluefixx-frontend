@@ -259,6 +259,20 @@ export default function PostJobWizard() {
           if (addrs && addrs.length > 0) {
             resolvedAddressId = addrs[0].id;
             setSelectedAddressId(resolvedAddressId);
+          } else {
+            const createdAddr = await createSavedAddressApi({
+              title: "Home",
+              street: locationName || "14 Admiralty Way, Lekki Phase 1",
+              city: "Lagos",
+              state: "Lagos",
+              latitude: 6.5244,
+              longitude: 3.3792,
+              isDefault: true,
+            });
+            if (createdAddr?.id) {
+              resolvedAddressId = createdAddr.id;
+              setSelectedAddressId(resolvedAddressId);
+            }
           }
         } catch {}
       }

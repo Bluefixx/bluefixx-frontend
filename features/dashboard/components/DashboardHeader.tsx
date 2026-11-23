@@ -10,6 +10,8 @@ import AccountMenuDropdown from "./AccountMenuDropdown";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { getNotificationsApi } from "@/lib/api/notifications";
 import { getSavedAddressesApi } from "@/lib/api/account";
+import { getSocket } from "@/lib/realtime/socket";
+import { getAccessToken } from "@/lib/api/client";
 import { SavedAddress } from "@/types/customer";
 
 interface DashboardHeaderProps {
@@ -23,7 +25,7 @@ export default function DashboardHeader({
 }: DashboardHeaderProps) {
   const router = useRouter();
   const { user, locationName, setLocationName, walletBalance, activeRole, switchRole } = useAuth();
-  const { unreadCount, setNotifications } = useNotifications();
+  const { unreadCount, setNotifications, addNotification } = useNotifications();
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -35,33 +37,90 @@ export default function DashboardHeader({
     setHasMounted(true);
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
+  const mapHeaderNotification = React.useCallback((it: any) => {
+    const rawKind = String(it?.kind || it?.type || "").toUpperCase();
+    const ref = it?.reference ? String(it.reference) : "";
+    let type: "quote" | "job-completed" | "warranty" | "review" | "escrow" | "referral" = "quote";
+    if (/(COMPLET|WORK_SUBMITTED)/.test(rawKind)) type = "job-completed";
+    else if (/WARRANTY/.test(rawKind)) type = "warranty";
+    else if (/REVIEW/.test(rawKind)) type = "review";
+    else if (/(ESCROW|PAY|WALLET|WITHDRAW|FUND)/.test(rawKind)) type = "escrow";
+    else if (/REFERRAL/.test(rawKind)) type = "referral";
+
+    let actionUrl = "/notifications";
+    if (/(OFFER_RECEIVED|QUOTE_REQUESTED|QUOTE_CLOSED|MESSAGE|CHAT)/.test(rawKind) && ref) {
+      actionUrl =
+        activeRole === "artisan"
+          ? `/artisan?view=messages&quoteId=${encodeURIComponent(ref)}`
+          : `/messages?quoteId=${encodeURIComponent(ref)}`;
+    } else if (/(OFFER_ACCEPTED|BOOKING_|ADDITION_|SCHEDULE_)/.test(rawKind)) {
+      actionUrl = activeRole === "artisan" ? "/artisan?view=active-jobs" : "/bookings?tab=active";
+    } else if (/(APPLICATION|APPRENTICE|TRAINING|ENROL)/.test(rawKind)) {
+      actionUrl = activeRole === "artisan" ? "/artisan?view=apprenticeships" : "/talent/applications";
+    }
+
+    return {
+      id: it.id,
+      title: it.title || "Notification",
+      description: it.body || it.description || it.title || "",
+      time: it.createdAt
+        ? new Date(it.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Just now",
+      dateGroup: "Today" as const,
+      isRead: Boolean(it.read || it.readAt),
+      type,
+      actionUrl,
+    };
+  }, [activeRole]);
+
+  const refreshNotifications = React.useCallback(() => {
     getNotificationsApi()
       .then((items) => {
-        if (mounted && Array.isArray(items)) {
-          setNotifications(
-            items.map((it: any) => ({
-              id: it.id,
-              title: it.title,
-              description: it.body || it.title,
-              time: it.createdAt
-                ? new Date(it.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : "Today",
-              dateGroup: "Today",
-              isRead: Boolean(it.read || it.readAt),
-              type: (it.type?.toLowerCase() as any) || "quote",
-              actionUrl: "/notifications",
-            }))
-          );
+        if (Array.isArray(items)) {
+          setNotifications(items.map(mapHeaderNotification));
         }
       })
       .catch((err) => {
         console.debug("Notifications API offline, using cached notifications.", err);
       });
+  }, [setNotifications]);
+
+  useEffect(() => {
+    if (!hasMounted) return;
+    let mounted = true;
+    let attachedSocket: ReturnType<typeof getSocket> = null;
+
+    const onNotification = (payload: any) => {
+      if (!mounted || !payload?.id) return;
+      const mapped = mapHeaderNotification(payload);
+      addNotification(mapped);
+      toast(mapped.title, { icon: "🔔", duration: 5000 });
+    };
+
+    const attachSocket = () => {
+      const sock = getSocket();
+      if (sock && sock !== attachedSocket) {
+        attachedSocket = sock;
+        sock.on("notification", onNotification);
+        sock.on("connect", refreshNotifications);
+      }
+    };
+
+    getNotificationsApi()
+      .then((items) => {
+        if (mounted && Array.isArray(items)) {
+          setNotifications(items.map(mapHeaderNotification));
+        }
+        if (mounted) attachSocket();
+      })
+      .catch((err) => {
+        console.debug("Notifications API offline, using cached notifications.", err);
+      });
+
+    attachSocket();
 
     // Hydrate user addresses for dynamic location
     getSavedAddressesApi()
@@ -78,8 +137,12 @@ export default function DashboardHeader({
 
     return () => {
       mounted = false;
+      if (attachedSocket) {
+        attachedSocket.off("notification", onNotification);
+        attachedSocket.off("connect", refreshNotifications);
+      }
     };
-  }, [setNotifications, locationName, setLocationName]);
+  }, [hasMounted, user?.id, setNotifications, addNotification, refreshNotifications, locationName, setLocationName]);
 
   const displayLocation =
     locationName ||
@@ -332,7 +395,11 @@ export default function DashboardHeader({
         <div className="relative">
           <button
             type="button"
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            onClick={() => {
+              const nextOpen = !isNotificationsOpen;
+              setIsNotificationsOpen(nextOpen);
+              if (nextOpen) refreshNotifications();
+            }}
             title={unreadCount > 0 ? `${unreadCount} unread notification(s)` : "Notifications"}
             className={`relative w-10 h-10 rounded-full border transition-all cursor-pointer shadow-2xs flex items-center justify-center ${
               unreadCount > 0
@@ -375,7 +442,7 @@ export default function DashboardHeader({
             Wallet
           </span>
           <span className="font-sans font-bold text-xs sm:text-sm text-[#0F1115]">
-            ₦{walletBalance.toLocaleString()}
+            ₦{(hasMounted ? walletBalance : 0).toLocaleString()}
           </span>
         </button>
 

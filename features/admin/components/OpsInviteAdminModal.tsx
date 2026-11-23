@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AdminRoleUser } from "../types";
+import { AdminRoleUser, AdminMfaStatus } from "../types";
 
 interface OpsInviteAdminModalProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export function OpsInviteAdminModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AdminRoleUser["role"]>("Support Agent");
+  const [enforceMfa, setEnforceMfa] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -33,6 +34,7 @@ export function OpsInviteAdminModal({
         email: email.trim().toLowerCase(),
         role,
         status: "Invited",
+        mfaStatus: enforceMfa ? "PENDING_SETUP" : "DISABLED",
         lastActive: "—",
       });
       setIsSubmitting(false);
@@ -102,6 +104,23 @@ export function OpsInviteAdminModal({
               <option value="Support Agent">Support Agent (Support tickets triage)</option>
               <option value="Compliance Lead">Compliance Lead (Safety, fraud audit)</option>
             </select>
+          </div>
+
+          {/* MFA Enforcement Toggle */}
+          <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 flex items-start gap-2.5">
+            <input
+              type="checkbox"
+              id="enforceMfa"
+              checked={enforceMfa}
+              onChange={(e) => setEnforceMfa(e.target.checked)}
+              className="rounded text-[#001B40] mt-0.5"
+            />
+            <label htmlFor="enforceMfa" className="cursor-pointer">
+              <span className="font-bold text-[#001B40] block">Enforce Multi-Factor Authentication (2FA)</span>
+              <span className="text-[11px] text-neutral-600 block mt-0.5">
+                Staff member will be prompted to link an Authenticator app before granting dashboard access.
+              </span>
+            </label>
           </div>
 
           <p className="text-[11px] text-neutral-500 italic pt-1">

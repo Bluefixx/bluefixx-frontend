@@ -2,41 +2,68 @@
 
 import React, { useState } from "react";
 import { MOCK_ADMIN_CONTENT } from "../mockPlatformData";
-import { AdminContentItem, ContentKind } from "../types";
+import { AdminContentItem, ContentKind, ContentAudienceScope } from "../types";
 import { OpsContentModal } from "./OpsContentModal";
 
 export function OpsContentView() {
+  const [items, setItems] = useState<AdminContentItem[]>(MOCK_ADMIN_CONTENT);
   const [activeTab, setActiveTab] = useState<ContentKind>("FAQ");
-  const [contentList, setContentList] = useState<AdminContentItem[]>(MOCK_ADMIN_CONTENT);
 
   const [selectedItemForEdit, setSelectedItemForEdit] = useState<AdminContentItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSaveItem = (savedItem: Partial<AdminContentItem>) => {
-    setContentList((prev) => {
-      const exists = prev.some((c) => c.id === savedItem.id);
+    setItems((prev) => {
+      const exists = prev.some((i) => i.id === savedItem.id);
       if (exists) {
-        return prev.map((c) => (c.id === savedItem.id ? ({ ...c, ...savedItem } as AdminContentItem) : c));
+        return prev.map((i) => (i.id === savedItem.id ? ({ ...i, ...savedItem } as AdminContentItem) : i));
       }
       return [savedItem as AdminContentItem, ...prev];
     });
   };
 
-  const faqs = contentList.filter((c) => c.kind === "FAQ");
-  const testimonials = contentList.filter((c) => c.kind === "TESTIMONIAL");
-  const announcements = contentList.filter((c) => c.kind === "ANNOUNCEMENT");
+  const faqs = items.filter((i) => i.kind === "FAQ");
+  const testimonials = items.filter((i) => i.kind === "TESTIMONIAL");
+  const announcements = items.filter((i) => i.kind === "ANNOUNCEMENT");
+
+  const renderAudienceBadge = (scope?: ContentAudienceScope) => {
+    switch (scope) {
+      case "WORKERS_ONLY":
+        return (
+          <span className="whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            Workers Only
+          </span>
+        );
+      case "CUSTOMERS_ONLY":
+        return (
+          <span className="whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+            Customers Only
+          </span>
+        );
+      case "TALENTS_ONLY":
+        return (
+          <span className="whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+            Talents Only
+          </span>
+        );
+      default:
+        return (
+          <span className="whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-neutral-100 text-neutral-600">
+            Public / All
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-xs font-semibold text-neutral-400 mb-1">Content</div>
-          <h1 className="text-2xl font-extrabold text-[#001B40] tracking-tight">
-            Content
-          </h1>
-          <p className="text-xs text-neutral-500 mt-0.5">
-            Public-facing copy that answers the questions support keeps receiving.
+          <div className="text-xs font-semibold text-neutral-400 mb-1">Growth & content</div>
+          <h1 className="text-2xl font-extrabold text-[#001B40] tracking-tight">Content</h1>
+          <p className="text-xs text-neutral-500 mt-1">
+            Public-facing copy that answers the questions support keeps receiving. Configured with audience segmentation and scheduled auto-expiry.
           </p>
         </div>
 
@@ -46,16 +73,15 @@ export function OpsContentView() {
             setSelectedItemForEdit(null);
             setIsModalOpen(true);
           }}
-          className="px-4 py-2.5 rounded-xl bg-[#001B40] text-white text-xs font-bold hover:bg-[#074292] shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#001B40] text-white text-xs font-bold hover:bg-[#074292] shadow-xs cursor-pointer"
         >
-          <span>+</span>
-          <span>New entry</span>
+          <span>+ New entry</span>
         </button>
       </div>
 
       {/* Tabs */}
       <div className="border-b border-neutral-200">
-        <nav className="flex items-center gap-4 text-xs font-bold">
+        <nav className="flex space-x-6 text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveTab("FAQ")}
@@ -106,7 +132,10 @@ export function OpsContentView() {
               className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 text-xs"
             >
               <div className="space-y-1">
-                <h3 className="font-bold text-neutral-900 text-sm">{faq.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-neutral-900 text-sm">{faq.title}</h3>
+                  {renderAudienceBadge(faq.audienceScope)}
+                </div>
                 <p className="text-[11px] text-neutral-500">
                   {faq.category} · updated {faq.updatedAt}
                 </p>
@@ -141,7 +170,10 @@ export function OpsContentView() {
               className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 text-xs"
             >
               <div className="space-y-1">
-                <h3 className="font-bold text-neutral-900 text-sm">&ldquo;{t.title}&rdquo;</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-neutral-900 text-sm">&ldquo;{t.title}&rdquo;</h3>
+                  {renderAudienceBadge(t.audienceScope)}
+                </div>
                 <p className="text-[11px] text-neutral-500">
                   {t.authorName} · {t.authorRole} {t.snippet ? `· ${t.snippet}` : ""} · published {t.updatedAt}
                 </p>
@@ -182,7 +214,15 @@ export function OpsContentView() {
               className="p-4 hover:bg-neutral-50/50 transition-colors flex items-center justify-between gap-4 text-xs"
             >
               <div className="space-y-1">
-                <h3 className="font-bold text-neutral-900 text-sm">{ann.title}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-neutral-900 text-sm">{ann.title}</h3>
+                  {renderAudienceBadge(ann.audienceScope)}
+                  {ann.expiresAt && (
+                    <span className="text-[10px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      ⏱ Expires {ann.expiresAt}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-neutral-500">
                   {ann.targetAudience} · published {ann.updatedAt}
                 </p>
@@ -193,6 +233,8 @@ export function OpsContentView() {
                   className={`whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     ann.status === "Published"
                       ? "bg-emerald-100 text-emerald-800"
+                      : ann.status === "Expired"
+                      ? "bg-neutral-200 text-neutral-700"
                       : "bg-amber-100 text-amber-800"
                   }`}
                 >

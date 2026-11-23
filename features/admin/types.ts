@@ -355,12 +355,12 @@ export interface WalletLedgerEntry {
     role: string;
   };
   type:
-    | "Wallet funding"
-    | "Withdrawal payout"
-    | "Escrow credit"
-    | "Escrow debit"
-    | "Admin adjustment"
-    | "Commission deduction";
+  | "Wallet funding"
+  | "Withdrawal payout"
+  | "Escrow credit"
+  | "Escrow debit"
+  | "Admin adjustment"
+  | "Commission deduction";
   amount: number;
   status: "Successful" | "Pending" | "Failed";
   date: string;
@@ -635,10 +635,18 @@ export interface AdminApprenticeshipPayment {
 // Platform Management Modules Contracts
 // ==========================================
 
+export interface AdminTradeSubcategory {
+  name: string;
+  slug: string;
+  rank: number;
+}
+
 export interface AdminTradeCategory {
   id: string;
   name: string;
   subcategories: string[];
+  subcategoryDetails?: AdminTradeSubcategory[];
+  warrantyDays?: number;
   activeWorkers: number;
   jobs30d: number;
   demand: "High" | "Medium" | "Low";
@@ -651,6 +659,7 @@ export interface AdminTradeCategory {
 }
 
 export type ContentKind = "FAQ" | "TESTIMONIAL" | "ANNOUNCEMENT";
+export type ContentAudienceScope = "ALL" | "WORKERS_ONLY" | "CUSTOMERS_ONLY" | "TALENTS_ONLY";
 
 export interface AdminContentItem {
   id: string;
@@ -662,9 +671,22 @@ export interface AdminContentItem {
   authorName?: string;
   authorRole?: string;
   targetAudience: string;
-  status: "Published" | "Pending review" | "Draft" | "Pending";
+  audienceScope?: ContentAudienceScope;
+  status: "Published" | "Pending review" | "Draft" | "Pending" | "Expired";
   updatedAt: string;
   scheduledDate?: string;
+  expiresAt?: string;
+}
+
+export interface AdminNotificationTemplate {
+  id: string;
+  title: string;
+  subject: string;
+  audience: string;
+  segmentFilter: string;
+  channels: string[];
+  message: string;
+  callToAction?: string;
 }
 
 export interface AdminBroadcastNotification {
@@ -682,13 +704,26 @@ export interface AdminBroadcastNotification {
   status: "Successful" | "Pending" | "Failed";
 }
 
+export type AdminRoleType =
+  | "Super Administrator"
+  | "Finance Admin"
+  | "Support Lead"
+  | "Operations Admin"
+  | "Verification Admin"
+  | "Support Agent"
+  | "Compliance Lead";
+
+export type AdminMfaStatus = "ENFORCED" | "PENDING_SETUP" | "DISABLED";
+
 export interface AdminRoleUser {
   id: string;
   fullName: string;
   email: string;
   avatarUrl?: string;
-  role: "Super Administrator" | "Finance Admin" | "Support Lead" | "Operations Admin" | "Verification Admin" | "Support Agent" | "Compliance Lead";
+  role: AdminRoleType;
   status: "Active" | "Invited" | "Suspended";
+  mfaStatus: AdminMfaStatus;
+  mfaMethod?: "AUTHENTICATOR_APP" | "SMS_2FA";
   lastActive: string;
   permissions?: string[];
 }

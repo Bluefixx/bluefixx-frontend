@@ -43,10 +43,11 @@ export function OpsCategoriesView() {
 
   // Export CSV
   const handleExportCSV = () => {
-    const headers = ["Trade", "Subcategories", "Active Workers", "Jobs (30d)", "Demand", "Avg Job Value", "Status"];
+    const headers = ["Trade", "Subcategories", "Warranty (Days)", "Active Workers", "Jobs (30d)", "Demand", "Avg Job Value", "Status"];
     const rows = filteredTrades.map((t) => [
       t.name,
       `"${t.subcategories.join("; ")}"`,
+      t.warrantyDays || 14,
       t.activeWorkers,
       t.jobs30d,
       t.demand,
@@ -172,6 +173,7 @@ export function OpsCategoriesView() {
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50/50 text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
                 <th className="py-3 px-4">Trade</th>
+                <th className="py-3 px-4 text-center">Warranty</th>
                 <th className="py-3 px-4 text-center">Active workers</th>
                 <th className="py-3 px-4 text-center">Jobs (30d)</th>
                 <th className="py-3 px-4">Demand</th>
@@ -194,6 +196,13 @@ export function OpsCategoriesView() {
                     </span>
                   </td>
 
+                  {/* Warranty Window */}
+                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                    <span className="px-2 py-0.5 rounded-md bg-blue-50 text-[#001B40] font-bold text-[11px] border border-blue-100 inline-flex items-center gap-1">
+                      🛡️ {t.warrantyDays || 14}d
+                    </span>
+                  </td>
+
                   {/* Active Workers */}
                   <td className="py-3.5 px-4 text-center font-bold text-neutral-800 whitespace-nowrap">
                     {t.activeWorkers}
@@ -207,13 +216,12 @@ export function OpsCategoriesView() {
                   {/* Demand Indicator */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <span
-                      className={`whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        t.demand === "High"
+                      className={`whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${t.demand === "High"
                           ? "bg-emerald-100 text-emerald-800"
                           : t.demand === "Medium"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-neutral-200 text-neutral-700"
-                      }`}
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-neutral-200 text-neutral-700"
+                        }`}
                     >
                       ● {t.demand}
                     </span>
@@ -232,11 +240,10 @@ export function OpsCategoriesView() {
                   {/* Status */}
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     <span
-                      className={`whitespace-nowrap shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        t.status === "Active"
+                      className={`whitespace-nowrap shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold ${t.status === "Active"
                           ? "bg-emerald-100 text-emerald-800"
                           : "bg-red-100 text-red-800"
-                      }`}
+                        }`}
                     >
                       ● {t.status}
                     </span>
@@ -264,9 +271,8 @@ export function OpsCategoriesView() {
                           setIsInactivateOpen(true);
                         }}
                         title={t.status === "Active" ? "Deactivate trade" : "Reactivate trade"}
-                        className={`p-1.5 rounded-lg border border-neutral-300 hover:bg-neutral-100 cursor-pointer ${
-                          t.status === "Active" ? "text-neutral-500 hover:text-red-700" : "text-emerald-700"
-                        }`}
+                        className={`p-1.5 rounded-lg border border-neutral-300 hover:bg-neutral-100 cursor-pointer ${t.status === "Active" ? "text-neutral-500 hover:text-red-700" : "text-emerald-700"
+                          }`}
                       >
                         ⏻
                       </button>

@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { MOCK_ADMIN_NOTIFICATIONS } from "../mockPlatformData";
-import { AdminBroadcastNotification } from "../types";
+import { MOCK_ADMIN_NOTIFICATIONS, MOCK_NOTIFICATION_TEMPLATES } from "../mockPlatformData";
+import { AdminBroadcastNotification, AdminNotificationTemplate } from "../types";
 import { OpsSecurityPinModal } from "./OpsSecurityPinModal";
 
 export function OpsNotificationsView() {
@@ -17,6 +17,12 @@ export function OpsNotificationsView() {
   const [message, setMessage] = useState("");
   const [callToAction, setCallToAction] = useState("");
   const [delivery, setDelivery] = useState("Immediately");
+
+  // Template Modal / Drawer State
+  const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false);
+
+  // Retry State
+  const [retryingId, setRetryingId] = useState<string | null>(null);
 
   // PIN & Modal State
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
@@ -42,6 +48,41 @@ export function OpsNotificationsView() {
   const handleSendTest = () => {
     setToastMessage("Test notification sent to simeon.daniel@bluefixx.ng");
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Load Template Handler
+  const handleSelectTemplate = (template: AdminNotificationTemplate) => {
+    setSubject(template.subject);
+    setMessage(template.message);
+    setAudience(template.audience);
+    setSegmentFilter(template.segmentFilter);
+    setChannels(template.channels);
+    setCallToAction(template.callToAction || "");
+    setIsTemplatePickerOpen(false);
+    setToastMessage(`Template "${template.title}" loaded into composer`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Retry Failed Delivery Handler
+  const handleRetryFailed = (notifId: string) => {
+    setRetryingId(notifId);
+    setTimeout(() => {
+      setHistory((prev) =>
+        prev.map((item) => {
+          if (item.id === notifId) {
+            return {
+              ...item,
+              deliveredCount: item.deliveredCount + item.failedCount,
+              failedCount: 0,
+            };
+          }
+          return item;
+        })
+      );
+      setRetryingId(null);
+      setToastMessage("Failed deliveries re-queued and successfully dispatched!");
+      setTimeout(() => setToastMessage(null), 3500);
+    }, 1200);
   };
 
   // Trigger PIN modal before live broadcast
@@ -85,18 +126,29 @@ export function OpsNotificationsView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <div className="text-xs font-semibold text-neutral-400 mb-1">Notifications</div>
-        <h1 className="text-2xl font-extrabold text-[#001B40] tracking-tight">
-          Notifications
-        </h1>
-        <p className="text-xs text-neutral-500 mt-0.5">
-          Mass communication is a one-way door. Audience size, channels and schedule are confirmed before anything sends.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="text-xs font-semibold text-neutral-400 mb-1">Notifications</div>
+          <h1 className="text-2xl font-extrabold text-[#001B40] tracking-tight">
+            Notifications
+          </h1>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            Mass communication is a one-way door. Audience size, channels and schedule are confirmed before anything sends.
+          </p>
+        </div>
+
+        {/* Quick Load Template Action */}
+        <button
+          type="button"
+          onClick={() => setIsTemplatePickerOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-neutral-300 bg-white hover:bg-neutral-50 text-xs font-bold text-[#001B40] shadow-2xs cursor-pointer"
+        >
+          <span>📑 Load Template</span>
+        </button>
       </div>
 
       {toastMessage && (
-        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2 animate-in fade-in duration-200">
           <span>✓</span>
           <span>{toastMessage}</span>
         </div>
@@ -106,7 +158,16 @@ export function OpsNotificationsView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Composer Form (2 spans) */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-200 p-6 shadow-xs space-y-5 text-xs">
-          <h2 className="text-sm font-bold text-[#001B40]">Composer</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-[#001B40]">Composer</h2>
+            <button
+              type="button"
+              onClick={() => setIsTemplatePickerOpen(true)}
+              className="text-[11px] font-semibold text-[#074292] hover:underline cursor-pointer"
+            >
+              Choose from pre-built templates →
+            </button>
+          </div>
 
           <form onSubmit={handleInitiateBroadcast} className="space-y-4">
             {/* Audience & Segment Filter */}
@@ -122,9 +183,9 @@ export function OpsNotificationsView() {
                 >
                   <option value="Workers">Workers</option>
                   <option value="Customers">Customers</option>
-                  <option value="Talents">Talents</option>
+                  <option value="Talents">Talents / Apprentices</option>
                   <option value="Pending verification">Pending verification</option>
-                  <option value="All users">All users</option>
+                  <option value="All users">All users (Universal)</option>
                 </select>
               </div>
 
@@ -138,16 +199,17 @@ export function OpsNotificationsView() {
                   <option value="No further filter">No further filter</option>
                   <option value="Lagos region only">Lagos region only</option>
                   <option value="Abuja region only">Abuja region only</option>
-                  <option value="Enugu region only">Enugu region only</option>
-                  <option value="High volume users">High volume users</option>
-                  <option value="Inactive 30+ days">Inactive 30+ days</option>
+                  <option value="Tier-2 verified only">Tier-2 verified only</option>
+                  <option value="Active in last 30 days">Active in last 30 days</option>
                 </select>
               </div>
             </div>
 
-            {/* Channels */}
+            {/* Channels Checkboxes */}
             <div>
-              <label className="block font-bold text-neutral-700 mb-1.5">Channels</label>
+              <label className="block font-bold text-neutral-700 mb-1.5">
+                Channels <span className="text-red-500">*</span>
+              </label>
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer font-medium text-neutral-800">
                   <input
@@ -156,8 +218,9 @@ export function OpsNotificationsView() {
                     onChange={() => toggleChannel("In-app")}
                     className="rounded text-[#001B40]"
                   />
-                  <span>In-app</span>
+                  <span>In-app push &amp; notification feed</span>
                 </label>
+
                 <label className="flex items-center gap-2 cursor-pointer font-medium text-neutral-800">
                   <input
                     type="checkbox"
@@ -167,10 +230,16 @@ export function OpsNotificationsView() {
                   />
                   <span>Email</span>
                 </label>
-                <label className="flex items-center gap-2 text-neutral-400 font-medium cursor-not-allowed">
-                  <input type="checkbox" disabled className="rounded" />
+
+                <label className="flex items-center gap-2 cursor-pointer font-medium text-neutral-400">
+                  <input
+                    type="checkbox"
+                    checked={channels.includes("SMS")}
+                    onChange={() => toggleChannel("SMS")}
+                    className="rounded text-[#001B40]"
+                  />
                   <span>SMS</span>
-                  <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.2 rounded border border-neutral-200">
+                  <span className="text-[10px] bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded font-normal">
                     Future-ready
                   </span>
                 </label>
@@ -187,20 +256,18 @@ export function OpsNotificationsView() {
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. September payout schedule"
+                placeholder="e.g. September payout schedule update"
                 className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs focus:outline-none focus:border-[#001B40]"
               />
             </div>
 
-            {/* Message with 600 char counter */}
+            {/* Message Body with Character Counter */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="font-bold text-neutral-700">
                   Message <span className="text-red-500">*</span>
                 </label>
-                <span className="text-[11px] text-neutral-400 font-mono">
-                  {message.length}/600
-                </span>
+                <span className="text-[10px] text-neutral-400">{message.length}/600</span>
               </div>
               <textarea
                 rows={5}
@@ -209,7 +276,7 @@ export function OpsNotificationsView() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Write in plain language. Include what changes, when, and what the user must do."
-                className="w-full p-3 rounded-xl border border-neutral-300 text-xs focus:outline-none focus:border-[#001B40]"
+                className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs focus:outline-none focus:border-[#001B40] leading-relaxed"
               />
             </div>
 
@@ -241,35 +308,38 @@ export function OpsNotificationsView() {
           </form>
         </div>
 
-        {/* Right Column: Preview, Send Summary & Actions */}
-        <div className="space-y-4">
-          {/* Live Mobile Notification Preview */}
-          <div className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-xs space-y-3">
-            <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Preview</span>
-            <div className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/70 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-neutral-400">
-                <div className="flex items-center gap-1.5">
-                  <Image
-                    src="/icons/BFLogoBlue.svg"
-                    alt="BlueFixx"
-                    width={14}
-                    height={14}
-                    className="w-3.5 h-3.5 object-contain"
-                  />
-                  <span className="font-bold text-[#001B40]">Bluefixx</span>
-                </div>
-                <span>now</span>
+        {/* Right Column: Live Push Preview & Send Summary (1 span) */}
+        <div className="space-y-6">
+          {/* Mobile Preview Box */}
+          <div className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-xs space-y-3 text-xs">
+            <h2 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Preview</h2>
+
+            <div className="p-3.5 rounded-xl bg-neutral-50 border border-neutral-200 space-y-2 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <Image
+                  src="/icons/BFLogoBlue.svg"
+                  alt="Bluefixx"
+                  width={18}
+                  height={18}
+                  className="shrink-0"
+                />
+                <span className="font-extrabold text-[#001B40] text-xs">Bluefixx</span>
+                <span className="text-[10px] text-neutral-400 ml-auto">now</span>
               </div>
-              <p className="font-bold text-xs text-neutral-900 leading-snug">
+
+              <div className="font-bold text-neutral-900 text-xs">
                 {subject.trim() || "Your subject appears here"}
-              </p>
+              </div>
+
               <p className="text-[11px] text-neutral-600 line-clamp-3 leading-relaxed">
-                {message.trim() || "Your message body appears here exactly as the user will read it."}
+                {message.trim() ||
+                  "Your message body appears here exactly as the user will read it on their device."}
               </p>
+
               {callToAction.trim() && (
                 <div className="pt-1">
-                  <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#001B40] text-white">
-                    {callToAction}
+                  <span className="text-[11px] font-bold text-[#074292] underline">
+                    {callToAction} →
                   </span>
                 </div>
               )}
@@ -277,30 +347,37 @@ export function OpsNotificationsView() {
           </div>
 
           {/* Send Summary Card */}
-          <div className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-xs space-y-3 text-xs">
-            <span className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">Send summary</span>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Recipients:</span>
-                <span className="font-extrabold text-[#001B40]">{recipientCount.toLocaleString()}</span>
+          <div className="bg-white rounded-2xl border border-neutral-200 p-5 shadow-xs space-y-4 text-xs">
+            <h2 className="text-sm font-bold text-[#001B40]">Send summary</h2>
+
+            <div className="space-y-2.5 divide-y divide-neutral-100">
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-neutral-500">Recipients</span>
+                <span className="font-bold text-neutral-900">
+                  {recipientCount.toLocaleString()} {audience.toLowerCase()}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Channels:</span>
-                <span className="font-semibold text-neutral-800">{channels.join(", ") || "None"}</span>
+
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-neutral-500">Channels</span>
+                <span className="font-bold text-neutral-900">
+                  {channels.length > 0 ? channels.join(", ") : "None selected"}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Delivery:</span>
-                <span className="font-semibold text-neutral-800">{delivery}</span>
+
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-neutral-500">Delivery</span>
+                <span className="font-bold text-neutral-900">{delivery}</span>
               </div>
             </div>
 
-            {/* Warning Callout */}
-            <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 text-[11px] space-y-1">
-              <div className="flex items-center gap-1 font-bold">
+            {/* Warning Callout Matching Screenshot */}
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs">
                 <span>⚠</span>
                 <span>This cannot be recalled</span>
               </div>
-              <p className="text-amber-800 leading-relaxed">
+              <p className="text-amber-800 leading-relaxed text-[11px]">
                 Once sent, messages cannot be withdrawn from a user&apos;s inbox. Send a test to yourself first.
               </p>
             </div>
@@ -327,7 +404,7 @@ export function OpsNotificationsView() {
         </div>
       </div>
 
-      {/* Delivery History Section */}
+      {/* Delivery History Section with Failed Retry Action */}
       <div className="bg-white rounded-2xl border border-neutral-200 shadow-xs p-6 space-y-4">
         <h2 className="text-sm font-bold text-[#001B40]">Delivery history</h2>
 
@@ -353,6 +430,18 @@ export function OpsNotificationsView() {
                   )}
                 </div>
 
+                {/* 1-Click Retry Failed Recipients Action */}
+                {h.failedCount > 0 && (
+                  <button
+                    type="button"
+                    disabled={retryingId === h.id}
+                    onClick={() => handleRetryFailed(h.id)}
+                    className="px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 font-bold text-[11px] cursor-pointer transition-colors"
+                  >
+                    {retryingId === h.id ? "Retrying..." : `Retry Failed (${h.failedCount})`}
+                  </button>
+                )}
+
                 <span
                   className={`whitespace-nowrap shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                     h.status === "Successful"
@@ -367,6 +456,60 @@ export function OpsNotificationsView() {
           ))}
         </div>
       </div>
+
+      {/* Template Picker Modal */}
+      {isTemplatePickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-[#001B40]">
+                  Broadcast Templates
+                </h3>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  Pre-configured operational messages for common platform events.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTemplatePickerOpen(false)}
+                className="text-neutral-400 hover:text-neutral-700 text-sm p-1 rounded-md"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+              {MOCK_NOTIFICATION_TEMPLATES.map((tmpl) => (
+                <div
+                  key={tmpl.id}
+                  onClick={() => handleSelectTemplate(tmpl)}
+                  className="p-3.5 rounded-xl border border-neutral-200 hover:border-[#001B40] hover:bg-neutral-50/70 transition-all cursor-pointer space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#001B40] text-xs">{tmpl.title}</span>
+                    <span className="text-[10px] bg-blue-50 text-[#001B40] px-2 py-0.5 rounded font-bold border border-blue-100">
+                      {tmpl.audience}
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-neutral-800">{tmpl.subject}</p>
+                  <p className="text-[11px] text-neutral-500 line-clamp-2">{tmpl.message}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-neutral-100">
+              <button
+                type="button"
+                onClick={() => setIsTemplatePickerOpen(false)}
+                className="px-4 py-2 rounded-xl border border-neutral-300 text-xs font-bold text-neutral-700 hover:bg-neutral-100 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin Security PIN Modal for Broadcast Gate */}
       <OpsSecurityPinModal

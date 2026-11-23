@@ -4,6 +4,8 @@ import {
   AdminBroadcastNotification,
   AdminRoleUser,
   AdminAuditLog,
+  AdminNotificationTemplate,
+  AdminRoleType,
 } from "./types";
 
 export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
@@ -11,6 +13,13 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-01",
     name: "Plumbing",
     subcategories: ["Leak repair", "Pipe fitting", "Water heaters", "Drainage"],
+    subcategoryDetails: [
+      { name: "Leak repair", slug: "leak-repair", rank: 1 },
+      { name: "Pipe fitting", slug: "pipe-fitting", rank: 2 },
+      { name: "Water heaters", slug: "water-heaters", rank: 3 },
+      { name: "Drainage", slug: "drainage", rank: 4 },
+    ],
+    warrantyDays: 7,
     activeWorkers: 45,
     jobs30d: 1328,
     demand: "High",
@@ -24,6 +33,13 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-02",
     name: "Electrical",
     subcategories: ["Wiring", "Inverters", "Fault finding", "Security lighting"],
+    subcategoryDetails: [
+      { name: "Wiring", slug: "wiring", rank: 1 },
+      { name: "Inverters", slug: "inverters", rank: 2 },
+      { name: "Fault finding", slug: "fault-finding", rank: 3 },
+      { name: "Security lighting", slug: "security-lighting", rank: 4 },
+    ],
+    warrantyDays: 14,
     activeWorkers: 104,
     jobs30d: 5210,
     demand: "High",
@@ -37,6 +53,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-03",
     name: "Carpentry",
     subcategories: ["Furniture", "Doors", "Wardrobes"],
+    subcategoryDetails: [
+      { name: "Furniture", slug: "furniture", rank: 1 },
+      { name: "Doors", slug: "doors", rank: 2 },
+      { name: "Wardrobes", slug: "wardrobes", rank: 3 },
+    ],
+    warrantyDays: 30,
     activeWorkers: 204,
     jobs30d: 1452,
     demand: "Medium",
@@ -50,6 +72,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-04",
     name: "Painting",
     subcategories: ["Interior", "Exterior", "Screeding"],
+    subcategoryDetails: [
+      { name: "Interior", slug: "interior", rank: 1 },
+      { name: "Exterior", slug: "exterior", rank: 2 },
+      { name: "Screeding", slug: "screeding", rank: 3 },
+    ],
+    warrantyDays: 14,
     activeWorkers: 78,
     jobs30d: 608,
     demand: "Medium",
@@ -63,6 +91,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-05",
     name: "Welding",
     subcategories: ["Gates", "Fabrication", "Railings"],
+    subcategoryDetails: [
+      { name: "Gates", slug: "gates", rank: 1 },
+      { name: "Fabrication", slug: "fabrication", rank: 2 },
+      { name: "Railings", slug: "railings", rank: 3 },
+    ],
+    warrantyDays: 30,
     activeWorkers: 142,
     jobs30d: 484,
     demand: "Medium",
@@ -76,6 +110,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-06",
     name: "Cleaning",
     subcategories: ["Deep cleaning", "Post-construction", "Office"],
+    subcategoryDetails: [
+      { name: "Deep cleaning", slug: "deep-cleaning", rank: 1 },
+      { name: "Post-construction", slug: "post-construction", rank: 2 },
+      { name: "Office", slug: "office", rank: 3 },
+    ],
+    warrantyDays: 3,
     activeWorkers: 236,
     jobs30d: 1740,
     demand: "High",
@@ -88,9 +128,15 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
   {
     id: "TRD-07",
     name: "Mechanical",
-    subcategories: ["Generators", "AC servicing", "Auto repairs"],
+    subcategories: ["Generators", "Air conditioning", "Automobile"],
+    subcategoryDetails: [
+      { name: "Generators", slug: "generators", rank: 1 },
+      { name: "Air conditioning", slug: "air-conditioning", rank: 2 },
+      { name: "Automobile", slug: "automobile", rank: 3 },
+    ],
+    warrantyDays: 7,
     activeWorkers: 204,
-    jobs30d: 722,
+    jobs30d: 720,
     demand: "Medium",
     avgJobValueKobo: 6500000,
     jobsPerWorker: 2.5,
@@ -102,6 +148,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-08",
     name: "Solar installation",
     subcategories: ["Panels", "Inverters", "Battery wiring"],
+    subcategoryDetails: [
+      { name: "Panels", slug: "panels", rank: 1 },
+      { name: "Inverters", slug: "inverters", rank: 2 },
+      { name: "Battery wiring", slug: "battery-wiring", rank: 3 },
+    ],
+    warrantyDays: 60,
     activeWorkers: 15,
     jobs30d: 198,
     demand: "High",
@@ -115,6 +167,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-09",
     name: "Masonry",
     subcategories: ["Brick work", "Plastering", "Tiling"],
+    subcategoryDetails: [
+      { name: "Brick work", slug: "brick-work", rank: 1 },
+      { name: "Plastering", slug: "plastering", rank: 2 },
+      { name: "Tiling", slug: "tiling", rank: 3 },
+    ],
+    warrantyDays: 30,
     activeWorkers: 107,
     jobs30d: 142,
     demand: "Low",
@@ -128,6 +186,12 @@ export const MOCK_ADMIN_TRADES: AdminTradeCategory[] = [
     id: "TRD-10",
     name: "Interior Decoration",
     subcategories: ["POP ceiling", "Wallpapers", "Curtains"],
+    subcategoryDetails: [
+      { name: "POP ceiling", slug: "pop-ceiling", rank: 1 },
+      { name: "Wallpapers", slug: "wallpapers", rank: 2 },
+      { name: "Curtains", slug: "curtains", rank: 3 },
+    ],
+    warrantyDays: 14,
     activeWorkers: 24,
     jobs30d: 41,
     demand: "Low",
@@ -144,10 +208,11 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
   {
     id: "CNT-FAQ-01",
     kind: "FAQ",
-    title: "How does Bluefixx ensure payment to artisans?",
-    content: "When a customer approves a quote, the full payment is deposited into an escrow account held safely by Bluefixx. The funds are automatically released upon confirmed job completion.",
-    category: "Payments / Escrow",
+    title: "How does Bluefixx escrow protect my payment?",
+    content: "Customer funds are locked in escrow when a job is booked. Payment is only disbursed to the worker after the customer inspects and signs off on the delivered work or the dispute resolution window closes.",
+    category: "Payment",
     targetAudience: "All users",
+    audienceScope: "ALL",
     status: "Published",
     updatedAt: "14 Aug 2026",
   },
@@ -158,6 +223,7 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     content: "Workers must submit an active 11-digit NIN, an identity selfie with liveness confirmation, and optional trade certificates for boosted tier-2 placement.",
     category: "Verification",
     targetAudience: "Workers",
+    audienceScope: "WORKERS_ONLY",
     status: "Published",
     updatedAt: "10 Aug 2026",
   },
@@ -168,6 +234,7 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     content: "Apprenticeship training fees can be paid in scheduled milestone tranches. Funds remain in escrow until attendance and module checklists are verified.",
     category: "Apprenticeship",
     targetAudience: "Talents & Artisans",
+    audienceScope: "TALENTS_ONLY",
     status: "Published",
     updatedAt: "08 Aug 2026",
   },
@@ -178,6 +245,7 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     content: "Verified artisans can request instantaneous withdrawals to their linked Nigerian commercial bank account 24/7 once escrow is released.",
     category: "Withdrawals",
     targetAudience: "Workers",
+    audienceScope: "WORKERS_ONLY",
     status: "Published",
     updatedAt: "05 Aug 2026",
   },
@@ -192,6 +260,7 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     authorName: "Amina Yusuf",
     authorRole: "Customer",
     targetAudience: "Customers",
+    audienceScope: "CUSTOMERS_ONLY",
     status: "Published",
     updatedAt: "20 Aug 2026",
   },
@@ -204,6 +273,7 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     authorName: "Sunday Idowu",
     authorRole: "Artisan",
     targetAudience: "Artisans",
+    audienceScope: "WORKERS_ONLY",
     status: "Published",
     updatedAt: "14 Aug 2026",
   },
@@ -216,6 +286,7 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     authorName: "Emmanuel Eze",
     authorRole: "Talent",
     targetAudience: "Talents",
+    audienceScope: "TALENTS_ONLY",
     status: "Pending review",
     updatedAt: "11 Aug 2026",
   },
@@ -227,8 +298,10 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     title: "August payout schedule update",
     content: "Banking settlement network maintenance on Sunday night will process Monday at 6:00 AM.",
     targetAudience: "All workers",
+    audienceScope: "WORKERS_ONLY",
     status: "Published",
     updatedAt: "24 Aug 2026",
+    expiresAt: "31 Aug 2026",
   },
   {
     id: "CNT-ANN-02",
@@ -236,8 +309,10 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     title: "New verification requirements",
     content: "Starting September 1, all new artisans must verify residential/workshop addresses via geofenced photo submission.",
     targetAudience: "Pending verification",
+    audienceScope: "WORKERS_ONLY",
     status: "Published",
     updatedAt: "20 Aug 2026",
+    expiresAt: "15 Sep 2026",
   },
   {
     id: "CNT-ANN-03",
@@ -245,8 +320,10 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     title: "Apprenticeship cohort 7 opening",
     content: "Submissions for October 2026 technical cohorts are now accepting applications across Lagos, Abuja, and Enugu.",
     targetAudience: "Talents · Lagos",
+    audienceScope: "TALENTS_ONLY",
     status: "Published",
     updatedAt: "18 Aug 2026",
+    expiresAt: "01 Oct 2026",
   },
   {
     id: "CNT-ANN-04",
@@ -254,9 +331,64 @@ export const MOCK_ADMIN_CONTENT: AdminContentItem[] = [
     title: "Scheduled maintenance notice",
     content: "Core database maintenance planned for Sunday 30 Aug between 02:00 AM and 04:00 AM UTC.",
     targetAudience: "All users",
+    audienceScope: "ALL",
     status: "Pending",
     updatedAt: "30 Aug 2026",
     scheduledDate: "30 Aug 2026",
+    expiresAt: "31 Aug 2026",
+  },
+];
+
+export const MOCK_NOTIFICATION_TEMPLATES: AdminNotificationTemplate[] = [
+  {
+    id: "TMPL-01",
+    title: "Bank Payout Holiday Alert",
+    subject: "Bank Settlement Schedule: Public Holiday Notice",
+    audience: "Workers",
+    segmentFilter: "Active verified workers",
+    channels: ["In-app", "Email"],
+    callToAction: "View payout timeline",
+    message: "Due to the upcoming federal public holiday, commercial bank settlements will be processed on the next business day. Instant wallet-to-wallet transactions remain fully functional.",
+  },
+  {
+    id: "TMPL-02",
+    title: "Scheduled Maintenance Notice",
+    subject: "Scheduled Platform Maintenance Notice",
+    audience: "All users",
+    segmentFilter: "All active accounts",
+    channels: ["In-app", "Email"],
+    callToAction: "Read status updates",
+    message: "Bluefixx will undergo essential database optimization on Sunday between 02:00 AM and 04:00 AM. During this brief window, job booking and chat will be paused.",
+  },
+  {
+    id: "TMPL-03",
+    title: "New Verification Standard (Tier-2)",
+    subject: "Action Required: Update Verification Documents",
+    audience: "Pending verification",
+    segmentFilter: "Tier 1 unverified workers",
+    channels: ["In-app"],
+    callToAction: "Upload verification photos",
+    message: "To ensure your artisan profile receives customer booking priority, please upload your verified NIN slip and workshop address photo before the end of the month.",
+  },
+  {
+    id: "TMPL-04",
+    title: "Apprenticeship Cohort Recruitment",
+    subject: "Technical Apprenticeship Cohort 7 Applications Open",
+    audience: "Talents",
+    segmentFilter: "Enrolled & prospective talents",
+    channels: ["Email"],
+    callToAction: "Explore workshop openings",
+    message: "Applications are now live for accredited apprenticeship placements in Electrical, Solar, and Welding trades across accredited master artisan workshops in Lagos.",
+  },
+  {
+    id: "TMPL-05",
+    title: "Weather & Operational Advisory",
+    subject: "Severe Weather Warning & Outdoor Work Guidelines",
+    audience: "Workers",
+    segmentFilter: "Outdoor trade workers (Roofing, Masonry)",
+    channels: ["In-app"],
+    callToAction: "Safety checklist",
+    message: "Severe rainfall and flash flood warnings are active in the metro area today. For your safety, outdoor electrical and roofing works should be rescheduled without penalty.",
   },
 ];
 
@@ -326,6 +458,8 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "adebisi@bluefixx.ng",
     role: "Super Administrator",
     status: "Active",
+    mfaStatus: "ENFORCED",
+    mfaMethod: "AUTHENTICATOR_APP",
     lastActive: "2 min ago",
   },
   {
@@ -334,6 +468,8 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "garba.b@bluefixx.ng",
     role: "Finance Admin",
     status: "Active",
+    mfaStatus: "ENFORCED",
+    mfaMethod: "AUTHENTICATOR_APP",
     lastActive: "35 min ago",
   },
   {
@@ -342,6 +478,8 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "bisi@bluefixx.ng",
     role: "Support Lead",
     status: "Active",
+    mfaStatus: "ENFORCED",
+    mfaMethod: "SMS_2FA",
     lastActive: "1 hr ago",
   },
   {
@@ -350,6 +488,8 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "simeon.daniel@bluefixx.ng",
     role: "Operations Admin",
     status: "Active",
+    mfaStatus: "ENFORCED",
+    mfaMethod: "AUTHENTICATOR_APP",
     lastActive: "Now",
   },
   {
@@ -358,6 +498,7 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "emeka@bluefixx.ng",
     role: "Verification Admin",
     status: "Active",
+    mfaStatus: "PENDING_SETUP",
     lastActive: "3 hrs ago",
   },
   {
@@ -366,6 +507,7 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "fatima.b@bluefixx.ng",
     role: "Support Agent",
     status: "Invited",
+    mfaStatus: "PENDING_SETUP",
     lastActive: "—",
   },
   {
@@ -374,9 +516,73 @@ export const MOCK_ADMIN_ROLES: AdminRoleUser[] = [
     email: "ibrahim@bluefixx.ng",
     role: "Compliance Lead",
     status: "Suspended",
+    mfaStatus: "DISABLED",
     lastActive: "12 days ago",
   },
 ];
+
+export interface AdminPermissionMatrixDefinition {
+  key: string;
+  label: string;
+  description: string;
+  category: "Security & Access" | "Financials" | "Trust & Moderation" | "Platform Operations";
+}
+
+export const ADMIN_PERMISSION_COLUMNS: AdminPermissionMatrixDefinition[] = [
+  { key: "view_pii", label: "View User PII & Docs", description: "Access NIN, BVN, phone numbers, and identity selfies.", category: "Security & Access" },
+  { key: "manage_roles", label: "Manage Staff & Roles", description: "Invite staff, modify privileges, and revoke admin sessions.", category: "Security & Access" },
+  { key: "release_escrow", label: "Approve Escrow Payouts", description: "Manually disburse funds from holding to worker accounts.", category: "Financials" },
+  { key: "issue_refunds", label: "Issue Financial Refunds", description: "Initiate credit card or bank clawbacks up to ₦500,000.", category: "Financials" },
+  { key: "resolve_disputes", label: "Arbitrate Disputes", description: "Rule on customer vs artisan disputed escrow cases.", category: "Trust & Moderation" },
+  { key: "suspend_users", label: "Suspend / Ban Accounts", description: "Block fraudulent or policy-violating customers/workers.", category: "Trust & Moderation" },
+  { key: "mass_broadcasts", label: "Send Mass Broadcasts", description: "Push in-app, SMS, and email broadcasts across user segments.", category: "Platform Operations" },
+  { key: "edit_trades", label: "Edit Trades & Warranties", description: "Create subcategories, set defect liability timers, and update fees.", category: "Platform Operations" },
+  { key: "export_audit", label: "Export Audit Logs", description: "Generate cryptographically signed compliance audit logs.", category: "Security & Access" },
+];
+
+export const ADMIN_ROLE_PERMISSIONS: Record<AdminRoleType, string[]> = {
+  "Super Administrator": [
+    "view_pii",
+    "manage_roles",
+    "release_escrow",
+    "issue_refunds",
+    "resolve_disputes",
+    "suspend_users",
+    "mass_broadcasts",
+    "edit_trades",
+    "export_audit",
+  ],
+  "Finance Admin": [
+    "view_pii",
+    "release_escrow",
+    "issue_refunds",
+    "export_audit",
+  ],
+  "Support Lead": [
+    "view_pii",
+    "resolve_disputes",
+    "suspend_users",
+  ],
+  "Operations Admin": [
+    "view_pii",
+    "resolve_disputes",
+    "suspend_users",
+    "mass_broadcasts",
+    "edit_trades",
+  ],
+  "Verification Admin": [
+    "view_pii",
+    "suspend_users",
+  ],
+  "Support Agent": [
+    "view_pii",
+  ],
+  "Compliance Lead": [
+    "view_pii",
+    "suspend_users",
+    "export_audit",
+  ],
+};
 
 export const MOCK_ADMIN_AUDIT_LOGS: AdminAuditLog[] = [
   {

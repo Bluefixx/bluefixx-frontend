@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { AdminTradeCategory } from "../types";
+import { AdminTradeCategory, AdminTradeSubcategory } from "../types";
 
 interface OpsCreateTradeModalProps {
   trade: AdminTradeCategory | null; // null for create, object for edit
@@ -19,8 +19,10 @@ export function OpsCreateTradeModal({
   const isEdit = Boolean(trade);
 
   const [tradeName, setTradeName] = useState("");
-  const [subcategoriesText, setSubcategoriesText] = useState("");
+  const [subcategories, setSubcategories] = useState<AdminTradeSubcategory[]>([]);
+  const [newSubcatName, setNewSubcatName] = useState("");
   const [commissionOverride, setCommissionOverride] = useState("Standard 10%");
+  const [warrantyDays, setWarrantyDays] = useState<number>(14);
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
   const [selectedRequirements, setSelectedRequirements] = useState<string[]>([
     "NIN slip",
@@ -30,14 +32,29 @@ export function OpsCreateTradeModal({
   useEffect(() => {
     if (trade) {
       setTradeName(trade.name);
-      setSubcategoriesText(trade.subcategories.join("\n"));
+      if (trade.subcategoryDetails && trade.subcategoryDetails.length > 0) {
+        setSubcategories(trade.subcategoryDetails);
+      } else {
+        setSubcategories(
+          trade.subcategories.map((name, idx) => ({
+            name,
+            slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+            rank: idx + 1,
+          }))
+        );
+      }
       setCommissionOverride(trade.commissionOverride || "Standard 10%");
+      setWarrantyDays(trade.warrantyDays || 14);
       setStatus(trade.status);
       setSelectedRequirements(trade.verificationRequirements || ["NIN slip"]);
     } else {
       setTradeName("");
-      setSubcategoriesText("");
+      setSubcategories([
+        { name: "General Installation", slug: "general-installation", rank: 1 },
+        { name: "Diagnostics & Repairs", slug: "diagnostics-repairs", rank: 2 },
+      ]);
       setCommissionOverride("Standard 10%");
+      setWarrantyDays(14);
       setStatus("Active");
       setSelectedRequirements(["NIN slip", "Trade test certificate"]);
     }
@@ -51,19 +68,53 @@ export function OpsCreateTradeModal({
     );
   };
 
+  const handleAddSubcat = () => {
+    if (!newSubcatName.trim()) return;
+    const name = newSubcatName.trim();
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    setSubcategories((prev) => [
+      ...prev,
+      { name, slug, rank: prev.length + 1 },
+    ]);
+    setNewSubcatName("");
+  };
+
+  const handleMoveSubcat = (index: number, direction: "up" | "down") => {
+    const targetIdx = direction === "up" ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= subcategories.length) return;
+    const updated = [...subcategories];
+    const temp = updated[index];
+    updated[index] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    // update rank order
+    setSubcategories(updated.map((item, i) => ({ ...item, rank: i + 1 })));
+  };
+
+  const handleRemoveSubcat = (index: number) => {
+    const filtered = subcategories.filter((_, i) => i !== index);
+    setSubcategories(filtered.map((item, i) => ({ ...item, rank: i + 1 })));
+  };
+
+  const handleUpdateSlug = (index: number, slug: string) => {
+    const updated = [...subcategories];
+    updated[index].slug = slug.toLowerCase().replace(/[^a-z0-9-]/g, "");
+    setSubcategories(updated);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!tradeName.trim()) return;
 
-    const subcats = subcategoriesText
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const subcategoryNames = subcategories.length > 0
+      ? subcategories.map((s) => s.name)
+      : ["General"];
 
     onSave({
       id: trade ? trade.id : `TRD-${Date.now()}`,
       name: tradeName.trim(),
-      subcategories: subcats.length > 0 ? subcats : ["General"],
+      subcategories: subcategoryNames,
+      subcategoryDetails: subcategories,
+      warrantyDays,
       commissionOverride,
       status,
       verificationRequirements: selectedRequirements,
@@ -79,14 +130,14 @@ export function OpsCreateTradeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-4 animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-neutral-200 p-6 space-y-4 animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
           <div>
             <h3 className="text-base font-extrabold text-[#001B40]">
               {isEdit ? `Edit ${trade?.name}` : "Create trade"}
             </h3>
             <p className="text-xs text-neutral-500 mt-0.5">
-              Trades control matching, required verification documents and commission overrides.
+              Configure matching hierarchy, public catalog slugs, escrow warranty windows, and requirements.
             </p>
           </div>
           <button
@@ -114,19 +165,127 @@ export function OpsCreateTradeModal({
             />
           </div>
 
-          {/* Subcategories Textarea */}
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="font-bold text-neutral-700">Subcategories</label>
-              <span className="text-[10px] text-neutral-400">One per line</span>
+          {/* Subcategory Re-ordering & Public Slug Management */}
+          <div className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/60 space-y-2.5">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="font-bold text-neutral-800 text-xs">Subcategories & Public Search Slugs</span>
+                <p className="text-[11px] text-neutral-500">
+                  Re-order rank controls which subcategories show first in the customer search dropdown.
+                </p>
+              </div>
+              <span className="text-[10px] font-semibold text-neutral-400 bg-white px-2 py-0.5 rounded-md border border-neutral-200">
+                {subcategories.length} subcategories
+              </span>
             </div>
-            <textarea
-              rows={4}
-              value={subcategoriesText}
-              onChange={(e) => setSubcategoriesText(e.target.value)}
-              placeholder="Wall tiling&#10;Floor screeding&#10;Interlock paving"
-              className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs focus:outline-none focus:border-[#001B40]"
-            />
+
+            {/* Subcategory List with Reordering */}
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {subcategories.map((sc, idx) => (
+                <div
+                  key={`${sc.name}-${idx}`}
+                  className="flex items-center gap-2 p-2 bg-white rounded-lg border border-neutral-200 text-xs shadow-2xs"
+                >
+                  <span className="w-5 text-[10px] font-bold text-neutral-400 text-center">
+                    #{idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-neutral-800 truncate">{sc.name}</div>
+                    <div className="flex items-center gap-1 text-[10px] text-neutral-400">
+                      <span>slug:</span>
+                      <input
+                        type="text"
+                        value={sc.slug}
+                        onChange={(e) => handleUpdateSlug(idx, e.target.value)}
+                        className="bg-neutral-50 px-1 py-0.5 rounded text-[10px] font-mono border border-neutral-200 text-neutral-700 focus:outline-none focus:border-[#001B40] max-w-[130px]"
+                      />
+                    </div>
+                  </div>
+                  {/* Move Up / Down Buttons */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => handleMoveSubcat(idx, "up")}
+                      className="p-1 rounded text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 disabled:opacity-25 cursor-pointer disabled:cursor-not-allowed"
+                      title="Move up in catalog"
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === subcategories.length - 1}
+                      onClick={() => handleMoveSubcat(idx, "down")}
+                      className="p-1 rounded text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100 disabled:opacity-25 cursor-pointer disabled:cursor-not-allowed"
+                      title="Move down in catalog"
+                    >
+                      ▼
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSubcat(idx)}
+                      className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 cursor-pointer ml-1"
+                      title="Remove subcategory"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add New Subcategory Inline */}
+            <div className="flex gap-2 pt-1">
+              <input
+                type="text"
+                value={newSubcatName}
+                onChange={(e) => setNewSubcatName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddSubcat();
+                  }
+                }}
+                placeholder="Add new subcategory..."
+                className="flex-1 p-2 rounded-lg border border-neutral-300 text-xs bg-white focus:outline-none focus:border-[#001B40]"
+              />
+              <button
+                type="button"
+                onClick={handleAddSubcat}
+                className="px-3 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold rounded-lg border border-neutral-300 text-xs cursor-pointer"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+
+          {/* Trade Warranty & Coverage Timers */}
+          <div className="p-3.5 rounded-xl border border-blue-100 bg-blue-50/40 space-y-2">
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="block font-bold text-neutral-800">
+                  Trade Defect Warranty & Escrow Sign-off Window
+                </label>
+                <p className="text-[11px] text-neutral-500">
+                  Standard period after customer delivery before auto-disbursing funds or closing dispute rights.
+                </p>
+              </div>
+              <span className="font-extrabold text-[#001B40] text-sm bg-white px-2.5 py-1 rounded-lg border border-blue-200 shadow-2xs">
+                {warrantyDays} days
+              </span>
+            </div>
+            <select
+              value={warrantyDays}
+              onChange={(e) => setWarrantyDays(Number(e.target.value))}
+              className="w-full p-2.5 rounded-xl border border-neutral-300 text-xs bg-white focus:outline-none focus:border-[#001B40]"
+            >
+              <option value={3}>3 Days — Minor Repairs, Cleaning, Quick Maintenance</option>
+              <option value={7}>7 Days — Plumbing, Basic Mechanical, Locksmith</option>
+              <option value={14}>14 Days — Electrical, Painting, Interior Fixtures</option>
+              <option value={30}>30 Days — Structural Carpentry, Masonry, Welding</option>
+              <option value={60}>60 Days — Solar Inverters, Generator Overhauls</option>
+              <option value={90}>90 Days — Commercial Installations & Civil Works</option>
+            </select>
           </div>
 
           {/* Commission Override & Status Grid */}

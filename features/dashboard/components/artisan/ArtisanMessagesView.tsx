@@ -74,65 +74,80 @@ export function ArtisanMessagesView({ onBackToDashboard: _onBackToDashboard }: A
   // Load real quote + talent programme conversations
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([getConversationsApi(), getTalentConversationsApi()]).then(
-      ([quoteRes, talentRes]) => {
-        if (!mounted) return;
-        const list: ArtisanThread[] = [];
+    const loadThreads = () => {
+      Promise.allSettled([getConversationsApi(), getTalentConversationsApi()]).then(
+        ([quoteRes, talentRes]) => {
+          if (!mounted) return;
+          const list: ArtisanThread[] = [];
 
-        if (quoteRes.status === "fulfilled" && Array.isArray(quoteRes.value)) {
-          for (const c of quoteRes.value) {
-            list.push({
-              key: `quote:${c.quoteId}`,
-              kind: "quote",
-              quoteId: c.quoteId,
-              peerName: c.peer?.fullName || "Customer",
-              subtitle: `Quote with ${c.peer?.fullName || "Customer"}`,
-              lastMessage: c.latestMessage?.text || "Quote conversation",
-              time: formatShortTime(c.latestMessage?.createdAt),
-              unread: c.unread || 0,
-            });
+          if (quoteRes.status === "fulfilled" && Array.isArray(quoteRes.value)) {
+            for (const c of quoteRes.value) {
+              list.push({
+                key: `quote:${c.quoteId}`,
+                kind: "quote",
+                quoteId: c.quoteId,
+                peerName: c.peer?.fullName || "Customer",
+                subtitle: `Quote with ${c.peer?.fullName || "Customer"}`,
+                lastMessage: c.latestMessage?.text || "Quote conversation",
+                time: formatShortTime(c.latestMessage?.createdAt),
+                unread: c.unread || 0,
+              });
+            }
           }
-        }
 
-        if (talentRes.status === "fulfilled" && Array.isArray(talentRes.value)) {
-          for (const t of talentRes.value) {
-            const tId = t.talentId || t.peer?.id || t.participant?.id;
-            list.push({
-              key: `talent:${t.programId}:${tId || "all"}`,
-              kind: "talent",
-              programId: t.programId,
-              talentId: tId,
-              peerName: t.peer?.fullName || t.participant?.fullName || t.programTitle || "Talent Apprentice",
-              subtitle: t.programTitle || "Apprenticeship Programme",
-              lastMessage: t.latestMessage?.text || t.lastMessage || "Programme conversation",
-              time: formatShortTime(t.latestMessage?.createdAt || t.lastMessageAt),
-              unread: t.unread ?? t.unreadCount ?? 0,
-            });
+          if (talentRes.status === "fulfilled" && Array.isArray(talentRes.value)) {
+            for (const t of talentRes.value) {
+              const tId = t.talentId || t.peer?.id || t.participant?.id;
+              list.push({
+                key: `talent:${t.programId}:${tId || "all"}`,
+                kind: "talent",
+                programId: t.programId,
+                talentId: tId,
+                peerName: t.peer?.fullName || t.participant?.fullName || t.programTitle || "Talent Apprentice",
+                subtitle: t.programTitle || "Apprenticeship Programme",
+                lastMessage: t.latestMessage?.text || t.lastMessage || "Programme conversation",
+                time: formatShortTime(t.latestMessage?.createdAt || t.lastMessageAt),
+                unread: t.unread ?? t.unreadCount ?? 0,
+              });
+            }
           }
-        }
 
-        list.push({
-          key: "support",
-          kind: "support",
-          peerName: "BlueFixx Support",
-          subtitle: "Official BlueFixx Safety & Support",
-          lastMessage: "24/7 Safety & Assistance",
-          time: "",
-          unread: 0,
-        });
+          list.push({
+            key: "support",
+            kind: "support",
+            peerName: "BlueFixx Support",
+            subtitle: "Official BlueFixx Safety & Support",
+            lastMessage: "24/7 Safety & Assistance",
+            time: "",
+            unread: 0,
+          });
 
-        setThreads(list);
-        if (requestedQuoteId && list.some((t) => t.key === `quote:${requestedQuoteId}`)) {
-          setSelectedKey(`quote:${requestedQuoteId}`);
-        } else {
-          setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
+          setThreads(list);
+          if (requestedQuoteId && list.some((t) => t.key === `quote:${requestedQuoteId}`)) {
+            setSelectedKey(`quote:${requestedQuoteId}`);
+          } else {
+            setSelectedKey((prev) => prev ?? list[0]?.key ?? "support");
+          }
+          setIsLoadingThreads(false);
         }
-        setIsLoadingThreads(false);
-      }
-    );
+      );
+    };
+
+    loadThreads();
+
+    const socket = getSocket();
+    const onNotif = () => {
+      if (mounted) loadThreads();
+    };
+    if (socket) {
+      socket.on("notification", onNotif);
+    }
 
     return () => {
       mounted = false;
+      if (socket) {
+        socket.off("notification", onNotif);
+      }
     };
   }, [requestedQuoteId]);
 

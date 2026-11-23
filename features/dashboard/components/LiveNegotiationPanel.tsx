@@ -73,14 +73,25 @@ export function LiveNegotiationPanel({
       onAccepted?.(payload.bookingId);
     };
 
+    const onOfferCreated = () => {
+      if (!mounted) return;
+      getQuoteNegotiationApi(quoteId)
+        .then((res) => {
+          if (mounted) setState(res);
+        })
+        .catch(() => {});
+    };
+
     socket.on("negotiation.updated", onUpdated);
     socket.on("negotiation.accepted", onAcceptedEvent);
+    socket.on("offer.created", onOfferCreated);
 
     return () => {
       mounted = false;
       socket.off("connect", join);
       socket.off("negotiation.updated", onUpdated);
       socket.off("negotiation.accepted", onAcceptedEvent);
+      socket.off("offer.created", onOfferCreated);
     };
   }, [quoteId, onAccepted]);
 

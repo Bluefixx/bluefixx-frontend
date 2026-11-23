@@ -30,7 +30,7 @@ import { ArtisanReportProblemView } from "./ArtisanReportProblemView";
 import { ArtisanRateCustomerView } from "./ArtisanRateCustomerView";
 import { ArtisanNotificationsView } from "./ArtisanNotificationsView";
 import { ArtisanNotificationSettingsView } from "./ArtisanNotificationSettingsView";
-import { getArtisanDashboardApi, updateArtisanAvailabilityApi } from "@/lib/api/artisan";
+import { getArtisanDashboardApi, getArtisanJobsApi, updateArtisanAvailabilityApi } from "@/lib/api/artisan";
 import { ArtisanDashboardResponse } from "@/types/artisan";
 import { formatNaira } from "@/lib/utils/currency";
 
@@ -184,11 +184,52 @@ function ArtisanHomeViewContent({
 
   // Availability toggle
   const [isAvailable, setIsAvailable] = useState(true);
+  const [recommendedJobs, setRecommendedJobs] = useState<JobDetailData[]>([]);
 
   // Fetch live artisan dashboard metrics from backend
   useEffect(() => {
     let mounted = true;
     setIsLoadingDashboard(true);
+    getArtisanJobsApi({ limit: 2 })
+      .then((jobsRes) => {
+        if (!mounted || !jobsRes?.items) return;
+        const mapped: JobDetailData[] = jobsRes.items.map((it) => {
+          const minNaira = it.budgetMinimum ? Math.round(parseInt(it.budgetMinimum, 10) / 100) : 0;
+          const maxNaira = it.budgetMaximum ? Math.round(parseInt(it.budgetMaximum, 10) / 100) : 0;
+          const budgetStr =
+            minNaira > 0 && maxNaira > 0
+              ? `₦${minNaira.toLocaleString()} - ₦${maxNaira.toLocaleString()}`
+              : minNaira > 0
+              ? `₦${minNaira.toLocaleString()}+`
+              : "Negotiable";
+          return {
+            id: it.id,
+            code: `BFX-${it.id.slice(0, 5).toUpperCase()}`,
+            title: it.title || it.service?.name || "Service Request",
+            category: it.trade?.name || it.service?.name || "Service",
+            subCategory: it.service?.name || "General",
+            postedTime: it.createdAt ? new Date(it.createdAt).toLocaleDateString() : "Recent",
+            isUrgent: it.urgency === "EMERGENCY" || it.urgency === "WITHIN_TWO_DAYS",
+            status: "Receiving Quotes",
+            description: it.description || "",
+            service: `${it.trade?.name || "Trade"} · ${it.service?.name || "Service"}`,
+            date: it.preferredStart ? new Date(it.preferredStart).toLocaleDateString() : "Flexible",
+            time: "Morning · 9am - 1pm",
+            budget: budgetStr,
+            urgency: it.urgency || "STANDARD",
+            customerName: it.customer?.displayName || "Customer",
+            customerLocation: it.area?.city ? `${it.area.city}, Nigeria` : "Nearby",
+            distance: it.distanceKm !== undefined ? `${it.distanceKm.toFixed(1)} km away` : "Nearby",
+            driveTime: "In your service area",
+            photoUrl: it.media?.[0]?.url || "/images/workers.png",
+            photoCaption: "",
+            audioDuration: "",
+            questions: [],
+          };
+        });
+        setRecommendedJobs(mapped);
+      })
+      .catch(() => {});
     getArtisanDashboardApi()
       .then((res) => {
         if (!mounted || !res) return;
@@ -1033,177 +1074,82 @@ function ArtisanHomeViewContent({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Recommended Job 1 */}
-          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5">
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                    Kitchen Plumbing Repair
-                  </h3>
-                  <p className="font-sans text-xs text-neutral-400">
-                    Plumbing · Pipe repair
-                  </p>
-                </div>
-                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
-                  <Image
-                    src="/images/workers.png"
-                    alt="Plumbing"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
-                  Receiving Quotes
-                </span>
-                <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
-                  Urgent
-                </span>
-              </div>
-
-              <div className="space-y-0.5 pt-1">
-                <p className="font-sans text-xs text-neutral-600 font-medium">
-                  2.8 km away · Tomorrow · Sat 23 Aug
-                </p>
-                <p className="font-heading font-extrabold text-sm text-[#001B40]">
-                  ₦25,000 - ₦65,000
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-              <span className="font-sans text-[11px] text-neutral-400">
-                Posted 10 minutes ago
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedJob({
-                    id: "job-1",
-                    code: "BFX-72810",
-                    title: "Kitchen Plumbing Repair",
-                    category: "Plumbing",
-                    subCategory: "Pipe repair",
-                    postedTime: "posted 10 minutes ago",
-                    isUrgent: true,
-                    status: "Receiving Quotes",
-                    description:
-                      "Kitchen pipe underneath the sink is leaking. Water collects inside the cabinet every time we run the tap, and the wood is starting to swell.",
-                    service: "Plumbing · Pipe repair",
-                    date: "Tomorrow · Sat 23 Aug",
-                    time: "Morning · 9am - 12pm",
-                    budget: "₦25,000 - ₦65,000",
-                    urgency: "Urgent",
-                    customerName: "Daniel C.",
-                    customerLocation: "Enugu, Nigeria",
-                    distance: "approx 2.8 km away",
-                    driveTime: "8 min from your base",
-                    photoUrl: "/images/workers.png",
-                    photoCaption: "Leak under the sink",
-                    audioDuration: "0:41",
-                    questions: [
-                      { question: "Is water currently leaking?", answer: "Yes" },
-                      { question: "Is the affected area accessible?", answer: "Yes" },
-                    ],
-                  });
-                  setCurrentView("job-detail");
-                }}
-                className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
-              >
-                View job
-              </button>
-            </div>
+        {recommendedJobs.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-2xs text-center space-y-2">
+            <h3 className="font-heading font-bold text-sm sm:text-base text-[#0F1115]">
+              No open jobs near you right now
+            </h3>
+            <p className="font-sans text-xs text-neutral-400">
+              New customer job requests matching your trade will appear here.
+            </p>
           </div>
-
-          {/* Recommended Job 2 */}
-          <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5">
-            <div className="space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <h3 className="font-heading font-bold text-base text-[#0F1115]">
-                    Generator Repair, 7.5 KVA
-                  </h3>
-                  <p className="font-sans text-xs text-neutral-400">
-                    Generator Repair · Servicing
-                  </p>
-                </div>
-                <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
-                  <Image
-                    src="/images/james.jpg"
-                    alt="Generator"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
-                  Receiving Quotes
-                </span>
-                <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
-                  Urgent
-                </span>
-              </div>
-
-              <div className="space-y-0.5 pt-1">
-                <p className="font-sans text-xs text-neutral-600 font-medium">
-                  5.2 km away · Today · Fri 22 Aug
-                </p>
-                <p className="font-heading font-extrabold text-sm text-[#001B40]">
-                  ₦10,000 - ₦25,000
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
-              <span className="font-sans text-[11px] text-neutral-400">
-                Posted 10 minutes ago
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedJob({
-                    id: "job-2",
-                    code: "BFX-90145",
-                    title: "Generator Repair, 7.5 KVA",
-                    category: "Generator Repair",
-                    subCategory: "Servicing",
-                    postedTime: "posted 10 minutes ago",
-                    isUrgent: true,
-                    status: "Receiving Quotes",
-                    description:
-                      "7.5 KVA Sumec Firman generator making loud coughing sound and shutting down after 5 minutes under load.",
-                    service: "Generator Repair · Servicing",
-                    date: "Today · Fri 22 Aug",
-                    time: "Morning · 10am - 1pm",
-                    budget: "₦10,000 - ₦25,000",
-                    urgency: "Urgent",
-                    customerName: "Chijioke E.",
-                    customerLocation: "Enugu, Nigeria",
-                    distance: "approx 5.2 km away",
-                    driveTime: "15 min from your base",
-                    photoUrl: "/images/james.jpg",
-                    photoCaption: "Generator unit in outdoor shed",
-                    audioDuration: "0:30",
-                    questions: [
-                      { question: "When was it last serviced?", answer: "3 months ago" },
-                      { question: "Is power output zero?", answer: "Yes" },
-                    ],
-                  });
-                  setCurrentView("job-detail");
-                }}
-                className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {recommendedJobs.map((job) => (
+              <div
+                key={job.id}
+                className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs flex flex-col justify-between space-y-5"
               >
-                View job
-              </button>
-            </div>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <h3 className="font-heading font-bold text-base text-[#0F1115]">
+                        {job.title}
+                      </h3>
+                      <p className="font-sans text-xs text-neutral-400">
+                        {job.category} · {job.subCategory}
+                      </p>
+                    </div>
+                    <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-neutral-100 bg-neutral-100 shrink-0">
+                      <Image
+                        src={job.photoUrl || "/images/workers.png"}
+                        alt={job.title}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full">
+                      {job.status}
+                    </span>
+                    {job.isUrgent && (
+                      <span className="text-[10px] font-semibold text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
+                        Urgent
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-0.5 pt-1">
+                    <p className="font-sans text-xs text-neutral-600 font-medium">
+                      {job.distance} · {job.date}
+                    </p>
+                    <p className="font-heading font-extrabold text-sm text-[#001B40]">
+                      {job.budget}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-neutral-100 flex items-center justify-between">
+                  <span className="font-sans text-[11px] text-neutral-400">
+                    Posted {job.postedTime}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedJob(job);
+                      setCurrentView("job-detail");
+                    }}
+                    className="px-4 py-2 rounded-xl border border-neutral-300 hover:bg-neutral-50 text-neutral-800 font-sans font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    View job
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* SECTION 3: 2-Column Split (Training + Recent Earnings) */}

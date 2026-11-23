@@ -4,33 +4,40 @@
 
 ---
 
-## 0. Latest Session — Complete Platform Operations Suite
+## 0. Latest Session — Complete Platform Operations Suite & Enterprise Enhancements
 
 ### A. Core Deliverables & Route Mapping
 1. **Trades and Categories (`/ops/categories`)**:
    - Implemented `OpsCategoriesView.tsx` and `app/(admin)/ops/categories/page.tsx`.
-   - Data table displaying trade name, subcategory lists, active worker counters, 30d job volume, demand level pills (`High`, `Medium`, `Low`), average job values (`formatNaira`), jobs per worker ratios, and active/inactive status badges.
-   - **Create & Edit Trade Modal (`OpsCreateTradeModal.tsx`)**: Controls trade naming, multiline subcategories, commission overrides (10%, 8%, 7%, 5%, 12%), and mandatory verification checklist (NIN slip, Trade test certificate, Guarantor form, etc.).
+   - Data table displaying trade name, subcategory lists, defect warranty period (`🛡️ 7d–60d`), active worker counters, 30d job volume, demand level pills (`High`, `Medium`, `Low`), average job values (`formatNaira`), jobs per worker ratios, and active/inactive status badges.
+   - **Interactive Subcategory Re-ordering & Public Slug Management**: Implemented inside `OpsCreateTradeModal.tsx` allowing rank ordering (`#1`, `#2`, ...), up/down position controls, custom SEO slugs (`slug: "leak-repair"`), and removal/addition.
+   - **Trade Warranty & Coverage Timers**: Defect liability period selector (3, 7, 14, 30, 60, 90 days) defining auto-disbursement windows and customer dispute rights; surfaced in the table and CSV export.
    - **Inactivate Trade Modal (`OpsInactivateTradeModal.tsx`)**: Matches Figma screenshot with high-risk warning callout, mandatory reason logging, and immutability notice.
+
 2. **Content Management (`/ops/content`)**:
    - Implemented `OpsContentView.tsx` and `app/(admin)/ops/content/page.tsx`.
-   - 3 Tabbed views: `FAQs (4)`, `Testimonials (3)`, and `Announcements (4)` with status badges (`Published`, `Pending review`, `Draft`).
-   - **Content Creation & Editing Modal (`OpsContentModal.tsx`)**: Multi-kind content authoring for FAQs, Customer/Artisan testimonials, and audience-targeted platform announcements.
+   - 3 Tabbed views: `FAQs (4)`, `Testimonials (3)`, and `Announcements (4)` with status badges (`Published`, `Pending review`, `Draft`, `Expired`).
+   - **Audience Scope & Segmentation**: Added target audience scope pills (`Public / All`, `Workers Only`, `Customers Only`, `Talents Only`) across all content views and the editor modal.
+   - **Scheduled Publishing & Expiration**: Configurable auto-archive dates (`expiresAt`) for temporary announcements (e.g. maintenance notices) preventing stale messages from lingering in user feeds.
+
 3. **Mass Notifications Console (`/ops/notifications`)**:
    - Implemented `OpsNotificationsView.tsx` and `app/(admin)/ops/notifications/page.tsx`.
    - Left composer column with audience targeting (`Workers`, `Customers`, `Talents`, `Pending verification`, `All users`), geographic segment filters, multi-channel checkboxes (`In-app`, `Email`, `SMS Future-ready`), subject, 600-character constrained body, call to action, and delivery scheduling.
-   - Right preview column with live mobile notification card preview, dynamic recipient calculation (e.g. 4,902 workers), non-recallable warning banner, and `Send test to me` trigger.
+   - **Pre-Built Operational Templates**: 1-click modal loading templates for Bank Payout Holidays, Scheduled Server Maintenance, Verification Upgrades, Apprenticeship Cohort Calls, and Weather Advisories.
+   - **Failed Delivery Retry Workflow**: 1-click `Retry Failed ({count})` button in delivery history to re-dispatch failed recipients with live status feedback.
    - **Security PIN Authorization**: All mass broadcasts are gated by `OpsSecurityPinModal.tsx` before live dispatch.
-   - Delivery History ledger with delivered/failed metric counters.
+
 4. **Administrators and Operational Roles (`/ops/admins`)**:
    - Implemented `OpsAdminsView.tsx` and `app/(admin)/ops/admins/page.tsx`.
-   - Directory table of administrative staff with role pill badges (`Super Administrator`, `Finance Admin`, `Support Lead`, `Operations Admin`, `Verification Admin`, `Support Agent`, `Compliance Lead`), status badges, and last active tracking.
-   - **Invite Administrator Modal (`OpsInviteAdminModal.tsx`)**: Work email, full name, and role assignment with 24h setup link.
-   - **Edit Role & Permissions Drawer (`OpsEditAdminRoleDrawer.tsx`)**: Granular role assignment with effective permissions checklist and 24-hour elevated privilege governance notice.
+   - 2-Tab Navigation: `Staff Directory` and `Permissions Matrix` (Enterprise Governance).
+   - **MFA Security Status & Enforcement**: Added MFA tracking (`Active Authenticator`, `Active SMS`, `Pending Setup`, `Disabled`) with 1-click administrative enforcement and invite modal 2FA enforcement checkbox.
+   - **Comprehensive Permissions Matrix**: Grouped across `Security & Access`, `Financials`, `Trust & Moderation`, and `Platform Operations` mapping all 7 operational roles to 9 granular platform privileges.
+
 5. **Activity Logs & Immutable Audit Trail (`/ops/activity-logs`)**:
    - Implemented `OpsActivityLogsView.tsx` and `app/(admin)/ops/activity-logs/page.tsx`.
-   - Immutable audit trail table with date/time, admin identity, `[Sensitive]` action badge, target object, object ID, and state transition diff (`Before → After`).
-   - **Audit Record Inspection Drawer (`OpsActivityLogDetailDrawer.tsx`)**: Detailed view with cryptographic tamper-evident confirmation (`SHA-256: 8f2b...`), IP address, transition diff, and admin justification reason.
+   - **1-Click Quick Filter Pills**: Immediate toggles for `All Operations`, `🔒 Sensitive Only`, `Financial Settlements & Refunds`, and `Staff & Access Controls`.
+   - **Cryptographically Signed Compliance Export**: Export modal supporting signed CSV and JSON with SHA-256 tamper-evident integrity seals, administrator identity, and mandatory compliance justification reasons.
+   - **Audit Record Inspection Drawer (`OpsActivityLogDetailDrawer.tsx`)**: Deep inspection view with cryptographic hash verification, IP address, transition diff, and admin justification reason.
 
 ---
 

@@ -44,10 +44,37 @@ function DashboardSidebarContent({
     pathname.includes("/settings")
   );
   const [hasMounted, setHasMounted] = useState(false);
+  const [artisanJobsCount, setArtisanJobsCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!hasMounted || activeRole !== "artisan") return;
+    let active = true;
+    import("@/lib/api/artisan")
+      .then(({ getArtisanJobsApi }) => getArtisanJobsApi({ limit: 50 }))
+      .then((res) => {
+        if (active && Array.isArray(res?.items)) {
+          setArtisanJobsCount(res.items.length);
+        }
+      })
+      .catch(() => {});
+    import("@/lib/api/messages")
+      .then(({ getConversationsApi }) => getConversationsApi())
+      .then((convs) => {
+        if (active && Array.isArray(convs)) {
+          const unread = convs.reduce((sum, c) => sum + ((c as any).unreadCount ?? (c as any).unread ?? 0), 0);
+          setUnreadMessagesCount(unread);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [hasMounted, activeRole]);
 
   // Auto-expand accordion when navigating to a child page
   useEffect(() => {
@@ -407,9 +434,11 @@ function DashboardSidebarContent({
                       <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                     </svg>
                     <span>{t("jobs")}</span>
-                    <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
-                      4
-                    </span>
+                    {hasMounted && artisanJobsCount > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
+                        {artisanJobsCount}
+                      </span>
+                    )}
                   </div>
                   <svg
                     className={`w-4 h-4 text-neutral-400 transition-transform ${
@@ -571,9 +600,11 @@ function DashboardSidebarContent({
                   </svg>
                   <span>{t("messages")}</span>
                 </div>
-                <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
-                  1
-                </span>
+                {hasMounted && unreadMessagesCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center">
+                    {unreadMessagesCount}
+                  </span>
+                )}
               </Link>
 
               {/* 5. Profile (with accordion matching Screenshot 02) */}

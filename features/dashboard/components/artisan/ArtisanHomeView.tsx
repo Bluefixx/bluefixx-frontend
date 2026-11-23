@@ -30,7 +30,12 @@ import { ArtisanReportProblemView } from "./ArtisanReportProblemView";
 import { ArtisanRateCustomerView } from "./ArtisanRateCustomerView";
 import { ArtisanNotificationsView } from "./ArtisanNotificationsView";
 import { ArtisanNotificationSettingsView } from "./ArtisanNotificationSettingsView";
-import { getArtisanDashboardApi, getArtisanJobsApi, updateArtisanAvailabilityApi } from "@/lib/api/artisan";
+import {
+  getArtisanApplicationsApi,
+  getArtisanDashboardApi,
+  getArtisanJobsApi,
+  updateArtisanAvailabilityApi,
+} from "@/lib/api/artisan";
 import { ArtisanDashboardResponse } from "@/types/artisan";
 import { formatNaira } from "@/lib/utils/currency";
 
@@ -185,11 +190,24 @@ function ArtisanHomeViewContent({
   // Availability toggle
   const [isAvailable, setIsAvailable] = useState(true);
   const [recommendedJobs, setRecommendedJobs] = useState<JobDetailData[]>([]);
+  const [waitingApps, setWaitingApps] = useState<{ count: number; programTitle: string }>({
+    count: 0,
+    programTitle: "",
+  });
 
   // Fetch live artisan dashboard metrics from backend
   useEffect(() => {
     let mounted = true;
     setIsLoadingDashboard(true);
+    getArtisanApplicationsApi({ status: "SUBMITTED" })
+      .then((res) => {
+        if (!mounted || !Array.isArray(res?.items)) return;
+        setWaitingApps({
+          count: res.items.length,
+          programTitle: res.items[0]?.programTitle || "Apprenticeship Programme",
+        });
+      })
+      .catch(() => {});
     getArtisanJobsApi({ limit: 2 })
       .then((jobsRes) => {
         if (!mounted || !jobsRes?.items) return;
@@ -1170,28 +1188,30 @@ function ArtisanHomeViewContent({
           </div>
 
           <div className="bg-white rounded-3xl p-6 border border-neutral-200/80 shadow-2xs space-y-5">
-            {/* Waiting applications callout */}
-            <div
-              onClick={() => setCurrentView("apprenticeships-hub")}
-              className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3 cursor-pointer hover:bg-neutral-100/70 transition-colors"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
+            {/* Waiting applications callout (only shown for real pending applications) */}
+            {waitingApps.count > 0 && (
+              <div
+                onClick={() => setCurrentView("apprenticeships-hub")}
+                className="p-4 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center gap-3 cursor-pointer hover:bg-neutral-100/70 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="font-sans font-bold text-xs text-[#0F1115]">
+                    {waitingApps.count} application{waitingApps.count === 1 ? "" : "s"} waiting
+                  </h4>
+                  <p className="font-sans text-[11px] text-neutral-400">
+                    {waitingApps.programTitle}
+                  </p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <h4 className="font-sans font-bold text-xs text-[#0F1115]">
-                  3 applications waiting
-                </h4>
-                <p className="font-sans text-[11px] text-neutral-400">
-                  Welding & Metal Fabrication Apprenticeship
-                </p>
-              </div>
-            </div>
+            )}
 
             {/* In Training Progress Bars */}
             <div className="space-y-3 pt-1">

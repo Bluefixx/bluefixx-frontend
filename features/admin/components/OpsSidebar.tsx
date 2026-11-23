@@ -198,7 +198,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
             { name: "Active talents", href: "/ops/talents?tab=active", paramTab: "active" },
             { name: "Master artisans", href: "/ops/talents?tab=masters", paramTab: "masters" },
             { name: "Programmes", href: "/ops/talents?tab=programmes", paramTab: "programmes" },
-            { name: "Certifications", href: "/ops/talents?tab=certifications", paramTab: "certifications" },
+            // { name: "Certifications", href: "/ops/talents?tab=certifications", paramTab: "certifications" },
             { name: "Apprenticeship payments", href: "/ops/talents?tab=payments", paramTab: "payments" },
           ],
         },

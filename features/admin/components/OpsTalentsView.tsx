@@ -9,7 +9,6 @@ import {
   MOCK_ACTIVE_TALENTS,
   MOCK_MASTER_ARTISANS,
   MOCK_APPRENTICESHIP_PROGRAMMES,
-  MOCK_TALENT_CERTIFICATIONS,
   MOCK_APPRENTICESHIP_PAYMENTS,
 } from "../mockTalentsData";
 import {
@@ -17,19 +16,18 @@ import {
   AdminActiveTalent,
   AdminMasterArtisan,
   AdminApprenticeshipProgramme,
-  AdminTalentCertification,
   AdminApprenticeshipPayment,
 } from "../types";
 import { OpsDropdown, OpsDropdownOption } from "./OpsDropdown";
 import { OpsTalentApplicationDrawer } from "./OpsTalentApplicationDrawer";
-import { OpsIssueCertificationModal } from "./OpsIssueCertificationModal";
+import { OpsProgrammeManageDrawer } from "./OpsProgrammeManageDrawer";
 
 type TalentTab =
   | "applications"
   | "active"
   | "masters"
   | "programmes"
-  | "certifications"
+  // | "certifications" // Commented out until certification workflow is ready
   | "payments";
 
 export function OpsTalentsView() {
@@ -42,7 +40,7 @@ export function OpsTalentsView() {
 
   useEffect(() => {
     const tabParam = searchParams.get("tab") as TalentTab;
-    if (tabParam && tabParam !== activeTab) {
+    if (tabParam && tabParam !== activeTab && tabParam !== ("certifications" as any)) {
       setActiveTab(tabParam);
     }
   }, [searchParams, activeTab]);
@@ -53,11 +51,10 @@ export function OpsTalentsView() {
   };
 
   // State
-  const [applications, setApplications] = useState<AdminTalentApplication[]>(MOCK_TALENT_APPLICATIONS);
+  const [applications] = useState<AdminTalentApplication[]>(MOCK_TALENT_APPLICATIONS);
   const [activeTalents] = useState<AdminActiveTalent[]>(MOCK_ACTIVE_TALENTS);
   const [masterArtisans] = useState<AdminMasterArtisan[]>(MOCK_MASTER_ARTISANS);
-  const [programmes] = useState<AdminApprenticeshipProgramme[]>(MOCK_APPRENTICESHIP_PROGRAMMES);
-  const [certifications, setCertifications] = useState<AdminTalentCertification[]>(MOCK_TALENT_CERTIFICATIONS);
+  const [programmes, setProgrammes] = useState<AdminApprenticeshipProgramme[]>(MOCK_APPRENTICESHIP_PROGRAMMES);
   const [payments] = useState<AdminApprenticeshipPayment[]>(MOCK_APPRENTICESHIP_PAYMENTS);
 
   // Filters
@@ -69,27 +66,12 @@ export function OpsTalentsView() {
   const [selectedApplication, setSelectedApplication] = useState<AdminTalentApplication | null>(null);
   const [isAppDrawerOpen, setIsAppDrawerOpen] = useState(false);
 
-  const [selectedCertForIssue, setSelectedCertForIssue] = useState<AdminTalentCertification | null>(null);
-  const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
+  const [selectedProgramme, setSelectedProgramme] = useState<AdminApprenticeshipProgramme | null>(null);
+  const [isProgrammeDrawerOpen, setIsProgrammeDrawerOpen] = useState(false);
 
-  // Handlers
-  const handleUpdateAppStatus = (id: string, newStatus: "In Review" | "Shortlisted" | "Verified" | "Rejected") => {
-    setApplications((prev) => prev.map((app) => (app.id === id ? { ...app, status: newStatus } : app)));
-  };
-
-  const handleConfirmIssueCertification = (certId: string) => {
-    setCertifications((prev) =>
-      prev.map((c) =>
-        c.id === certId
-          ? {
-              ...c,
-              status: "Certified",
-              issuedAt: "Just now",
-              issuedBy: "Simeon Daniel",
-              certificateCode: `BFX-CERT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-            }
-          : c
-      )
+  const handleUpdateProgramme = (updated: AdminApprenticeshipProgramme) => {
+    setProgrammes((prev) =>
+      prev.map((prg) => (prg.id === updated.id ? updated : prg))
     );
   };
 
@@ -123,7 +105,8 @@ export function OpsTalentsView() {
         return (
           app.talentName.toLowerCase().includes(q) ||
           app.trade.toLowerCase().includes(q) ||
-          app.programme.toLowerCase().includes(q)
+          app.programme.toLowerCase().includes(q) ||
+          app.talentId.toLowerCase().includes(q)
         );
       }
       return true;
@@ -139,11 +122,11 @@ export function OpsTalentsView() {
           Talents and apprenticeship
         </h1>
         <p className="text-xs text-neutral-500 mt-0.5">
-          The supply pipeline: applications, programmes, master artisans, payments and the certification that closes the loop.
+          The supply pipeline: applications, programmes, master artisans and apprenticeship payments.
         </p>
       </div>
 
-      {/* 6 Subtabs Navigation Bar */}
+      {/* Subtabs Navigation Bar */}
       <div className="border-b border-neutral-200">
         <nav className="flex items-center gap-1 sm:gap-4 overflow-x-auto scrollbar-none text-xs">
           <button
@@ -197,17 +180,19 @@ export function OpsTalentsView() {
             Programmes
           </button>
 
+          {/* Commented out for now per request:
           <button
             type="button"
-            onClick={() => handleTabChange("certifications")}
+            onClick={() => handleTabChange("certifications" as any)}
             className={`pb-3 px-1 border-b-2 font-bold whitespace-nowrap cursor-pointer transition-colors ${
-              activeTab === "certifications"
+              (activeTab as string) === "certifications"
                 ? "border-[#001B40] text-[#001B40]"
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
             Certifications
           </button>
+          */}
 
           <button
             type="button"
@@ -277,9 +262,19 @@ export function OpsTalentsView() {
                 <tbody className="divide-y divide-neutral-100">
                   {filteredApplications.map((app) => (
                     <tr key={app.id} className="hover:bg-neutral-50/60 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-[#001B40] whitespace-nowrap">
-                        {app.talentName}
+                      {/* Talent Name with ID directly underneath */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <Link
+                          href={`/ops/users/${app.talentId}`}
+                          className="font-bold text-[#001B40] hover:underline block"
+                        >
+                          {app.talentName}
+                        </Link>
+                        <span className="text-[11px] text-neutral-400 font-mono font-normal block mt-0.5">
+                          {app.talentId}
+                        </span>
                       </td>
+
                       <td className="py-3.5 px-4 text-neutral-700 whitespace-nowrap">
                         {app.trade}
                       </td>
@@ -531,6 +526,10 @@ export function OpsTalentsView() {
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <button
                         type="button"
+                        onClick={() => {
+                          setSelectedProgramme(prg);
+                          setIsProgrammeDrawerOpen(true);
+                        }}
                         className="px-3 py-1 rounded-lg border border-neutral-300 text-neutral-700 text-xs font-semibold hover:bg-neutral-100 cursor-pointer"
                       >
                         Manage
@@ -545,85 +544,7 @@ export function OpsTalentsView() {
       )}
 
       {/* ============================================================== */}
-      {/* TAB 5: CERTIFICATIONS */}
-      {/* ============================================================== */}
-      {activeTab === "certifications" && (
-        <div className="bg-white rounded-2xl border border-neutral-200 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-neutral-200 bg-neutral-50/50 text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
-                  <th className="py-3 px-4">Talent</th>
-                  <th className="py-3 px-4">Programme &amp; Trade</th>
-                  <th className="py-3 px-4">Master artisan</th>
-                  <th className="py-3 px-4">Completed date</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {certifications.map((cert) => (
-                  <tr key={cert.id} className="hover:bg-neutral-50/60 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-[#001B40] whitespace-nowrap">
-                      <Link href={`/ops/users/${cert.talentId}`} className="hover:underline">
-                        {cert.talentName}
-                      </Link>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-neutral-900">{cert.programme}</div>
-                      <div className="text-[11px] text-neutral-400">{cert.trade} · {cert.cohort}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-neutral-700 whitespace-nowrap">
-                      {cert.masterArtisanName}
-                    </td>
-                    <td className="py-3.5 px-4 text-neutral-500 whitespace-nowrap">
-                      {cert.completedDate}
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span
-                        className={`whitespace-nowrap shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                          cert.status === "Certified"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : cert.status === "Pending"
-                            ? "bg-amber-100 text-amber-800"
-                            : cert.status === "In Progress"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        ● {cert.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                      {cert.status === "Pending" ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCertForIssue(cert);
-                            setIsIssueModalOpen(true);
-                          }}
-                          className="px-3 py-1 rounded-lg bg-[#074292] text-white text-xs font-bold hover:bg-[#001B40] cursor-pointer"
-                        >
-                          Issue certification
-                        </button>
-                      ) : cert.status === "Certified" ? (
-                        <span className="text-[11px] font-mono text-neutral-400">
-                          {cert.certificateCode}
-                        </span>
-                      ) : (
-                        <span className="text-neutral-400 text-xs">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* TAB 6: APPRENTICESHIP PAYMENTS */}
+      {/* TAB 5: APPRENTICESHIP PAYMENTS */}
       {/* ============================================================== */}
       {activeTab === "payments" && (
         <div className="space-y-6">
@@ -715,7 +636,7 @@ export function OpsTalentsView() {
         </div>
       )}
 
-      {/* Drawer for Application Details */}
+      {/* Drawer for Application Details (Oversight Mode) */}
       <OpsTalentApplicationDrawer
         application={selectedApplication}
         isOpen={isAppDrawerOpen}
@@ -723,18 +644,17 @@ export function OpsTalentsView() {
           setIsAppDrawerOpen(false);
           setSelectedApplication(null);
         }}
-        onUpdateStatus={handleUpdateAppStatus}
       />
 
-      {/* Modal for Issuing Certification */}
-      <OpsIssueCertificationModal
-        certification={selectedCertForIssue}
-        isOpen={isIssueModalOpen}
+      {/* Drawer for Programme Management */}
+      <OpsProgrammeManageDrawer
+        programme={selectedProgramme}
+        isOpen={isProgrammeDrawerOpen}
         onClose={() => {
-          setIsIssueModalOpen(false);
-          setSelectedCertForIssue(null);
+          setIsProgrammeDrawerOpen(false);
+          setSelectedProgramme(null);
         }}
-        onConfirm={handleConfirmIssueCertification}
+        onUpdateProgramme={handleUpdateProgramme}
       />
     </div>
   );

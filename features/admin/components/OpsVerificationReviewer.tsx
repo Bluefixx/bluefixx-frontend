@@ -1,12 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { WorkerVerificationCase, VerificationDocument } from "../types";
 import {
   OpsApproveVerificationModal,
   OpsRequestInfoModal,
   OpsRejectVerificationModal,
 } from "./OpsVerificationModals";
+import {
+  getAdminWorkerVerificationDetailApi,
+  getAdminArtisanIdentityEvidenceApi,
+  assignVerificationReviewerApi,
+  reviewArtisanDecisionApi,
+  requestVerificationInfoApi,
+  mapDetailToVerificationCase,
+  RequestInfoCategory,
+  RejectedStep,
+  BackendAdminArtisanIdentityResponse,
+} from "@/lib/api/admin-verification";
 import toast from "react-hot-toast";
 
 interface OpsVerificationReviewerProps {
@@ -19,13 +30,18 @@ interface OpsVerificationReviewerProps {
 }
 
 export function OpsVerificationReviewer({
-  vCase,
+  vCase: initialCase,
   allCases,
   currentIndex,
   onBackToQueue,
   onNavigateCase,
   onUpdateCase,
 }: OpsVerificationReviewerProps) {
+  const [currentCase, setCurrentCase] = useState<WorkerVerificationCase>(initialCase);
+  const [identityEvidence, setIdentityEvidence] =
+    useState<BackendAdminArtisanIdentityResponse | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
   const [selectedDocIndex, setSelectedDocIndex] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [rotation, setRotation] = useState(0);
@@ -35,73 +51,172 @@ export function OpsVerificationReviewer({
   const [showRequestInfoModal, setShowRequestInfoModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
 
-  const activeDoc: VerificationDocument | undefined = vCase.documents[selectedDocIndex];
+  // Load deep detail on artisanId change
+  const loadCaseDetail = useCallback(async (id: string) => {
+    setIsLoadingDetail(true);
+    try {
+      const detail = await getAdminWorkerVerificationDetailApi(id);
+      const mapped = mapDetailToVerificationCase(detail);
+      setCurrentCase(mapped);
+      onUpdateCase(mapped);
 
-  const handleApproveConfirm = (targetCase: WorkerVerificationCase) => {
-    const updated: WorkerVerificationCase = {
-      ...targetCase,
-      status: "APPROVED",
-      history: [
-        {
-          date: "Just now",
-          event: "Verification approved by Simeon Daniel (Operations Admin)",
-          author: "Simeon Daniel",
-        },
-        ...targetCase.history,
-      ],
-    };
-    onUpdateCase(updated);
-    toast.success(`Verification approved for ${targetCase.worker.name}`);
-    if (currentIndex < allCases.length - 1) {
-      onNavigateCase(currentIndex + 1);
+      // Also fetch identity-only evidence
+      try {
+        const idEvidence = await getAdminArtisanIdentityEvidenceApi(id);
+        setIdentityEvidence(idEvidence);
+      } catch {
+        // Non-blocking if identity is unsubmitted
+      }
+    } catch (err: any) {
+      console.warn("Could not fetch verification detail from backend:", err);
+    } finally {
+      setIsLoadingDetail(false);
+    }
+  }, [onUpdateCase]);
+
+  useEffect(() => {
+    setCurrentCase(initialCase);
+    setSelectedDocIndex(0);
+    setZoomLevel(100);
+    setRotation(0);
+    loadCaseDetail(initialCase.id);
+  }, [initialCase.id, loadCaseDetail]);
+
+  const activeDoc: VerificationDocument | undefined = currentCase.documents[selectedDocIndex];
+
+  // Live Decisions Handlers
+  const handleApproveConfirm = async (
+    targetCase: WorkerVerificationCase,
+    verifiedLegalName: string,
+    note?: string
+  ) => {
+    try {
+      await reviewArtisanDecisionApi(targetCase.id, {
+        approve: true,
+        verifiedLegalName,
+        note: note || "Identity and portfolio evidence verified.",
+      });
+
+      const updated: WorkerVerificationCase = {
+        ...targetCase,
+        status: "APPROVED",
+        history: [
+          {
+            date: "Just now",
+            event: `Verification approved (${verifiedLegalName})`,
+            author: "Admin Reviewer",
+          },
+          ...targetCase.history,
+        ],
+      };
+      onUpdateCase(updated);
+      toast.success(`Verification approved for ${targetCase.worker.name}`);
+      if (currentIndex < allCases.length - 1) {
+        onNavigateCase(currentIndex + 1);
+      } else {
+        onBackToQueue();
+      }
+    } catch (err: any) {
+      console.error("Failed to approve verification:", err);
+      toast.error(err?.message || "Failed to approve verification.");
+      throw err;
     }
   };
 
-  const handleRequestInfoConfirm = (
+  const handleRequestInfoConfirm = async (
     targetCase: WorkerVerificationCase,
-    category: string,
+    category: RequestInfoCategory,
     message: string
   ) => {
-    const updated: WorkerVerificationCase = {
-      ...targetCase,
-      status: "REQUIRES_INFO",
-      history: [
-        {
-          date: "Just now",
-          event: `Additional info requested (${category}): "${message}"`,
-          author: "Simeon Daniel",
-        },
-        ...targetCase.history,
-      ],
-    };
-    onUpdateCase(updated);
-    toast.success(`Information requested from ${targetCase.worker.name}`);
-    if (currentIndex < allCases.length - 1) {
-      onNavigateCase(currentIndex + 1);
+    try {
+      await requestVerificationInfoApi(targetCase.id, {
+        category,
+        message,
+      });
+
+      const updated: WorkerVerificationCase = {
+        ...targetCase,
+        status: "REQUIRES_INFO",
+        history: [
+          {
+            date: "Just now",
+            event: `Additional info requested (${category}): "${message}"`,
+            author: "Admin Reviewer",
+          },
+          ...targetCase.history,
+        ],
+      };
+      onUpdateCase(updated);
+      toast.success(`Information requested from ${targetCase.worker.name}`);
+      if (currentIndex < allCases.length - 1) {
+        onNavigateCase(currentIndex + 1);
+      } else {
+        onBackToQueue();
+      }
+    } catch (err: any) {
+      console.error("Failed to request info:", err);
+      toast.error(err?.message || "Failed to request more information.");
+      throw err;
     }
   };
 
-  const handleRejectConfirm = (
+  const handleRejectConfirm = async (
     targetCase: WorkerVerificationCase,
     category: string,
-    reason: string
+    reason: string,
+    rejectedSteps: RejectedStep[]
   ) => {
-    const updated: WorkerVerificationCase = {
-      ...targetCase,
-      status: "REJECTED",
-      history: [
-        {
-          date: "Just now",
-          event: `Verification rejected (${category}): "${reason}"`,
-          author: "Simeon Daniel",
-        },
-        ...targetCase.history,
-      ],
-    };
-    onUpdateCase(updated);
-    toast.error(`Verification rejected for ${targetCase.worker.name}`);
-    if (currentIndex < allCases.length - 1) {
-      onNavigateCase(currentIndex + 1);
+    try {
+      await reviewArtisanDecisionApi(targetCase.id, {
+        approve: false,
+        note: `${category}: ${reason}`,
+        rejectedSteps,
+      });
+
+      const updated: WorkerVerificationCase = {
+        ...targetCase,
+        status: "REJECTED",
+        history: [
+          {
+            date: "Just now",
+            event: `Verification rejected (${category}): "${reason}"`,
+            author: "Admin Reviewer",
+          },
+          ...targetCase.history,
+        ],
+      };
+      onUpdateCase(updated);
+      toast.error(`Verification rejected for ${targetCase.worker.name}`);
+      if (currentIndex < allCases.length - 1) {
+        onNavigateCase(currentIndex + 1);
+      } else {
+        onBackToQueue();
+      }
+    } catch (err: any) {
+      console.error("Failed to reject verification:", err);
+      toast.error(err?.message || "Failed to reject verification.");
+      throw err;
+    }
+  };
+
+  const handleAssignReviewerToggle = async () => {
+    const isAssigned = currentCase.assignedReviewer && currentCase.assignedReviewer !== "Unassigned";
+    try {
+      await assignVerificationReviewerApi(currentCase.id, {
+        reviewerId: isAssigned ? null : "current-admin-session",
+      });
+      const newReviewer = isAssigned ? "Unassigned" : "Me (Operations Admin)";
+      const updated: WorkerVerificationCase = {
+        ...currentCase,
+        assignedReviewer: newReviewer,
+        status: isAssigned ? "PENDING" : "IN_REVIEW",
+      };
+      setCurrentCase(updated);
+      onUpdateCase(updated);
+      toast.success(isAssigned ? "Reviewer unassigned." : "Assigned case to you.");
+    } catch (err: any) {
+      console.error("Error toggling assignment:", err);
+      toast.error(err?.message || "Failed to update reviewer assignment.");
     }
   };
 
@@ -113,46 +228,58 @@ export function OpsVerificationReviewer({
           <button
             type="button"
             onClick={onBackToQueue}
-            className="text-xs text-neutral-500 hover:text-neutral-900 flex items-center gap-1 mb-1 font-semibold"
+            className="text-xs text-neutral-500 hover:text-neutral-900 flex items-center gap-1 mb-1 font-semibold cursor-pointer"
           >
             <span>←</span>
             <span>Worker verification</span>
             <span>—</span>
-            <span className="font-mono">{vCase.id}</span>
+            <span className="font-mono">{currentCase.id}</span>
           </button>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-neutral-900">
-              Verification review — {vCase.worker.name}
+              Verification review — {currentCase.worker.name}
             </h1>
             <span
               className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                vCase.status === "APPROVED"
+                currentCase.status === "APPROVED"
                   ? "bg-emerald-100 text-emerald-800"
-                  : vCase.status === "REJECTED"
+                  : currentCase.status === "REJECTED"
                   ? "bg-rose-100 text-rose-800"
-                  : vCase.status === "REQUIRES_INFO"
+                  : currentCase.status === "REQUIRES_INFO"
                   ? "bg-amber-100 text-amber-800"
                   : "bg-blue-100 text-blue-800"
               }`}
             >
-              {vCase.status.replace("_", " ")}
+              {currentCase.status.replace("_", " ")}
             </span>
+            {isLoadingDetail && (
+              <span className="text-[10px] text-neutral-400 animate-pulse">Syncing...</span>
+            )}
           </div>
           <p className="text-xs text-neutral-500 font-mono mt-0.5">
-            Case {vCase.id} · Submitted {vCase.submittedAt} · {vCase.documents.length} documents
+            Case {currentCase.id} · Submitted {currentCase.submittedAt} · {currentCase.documents.length} document{currentCase.documents.length === 1 ? "" : "s"}
           </p>
         </div>
 
-        {/* Navigation Pagers */}
+        {/* Navigation Pagers & Assignment */}
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-neutral-500 font-medium">
+          <button
+            type="button"
+            onClick={handleAssignReviewerToggle}
+            className="px-3 py-1.5 rounded-xl border border-neutral-200 text-neutral-700 hover:bg-neutral-50 font-bold cursor-pointer"
+          >
+            {currentCase.assignedReviewer && currentCase.assignedReviewer !== "Unassigned"
+              ? "Unassign Reviewer"
+              : "Assign to Me"}
+          </button>
+          <span className="text-neutral-500 font-medium px-1">
             Case {currentIndex + 1} of {allCases.length}
           </span>
           <button
             type="button"
             disabled={currentIndex === 0}
             onClick={() => onNavigateCase(currentIndex - 1)}
-            className="px-3 py-1.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+            className="px-3 py-1.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 cursor-pointer"
           >
             &lt; Previous
           </button>
@@ -160,7 +287,7 @@ export function OpsVerificationReviewer({
             type="button"
             disabled={currentIndex === allCases.length - 1}
             onClick={() => onNavigateCase(currentIndex + 1)}
-            className="px-3 py-1.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-40"
+            className="px-3 py-1.5 rounded-xl border border-neutral-200 font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 cursor-pointer"
           >
             Next &gt;
           </button>
@@ -173,26 +300,26 @@ export function OpsVerificationReviewer({
         <div className="lg:col-span-3 space-y-4">
           <div className="bg-white rounded-3xl border border-neutral-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#001B40] text-white flex items-center justify-center font-bold text-base shrink-0">
-                {vCase.worker.avatarUrl ? (
+              <div className="w-12 h-12 rounded-2xl bg-[#001B40] text-white flex items-center justify-center font-bold text-base shrink-0 overflow-hidden">
+                {currentCase.worker.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={vCase.worker.avatarUrl}
-                    alt={vCase.worker.name}
-                    className="w-full h-full object-cover rounded-2xl"
+                    src={currentCase.worker.avatarUrl}
+                    alt={currentCase.worker.name}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span>{vCase.worker.name[0]}</span>
+                  <span>{currentCase.worker.name[0]}</span>
                 )}
               </div>
               <div>
                 <h3 className="font-bold text-neutral-900 text-sm leading-tight">
-                  {vCase.worker.name}
+                  {currentCase.worker.name}
                 </h3>
-                <div className="text-[11px] text-neutral-400 font-mono">{vCase.worker.code}</div>
+                <div className="text-[11px] text-neutral-400 font-mono">{currentCase.worker.code}</div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded whitespace-nowrap shrink-0">
-                    {vCase.priority} priority
+                    {currentCase.priority} priority
                   </span>
                 </div>
               </div>
@@ -201,28 +328,35 @@ export function OpsVerificationReviewer({
             <div className="space-y-2.5 text-xs border-t border-neutral-100 pt-3">
               <div>
                 <div className="text-[10px] font-bold text-neutral-400 uppercase">Primary Trade</div>
-                <div className="font-semibold text-neutral-800">{vCase.worker.trade}</div>
+                <div className="font-semibold text-neutral-800">{currentCase.worker.trade}</div>
               </div>
 
               <div>
                 <div className="text-[10px] font-bold text-neutral-400 uppercase">Operating Location</div>
-                <div className="text-neutral-700">{vCase.worker.location}</div>
+                <div className="text-neutral-700">{currentCase.worker.location}</div>
               </div>
 
               <div>
                 <div className="text-[10px] font-bold text-neutral-400 uppercase">Experience Declared</div>
-                <div className="text-neutral-700">{vCase.worker.experienceYears} years</div>
+                <div className="text-neutral-700">{currentCase.worker.experienceYears} years</div>
               </div>
 
               <div>
-                <div className="text-[10px] font-bold text-neutral-400 uppercase">Phone & Email</div>
-                <div className="text-neutral-800 font-medium">{vCase.worker.phone}</div>
-                <div className="text-neutral-500 text-[11px]">{vCase.worker.email}</div>
+                <div className="text-[10px] font-bold text-neutral-400 uppercase">Phone &amp; Email</div>
+                <div className="text-neutral-800 font-medium">{currentCase.worker.phone}</div>
+                <div className="text-neutral-500 text-[11px]">{currentCase.worker.email}</div>
               </div>
 
               <div>
-                <div className="text-[10px] font-bold text-neutral-400 uppercase">Registered Date</div>
-                <div className="text-neutral-600">{vCase.worker.registeredDate}</div>
+                <div className="text-[10px] font-bold text-neutral-400 uppercase">NIN / Registry Status</div>
+                <div className="text-neutral-800 font-mono font-bold">
+                  {identityEvidence?.nin || "NIN Submitted"}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[10px] font-bold text-neutral-400 uppercase">Assigned Reviewer</div>
+                <div className="text-neutral-700 font-medium">{currentCase.assignedReviewer}</div>
               </div>
             </div>
 
@@ -232,21 +366,21 @@ export function OpsVerificationReviewer({
                 <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
                   <div className="text-[10px] text-neutral-500">Jobs Completed</div>
                   <div className="font-bold text-neutral-900 text-sm mt-0.5">
-                    {vCase.worker.jobsCompleted}
+                    {currentCase.worker.jobsCompleted}
                   </div>
                 </div>
                 <div className="p-2.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
                   <div className="text-[10px] text-neutral-500">Rating</div>
                   <div className="font-bold text-neutral-900 text-sm mt-0.5 flex items-center gap-1 text-amber-600">
                     <span>★</span>
-                    <span>{vCase.worker.rating}</span>
+                    <span>{currentCase.worker.rating}</span>
                   </div>
                 </div>
               </div>
               <div className="text-[11px] text-neutral-500 pt-1">
                 Lifetime Earnings:{" "}
                 <strong className="text-neutral-900">
-                  ₦{vCase.worker.lifetimeEarnings.toLocaleString()}
+                  ₦{currentCase.worker.lifetimeEarnings.toLocaleString()}
                 </strong>
               </div>
             </div>
@@ -282,7 +416,7 @@ export function OpsVerificationReviewer({
                 <button
                   type="button"
                   onClick={() => setZoomLevel((z) => Math.max(50, z - 25))}
-                  className="px-2 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600"
+                  className="px-2 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600 cursor-pointer"
                   title="Zoom Out"
                 >
                   -
@@ -291,7 +425,7 @@ export function OpsVerificationReviewer({
                 <button
                   type="button"
                   onClick={() => setZoomLevel((z) => Math.min(200, z + 25))}
-                  className="px-2 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600"
+                  className="px-2 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600 cursor-pointer"
                   title="Zoom In"
                 >
                   +
@@ -299,7 +433,7 @@ export function OpsVerificationReviewer({
                 <button
                   type="button"
                   onClick={() => setRotation((r) => (r + 90) % 360)}
-                  className="px-2 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600 ml-1"
+                  className="px-2 py-1 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-600 ml-1 cursor-pointer"
                   title="Rotate"
                 >
                   ↻ Rotate
@@ -309,7 +443,7 @@ export function OpsVerificationReviewer({
 
             {/* Document Tabs */}
             <div className="flex gap-2 overflow-x-auto pb-1">
-              {vCase.documents.map((doc, idx) => (
+              {currentCase.documents.map((doc, idx) => (
                 <button
                   key={doc.id}
                   type="button"
@@ -318,7 +452,7 @@ export function OpsVerificationReviewer({
                     setZoomLevel(100);
                     setRotation(0);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
                     selectedDocIndex === idx
                       ? "bg-[#001B40] text-white"
                       : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
@@ -347,8 +481,18 @@ export function OpsVerificationReviewer({
                   Verified with NIMC / Trade Registry Gateway
                 </div>
                 <div className="text-[11px] font-mono text-neutral-400 mt-2 bg-neutral-100 px-3 py-1 rounded-lg">
-                  Doc Ref: {vCase.worker.code}-{activeDoc?.type}
+                  Doc Ref: {currentCase.worker.code}-{activeDoc?.type}
                 </div>
+                {activeDoc?.url && activeDoc.url.startsWith("http") && (
+                  <a
+                    href={activeDoc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 text-xs text-[#074292] font-bold hover:underline"
+                  >
+                    Open Original File ↗
+                  </a>
+                )}
               </div>
             </div>
 
@@ -366,7 +510,7 @@ export function OpsVerificationReviewer({
             <div className="border-t border-neutral-100 pt-3 space-y-2">
               <div className="text-xs font-bold text-neutral-800">Case History</div>
               <div className="space-y-2">
-                {vCase.history.map((h, i) => (
+                {currentCase.history.map((h, i) => (
                   <div key={i} className="text-xs p-2.5 rounded-xl bg-neutral-50 border border-neutral-200/80">
                     <div className="flex justify-between font-medium text-neutral-800">
                       <span>{h.event}</span>
@@ -395,7 +539,7 @@ export function OpsVerificationReviewer({
                 <span>Approve</span>
               </div>
               <p className="text-[11px] text-neutral-600 leading-relaxed">
-                Artisan / talent verified and enters job matching immediately.
+                Artisan verified and enters job matching immediately.
               </p>
             </div>
 
@@ -431,9 +575,9 @@ export function OpsVerificationReviewer({
             <button
               type="button"
               onClick={() => setShowApproveModal(true)}
-              className="w-full py-3 px-4 bg-[#001B40] text-white text-xs font-bold rounded-2xl hover:bg-neutral-800 transition-colors shadow-xs flex items-center justify-center gap-2 mt-4"
+              className="w-full py-3 px-4 bg-[#001B40] text-white text-xs font-bold rounded-2xl hover:bg-neutral-800 transition-colors shadow-xs flex items-center justify-center gap-2 mt-4 cursor-pointer"
             >
-              <span>Approve & next</span>
+              <span>Approve &amp; next</span>
               <span>→</span>
             </button>
           </div>
@@ -442,21 +586,21 @@ export function OpsVerificationReviewer({
 
       {/* Decision Modals */}
       <OpsApproveVerificationModal
-        vCase={vCase}
+        vCase={currentCase}
         isOpen={showApproveModal}
         onClose={() => setShowApproveModal(false)}
         onConfirm={handleApproveConfirm}
       />
 
       <OpsRequestInfoModal
-        vCase={vCase}
+        vCase={currentCase}
         isOpen={showRequestInfoModal}
         onClose={() => setShowRequestInfoModal(false)}
         onConfirm={handleRequestInfoConfirm}
       />
 
       <OpsRejectVerificationModal
-        vCase={vCase}
+        vCase={currentCase}
         isOpen={showRejectModal}
         onClose={() => setShowRejectModal(false)}
         onConfirm={handleRejectConfirm}

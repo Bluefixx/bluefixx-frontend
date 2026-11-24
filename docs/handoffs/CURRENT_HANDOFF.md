@@ -1,10 +1,48 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-24 (Admin Users Console Live API Integration Complete: All Endpoints, Zero Mock Data, Strict Type Safety)*
+*Last updated: 2026-11-24 (Admin Worker Verification Console Live API Integration Complete: Queue, 3-Column Reviewer, Modals, Stats, Strict Type Safety)*
 
 ---
 
-## 0. Latest Session — Admin Users Console Live API Integration
+## 0. Latest Session — Admin Worker Verification API Integration
+
+### A. Core Deliverables & Live Endpoints Integrated
+1. **API Client Module (`lib/api/admin-verification.ts`)**:
+   - Implemented full API contract matching `admin-worker-verification.md`:
+     - `getAdminVerificationStatsApi()`: `GET /admin/verification/stats` returning queue totals (`pending`, `inReview`, `requiresInfo`, `rejected`, `approvedTotal`, `approvedThisWeek`, `rejectedThisWeek`, `avgTurnaroundHours`) and 7-day stacked decision breakdowns (`decisionsByDay`).
+     - `getAdminVerificationQueueApi(params)`: `GET /admin/verification` with search query `q`, status filter (`PENDING`, `UNDER_REVIEW`, `REQUIRES_INFO`, `APPROVED`, `REJECTED`), trade filter, cursor pagination, and limit.
+     - `getAdminWorkerVerificationDetailApi(artisanId)`: `GET /admin/verification/{artisanId}` for deep review data (worker profile, feedback, rejected steps, activity history, services, and document references).
+     - `getAdminArtisanIdentityEvidenceApi(artisanId)`: `GET /admin/artisans/{artisanId}/identity` for audited identity data (decrypted NIN, ID card, selfie, proof of address, trade certificate, portfolio IDs).
+     - `assignVerificationReviewerApi(artisanId, { reviewerId })`: `POST /admin/verification/{artisanId}/assign` to assign reviewer (moves to `UNDER_REVIEW`) or unassign (`reviewerId: null`, returns to `PENDING`).
+     - `requestVerificationInfoApi(artisanId, { category, message })`: `POST /admin/verification/{artisanId}/request-info` with strict categories (`Identity mismatch`, `Document expired`, `Guarantor details incomplete`, `Proof of address match fail`, `Unclear / blurry photo`).
+     - `reviewArtisanDecisionApi(artisanId, payload)`: `POST /admin/artisans/{artisanId}/review` for final decisions:
+       - Approval: `{ approve: true, note, verifiedLegalName }`
+       - Rejection: `{ approve: false, note, rejectedSteps: ["details" | "identity" | "trades" | "pricing" | "portfolio"] }`
+   - Added robust adapters `mapQueueItemToVerificationCase` and `mapDetailToVerificationCase` converting backend data to `WorkerVerificationCase`.
+   - Exported through `lib/api/index.ts`.
+
+2. **Verification Queue View (`features/admin/components/OpsWorkerVerificationsView.tsx`)**:
+   - Eliminated initial `MOCK_VERIFICATION_CASES` dependency; now runs purely on live backend data.
+   - Connected live KPI counters (In verification queue, In review, Rejected / flagged, Avg turnaround).
+   - Connected live weekly throughput stacked bar chart rendered from `stats.decisionsByDay`.
+   - Connected debounced search (`q`), status filters, trade filters, priority filters, and cursor-based pagination.
+   - Added animated loading skeletons and server error handling with retry actions.
+   - Preserved CSV export and 1-click "Open verification queue" action.
+
+3. **3-Column Verification Reviewer Workstation (`features/admin/components/OpsVerificationReviewer.tsx`)**:
+   - Fetches live worker review detail via `getAdminWorkerVerificationDetailApi(artisanId)` and identity evidence via `getAdminArtisanIdentityEvidenceApi(artisanId)`.
+   - Connected reviewer assignment action ("Assign to Me" / "Unassign") via `assignVerificationReviewerApi`.
+   - Interactive document canvas with zoom, rotation, and original file viewing.
+   - Document warning callouts, reviewer logs, and activity audit trails.
+
+4. **Decision Modals (`features/admin/components/OpsVerificationModals.tsx`)**:
+   - `OpsApproveVerificationModal`: Collects mandatory `verifiedLegalName` and review audit note, then calls `reviewArtisanDecisionApi`.
+   - `OpsRequestInfoModal`: Collects required category and custom explanation, then calls `requestVerificationInfoApi`.
+   - `OpsRejectVerificationModal`: Allows multi-step rejection flags (`details`, `identity`, `trades`, `pricing`, `portfolio`) and mandatory reason logging, then calls `reviewArtisanDecisionApi`.
+
+---
+
+## 1. Prior Session — Admin Users Console Live API Integration
 
 ### A. Core Deliverables & Live Endpoints Integrated
 1. **API Client Module (`lib/api/admin-users.ts`)**:

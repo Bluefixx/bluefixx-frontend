@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import { AdminUser } from "../types";
+import { AdminUser, AdminUserDocument } from "../types";
 import { OpsWalletAdjustmentModal } from "./OpsWalletAdjustmentModal";
 import { OpsSecurityPinModal } from "./OpsSecurityPinModal";
+import {
+  createAdminAccountNoteApi,
+  updateAdminAccountPayoutHoldApi,
+  updateAdminAccountTagsApi,
+  resetAdminAccountPasswordApi,
+  revokeAdminAccountSessionsApi,
+  getAdminArtisanIdentityApi,
+} from "@/lib/api/admin-users";
 
 interface OpsUserProfileDrawerProps {
   user: AdminUser | null;
@@ -34,6 +42,38 @@ export function OpsUserProfileDrawer({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isWalletAdjustOpen, setIsWalletAdjustOpen] = useState(false);
   const [newTagInput, setNewTagInput] = useState("");
+  const [identityEvidence, setIdentityEvidence] = useState<{
+    nin?: string;
+    bvn?: string;
+    idCardUrl?: string;
+    selfieUrl?: string;
+    proofOfAddressUrl?: string;
+    tradeCertificateUrl?: string;
+    status?: string;
+  } | null>(null);
+  const [isLoadingIdentity, setIsLoadingIdentity] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !user || activeTab !== "kyc" || user.role !== "WORKER") return;
+    let isMounted = true;
+    setIsLoadingIdentity(true);
+    getAdminArtisanIdentityApi(user.id)
+      .then((evidence) => {
+        if (!isMounted || !evidence) return;
+        setIdentityEvidence(evidence);
+      })
+      .catch((err) => {
+        console.debug("Artisan identity evidence endpoint offline or unverified.", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingIdentity(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, user?.id, activeTab, user?.role]);
+
   const [pinModalConfig, setPinModalConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -55,51 +95,73 @@ export function OpsUserProfileDrawer({
     return `₦${naira.toLocaleString("en-NG")}`;
   };
 
-  const handleAddNote = (e: React.FormEvent) => {
+  const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNoteText.trim()) return;
+    const cleanNote = newNoteText.trim();
+    if (!cleanNote) return;
 
     setIsAddingNote(true);
-    setTimeout(() => {
+    try {
+      const res = await createAdminAccountNoteApi(user.id, { text: cleanNote });
       const newNote = {
-        id: `note-${Date.now()}`,
-        author: "Simeon Daniel (Admin)",
-        text: newNoteText.trim(),
-        createdAt: "Just now",
+        id: res.id || `note-${Date.now()}`,
+        author: res.author || "Admin",
+        text: res.text || cleanNote,
+        createdAt: res.createdAt
+          ? new Date(res.createdAt).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "Just now",
       };
-      const updatedNotes = [newNote, ...(user.internalNotes || [])];
       onUpdateUser({
         ...user,
-        internalNotes: updatedNotes,
+        internalNotes: [newNote, ...(user.internalNotes || [])],
       });
       setNewNoteText("");
-      setIsAddingNote(false);
       toast.success("Internal note added to user audit log.");
-    }, 400);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save internal note.");
+    } finally {
+      setIsAddingNote(false);
+    }
   };
 
-  const executeToggleFreezePayouts = () => {
+  const executeToggleFreezePayouts = async () => {
     const nextState = !user.payoutsFrozen;
-    const auditNote = {
-      id: `note-${Date.now()}`,
-      author: "Simeon Daniel (Admin)",
-      text: nextState
-        ? "Payout withdrawals frozen by operational review."
-        : "Payout withdrawals restored by operational review.",
-      createdAt: "Just now",
-    };
+    const holdReason = nextState
+      ? "Payout withdrawals frozen by compliance review."
+      : "Payout withdrawals restored by compliance review.";
 
-    onUpdateUser({
-      ...user,
-      payoutsFrozen: nextState,
-      internalNotes: [auditNote, ...(user.internalNotes || [])],
-    });
+    try {
+      await updateAdminAccountPayoutHoldApi(user.id, {
+        enabled: nextState,
+        reason: holdReason,
+      });
 
-    toast.success(
-      nextState
-        ? `Payouts frozen for ${user.fullName}.`
-        : `Payout access restored for ${user.fullName}.`
-    );
+      const auditNote = {
+        id: `note-${Date.now()}`,
+        author: "Simeon Daniel (Admin)",
+        text: holdReason,
+        createdAt: "Just now",
+      };
+
+      onUpdateUser({
+        ...user,
+        payoutsFrozen: nextState,
+        internalNotes: [auditNote, ...(user.internalNotes || [])],
+      });
+
+      toast.success(
+        nextState
+          ? `Payouts frozen for ${user.fullName}.`
+          : `Payout access restored for ${user.fullName}.`
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update payout hold status.");
+    }
   };
 
   const handleToggleFreezePayouts = () => {
@@ -124,34 +186,56 @@ export function OpsUserProfileDrawer({
     });
   };
 
-  const handleAddTag = (e: React.FormEvent) => {
+  const handleAddTag = async (e: React.FormEvent) => {
     e.preventDefault();
     const clean = newTagInput.trim();
     if (!clean) return;
 
     const updatedTags = Array.from(new Set([...(user.tags || []), clean]));
-    onUpdateUser({
-      ...user,
-      tags: updatedTags,
-    });
-    setNewTagInput("");
-    toast.success(`Tag "${clean}" added.`);
+    try {
+      const res = await updateAdminAccountTagsApi(user.id, { tags: updatedTags });
+      onUpdateUser({
+        ...user,
+        tags: res.tags || updatedTags,
+      });
+      setNewTagInput("");
+      toast.success(`Tag "${clean}" added.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update tags.");
+    }
   };
 
-  const handleRemoveTag = (tagToRemove: string) => {
+  const handleRemoveTag = async (tagToRemove: string) => {
     const updatedTags = (user.tags || []).filter((t) => t !== tagToRemove);
-    onUpdateUser({
-      ...user,
-      tags: updatedTags,
-    });
+    try {
+      const res = await updateAdminAccountTagsApi(user.id, { tags: updatedTags });
+      onUpdateUser({
+        ...user,
+        tags: res.tags || updatedTags,
+      });
+      toast.success(`Tag "${tagToRemove}" removed.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to remove tag.");
+    }
   };
 
-  const handleTriggerPasswordReset = () => {
-    toast.success(`Password reset email dispatched to ${user.email}.`);
+  const handleTriggerPasswordReset = async () => {
+    try {
+      await resetAdminAccountPasswordApi(user.id);
+      toast.success(`Password reset flow initiated for ${user.email || user.fullName}.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to initiate password reset.");
+    }
   };
 
-  const handleForceLogout = () => {
-    toast.success(`All active authentication sessions invalidated for ${user.fullName}.`);
+  const handleForceLogout = async () => {
+    try {
+      const res = await revokeAdminAccountSessionsApi(user.id);
+      const countText = typeof res?.revokedSessions === "number" ? `${res.revokedSessions}` : "All";
+      toast.success(`${countText} active authentication session(s) invalidated for ${user.fullName}.`);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to invalidate user sessions.");
+    }
   };
 
   return (
@@ -538,11 +622,60 @@ export function OpsUserProfileDrawer({
 
               {/* Uploaded Documents */}
               <div className="space-y-3">
-                <h4 className="font-heading font-bold text-xs uppercase text-neutral-500 tracking-wider">
-                  Verification Documents
-                </h4>
-                {user.documents && user.documents.length > 0 ? (
-                  user.documents.map((doc) => (
+                <div className="flex items-center justify-between">
+                  <h4 className="font-heading font-bold text-xs uppercase text-neutral-500 tracking-wider">
+                    Verification Documents
+                  </h4>
+                  {isLoadingIdentity && (
+                    <span className="text-[10px] text-neutral-400 animate-pulse">Loading identity vault...</span>
+                  )}
+                </div>
+                {(() => {
+                  const effectiveDocs: AdminUserDocument[] = [
+                    ...(user.documents || []),
+                    ...(identityEvidence?.idCardUrl
+                      ? [
+                          {
+                            id: "doc-id-card",
+                            name: "Government ID Card",
+                            type: "ID_CARD",
+                            url: identityEvidence.idCardUrl,
+                            uploadedAt: "Verified vault",
+                            status: identityEvidence.status === "VERIFIED" ? ("VERIFIED" as const) : ("PENDING" as const),
+                          },
+                        ]
+                      : []),
+                    ...(identityEvidence?.selfieUrl
+                      ? [
+                          {
+                            id: "doc-selfie",
+                            name: "Verification Live Selfie",
+                            type: "SELFIE",
+                            url: identityEvidence.selfieUrl,
+                            uploadedAt: "Verified vault",
+                            status: identityEvidence.status === "VERIFIED" ? ("VERIFIED" as const) : ("PENDING" as const),
+                          },
+                        ]
+                      : []),
+                    ...(identityEvidence?.tradeCertificateUrl
+                      ? [
+                          {
+                            id: "doc-trade-cert",
+                            name: "Trade Skill Certification",
+                            type: "CERTIFICATE",
+                            url: identityEvidence.tradeCertificateUrl,
+                            uploadedAt: "Verified vault",
+                            status: identityEvidence.status === "VERIFIED" ? ("VERIFIED" as const) : ("PENDING" as const),
+                          },
+                        ]
+                      : []),
+                  ];
+
+                  if (effectiveDocs.length === 0) {
+                    return <p className="text-xs text-neutral-400 py-3">No physical documents uploaded yet.</p>;
+                  }
+
+                  return effectiveDocs.map((doc) => (
                     <div
                       key={doc.id}
                       className="p-3.5 rounded-2xl border border-neutral-200 flex items-center justify-between gap-3"
@@ -571,10 +704,8 @@ export function OpsUserProfileDrawer({
                         Preview
                       </a>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-neutral-400 py-3">No physical documents uploaded yet.</p>
-                )}
+                  ));
+                })()}
               </div>
             </div>
           )}

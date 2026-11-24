@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { AdminUser } from "../types";
+import { sendAdminAccountNotificationApi } from "@/lib/api/admin-users";
 
 interface OpsSendNotificationModalProps {
   users: AdminUser[];
@@ -26,7 +27,7 @@ export function OpsSendNotificationModal({
   const isBulk = users.length > 1;
   const targetLabel = isBulk ? `${users.length} selected users` : users[0].fullName;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) {
       toast.error("Please enter a title and message.");
@@ -34,13 +35,26 @@ export function OpsSendNotificationModal({
     }
 
     setIsSending(true);
-    setTimeout(() => {
-      setIsSending(false);
+    try {
+      const res = await sendAdminAccountNotificationApi({
+        userIds: users.map((u) => u.id),
+        title: title.trim(),
+        message: message.trim(),
+        channel,
+        priority,
+      });
+
+      const recipientText = res?.recipientCount ?? users.length;
       toast.success(
-        `Notification sent to ${targetLabel} via ${channel === "ALL" ? "In-App, Email & SMS" : channel}.`
+        `Notification dispatched to ${recipientText} recipient(s) via ${channel === "ALL" ? "In-App, Email & SMS" : channel}.`
       );
       onClose();
-    }, 600);
+    } catch (err: any) {
+      const msg = err?.message || "Failed to dispatch notification.";
+      toast.error(msg);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (

@@ -7,6 +7,24 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 1. Completed Work
+- [x] **Operations Console — Admin Users Module Live API Integration (`lib/api/admin-users.ts`)**:
+  - Implemented typed domain contracts and endpoints matching `admin-users.md`:
+    - `getAdminAccountsApi` (`GET /admin/accounts` with `limit`, `cursor`, `q`, `role`, `status`, `verification`, `location`).
+    - `getAdminAccountDetailApi` (`GET /admin/accounts/{id}`).
+    - `updateAdminAccountStatusApi` (`PATCH /admin/accounts/{id}/status` for suspend / reactivate).
+    - `sendAdminAccountNotificationApi` (`POST /admin/accounts/notifications` with in-app, SMS, email).
+    - `updateAdminAccountPayoutHoldApi` (`PATCH /admin/accounts/{id}/payout-hold` for compliance payout freezing).
+    - `updateAdminAccountTagsApi` (`PATCH /admin/accounts/{id}/tags`).
+    - `createAdminAccountNoteApi` (`POST /admin/accounts/{id}/notes`).
+    - `revokeAdminAccountSessionsApi` (`POST /admin/accounts/{id}/sessions/revoke`).
+    - `resetAdminAccountPasswordApi` (`POST /admin/accounts/{id}/password-reset`).
+    - `adjustAdminAccountWalletApi` (`POST /admin/accounts/{id}/wallet-adjustments`).
+    - `getAdminArtisanIdentityApi` (`GET /admin/artisans/{id}/identity` for identity review evidence).
+  - Wired live endpoints into all Users console UI components:
+    - `OpsUsersView.tsx`: Real-time account listing, debounced search (`q`), server-side filtering, cursor pagination, live suspension & reactivation, loading skeletons, and server error handling.
+    - `app/(admin)/ops/users/[id]/page.tsx` & `OpsUserDetailView.tsx`: 360° user profile workstation loading live account details, dynamic counts, live data across all 9 tabs (Overview, Jobs, Payments, Wallet, Reviews, Complaints, Disputes, Documents, Activity), live note creation, live suspension, and notification dispatch.
+    - `OpsUserProfileDrawer.tsx`, `OpsSuspendModal.tsx`, `OpsSendNotificationModal.tsx`, `OpsWalletAdjustmentModal.tsx`, `OpsBulkActionModal.tsx`: Fully wired to real endpoints.
+  - Eliminated mock data dependencies from the Users module. Strict TypeScript 5 with zero `any` additions (`npx tsc --noEmit` verified 0 errors).
 - [x] **Media Upload Contract Fix (`types/customer.ts` & `lib/api/media.ts`)**:
   - Fixed `VALIDATION_ERROR` on `POST /media` by sending `{ purpose, resourceType }` instead of `{ type, filename, mimeType, sizeBytes }`.
   - Added `MediaPurpose` + `MediaResourceType`; `MediaUploadInitiateResponse` now exposes the signed Cloudinary `fields` and `maximumBytes`.

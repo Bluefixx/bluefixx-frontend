@@ -16,3 +16,5 @@ export * from "./support";
 export * from "./location";
 export * from "./talent";
 export * from "./artisan";
+export * from "./admin-finance";
+export * from "./admin-users";

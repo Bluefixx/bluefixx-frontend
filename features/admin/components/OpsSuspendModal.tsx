@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { AdminUser } from "../types";
+import { updateAdminAccountStatusApi } from "@/lib/api/admin-users";
 
 interface OpsSuspendModalProps {
   user: AdminUser;
@@ -34,20 +35,31 @@ export function OpsSuspendModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reason.trim()) {
-      toast.error("Please provide a detailed reason for audit compliance.");
+    const cleanReason = reason.trim();
+    if (cleanReason.length < 5) {
+      toast.error("Please provide an audit reason of at least 5 characters.");
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      onConfirmSuspension(user.id, category, reason.trim());
-      setIsSubmitting(false);
+    try {
+      const fullReason = `${category}: ${cleanReason}`;
+      await updateAdminAccountStatusApi(user.id, {
+        enabled: false,
+        reason: fullReason,
+      });
+
+      onConfirmSuspension(user.id, category, cleanReason);
       toast.success(`Account for ${user.fullName} has been suspended.`);
       onClose();
-    }, 600);
+    } catch (err: any) {
+      const msg = err?.message || "Failed to suspend account.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

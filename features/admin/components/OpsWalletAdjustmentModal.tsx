@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { AdminUser } from "../types";
+import { adjustAdminAccountWalletApi } from "@/lib/api/admin-users";
 
 interface OpsWalletAdjustmentModalProps {
   user: AdminUser;
@@ -33,45 +34,61 @@ export function OpsWalletAdjustmentModal({
       ? currentNaira + parsedAmount
       : Math.max(0, currentNaira - parsedAmount);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (parsedAmount <= 0) {
       toast.error("Please enter a valid amount greater than ₦0.");
       return;
     }
-    if (!reason.trim()) {
-      toast.error("An audit reason is required for compliance.");
+    const cleanReason = reason.trim();
+    if (cleanReason.length < 5) {
+      toast.error("An audit reason of at least 5 characters is required.");
+      return;
+    }
+
+    const adjustmentKobo = parsedAmount * 100;
+    if (type === "DEBIT" && adjustmentKobo > user.walletBalanceKobo) {
+      toast.error("Debit amount cannot exceed the user's available balance.");
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const adjustmentKobo = parsedAmount * 100;
-      const newBalanceKobo =
-        type === "CREDIT"
-          ? user.walletBalanceKobo + adjustmentKobo
-          : Math.max(0, user.walletBalanceKobo - adjustmentKobo);
+    try {
+      const fullReason = `${purpose}: ${cleanReason}`;
+      const res = await adjustAdminAccountWalletApi(user.id, {
+        direction: type,
+        amountKobo: adjustmentKobo,
+        reason: fullReason,
+      });
+
+      const updatedAvailableKobo = parseInt(res.available, 10);
+      const updatedReservedKobo = parseInt(res.reserved, 10);
 
       const auditNote = {
         id: `note-${Date.now()}`,
         author: "Simeon Daniel (Admin)",
-        text: `Wallet ${type}: ₦${parsedAmount.toLocaleString("en-NG")} for ${purpose}. Reason: ${reason.trim()} (New balance: ₦${newBalanceNaira.toLocaleString("en-NG")})`,
+        text: `Wallet ${type}: ₦${parsedAmount.toLocaleString("en-NG")} for ${purpose}. Reason: ${cleanReason}`,
         createdAt: "Just now",
       };
 
       const updated: AdminUser = {
         ...user,
-        walletBalanceKobo: newBalanceKobo,
+        walletBalanceKobo: isNaN(updatedAvailableKobo) ? user.walletBalanceKobo : updatedAvailableKobo,
+        escrowBalanceKobo: isNaN(updatedReservedKobo) ? user.escrowBalanceKobo : updatedReservedKobo,
         internalNotes: [auditNote, ...(user.internalNotes || [])],
       };
 
       onConfirmAdjustment(updated);
-      setIsSubmitting(false);
       toast.success(
         `Wallet ${type === "CREDIT" ? "credited" : "debited"} with ₦${parsedAmount.toLocaleString("en-NG")}!`
       );
       onClose();
-    }, 500);
+    } catch (err: any) {
+      const msg = err?.message || "Failed to adjust wallet balance.";
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

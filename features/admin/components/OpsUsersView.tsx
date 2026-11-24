@@ -1,10 +1,15 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { AdminUser } from "../types";
-import { MOCK_ADMIN_USERS } from "../mockData";
+import {
+  getAdminAccountsApi,
+  updateAdminAccountStatusApi,
+  mapBackendAccountToAdminUser,
+  GetAdminAccountsQueryParams,
+} from "@/lib/api/admin-users";
 import { OpsSuspendModal } from "./OpsSuspendModal";
 import { OpsSendNotificationModal } from "./OpsSendNotificationModal";
 import { OpsUserProfileDrawer } from "./OpsUserProfileDrawer";
@@ -34,7 +39,14 @@ export function OpsUsersView() {
     }
   }, [currentTab]);
 
-  const [users, setUsers] = useState<AdminUser[]>(MOCK_ADMIN_USERS);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [filterRole, setFilterRole] = useState<string>("ALL");
   const [filterVerification, setFilterVerification] = useState<string>("ALL");
@@ -88,52 +100,110 @@ export function OpsUsersView() {
     });
   };
 
-  // Tab Filtering logic
-  const filteredUsers = useMemo(() => {
-    return users.filter((u) => {
-      // 1. Sidebar tab filter
-      if (currentTab === "workers" && u.role !== "WORKER") return false;
-      if (currentTab === "customers" && u.role !== "CUSTOMER") return false;
-      if (currentTab === "talents" && u.role !== "TALENT") return false;
-      if (currentTab === "pending-verification" && u.verificationStatus !== "PENDING") return false;
-      if (currentTab === "suspended" && u.accountStatus !== "SUSPENDED") return false;
+  // Live Accounts API Fetcher
+  const fetchUsers = useCallback(async (cursorParam?: string) => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const params: GetAdminAccountsQueryParams = {
+        limit: 30,
+        cursor: cursorParam,
+      };
 
-      // 2. Search query (name, email, phone, userCode, trade)
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          Boolean(u.fullName && u.fullName.toLowerCase().includes(q)) ||
-          Boolean(u.email && u.email.toLowerCase().includes(q)) ||
-          Boolean(u.phone && u.phone.toLowerCase().includes(q)) ||
-          Boolean(u.userCode && u.userCode.toLowerCase().includes(q)) ||
-          Boolean(u.trade && u.trade.toLowerCase().includes(q)) ||
-          Boolean(u.location && u.location.toLowerCase().includes(q));
-        if (!match) return false;
+        params.q = searchQuery.trim();
       }
 
-      // 3. Dropdown filters
-      if (filterRole !== "ALL" && u.role !== filterRole) return false;
-      if (filterVerification !== "ALL" && u.verificationStatus !== filterVerification) return false;
-      if (filterAccount !== "ALL" && u.accountStatus !== filterAccount) return false;
-      if (
-        filterLocation !== "ALL" &&
-        (!u.location || !u.location.toLowerCase().includes(filterLocation.toLowerCase()))
-      )
-        return false;
-      if (filterRisk !== "ALL" && (u.riskLevel || "LOW") !== filterRisk) return false;
+      // Map role from currentTab or filterRole
+      if (currentTab === "workers") {
+        params.role = "ARTISAN";
+      } else if (currentTab === "customers") {
+        params.role = "CUSTOMER";
+      } else if (currentTab === "talents") {
+        params.role = "TALENT";
+      } else if (filterRole === "WORKER") {
+        params.role = "ARTISAN";
+      } else if (filterRole === "CUSTOMER") {
+        params.role = "CUSTOMER";
+      } else if (filterRole === "TALENT") {
+        params.role = "TALENT";
+      }
 
-      return true;
-    });
+      // Map verification
+      if (currentTab === "pending-verification") {
+        params.verification = "PENDING";
+      } else if (filterVerification !== "ALL") {
+        params.verification = filterVerification as any;
+      }
+
+      // Map status
+      if (currentTab === "suspended") {
+        params.status = "disabled";
+      } else if (filterAccount === "ACTIVE") {
+        params.status = "active";
+      } else if (filterAccount === "SUSPENDED") {
+        params.status = "disabled";
+      }
+
+      // Map location
+      if (filterLocation !== "ALL") {
+        params.location = filterLocation;
+      }
+
+      const res = await getAdminAccountsApi(params);
+      const mapped = (res.items || []).map(mapBackendAccountToAdminUser);
+      setUsers(mapped);
+      setTotalCount(res.totalCount ?? mapped.length);
+      setNextCursor(res.nextCursor || null);
+    } catch (err: any) {
+      console.error("Failed to load admin accounts:", err);
+      setFetchError(err?.message || "Failed to load accounts from server.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [
-    users,
     currentTab,
     searchQuery,
     filterRole,
     filterVerification,
     filterAccount,
     filterLocation,
-    filterRisk,
   ]);
+
+  // Reset pagination cursor when filters change
+  useEffect(() => {
+    setCurrentCursor(undefined);
+    setCursorStack([]);
+  }, [currentTab, filterRole, filterVerification, filterAccount, filterLocation, searchQuery]);
+
+  // Fetch accounts on debounced search or filter/cursor change
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchUsers(currentCursor);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [fetchUsers, currentCursor]);
+
+  // Pagination navigation
+  const handleNextPage = () => {
+    if (!nextCursor) return;
+    setCursorStack((prev) => [...prev, currentCursor]);
+    setCurrentCursor(nextCursor);
+  };
+
+  const handlePrevPage = () => {
+    if (cursorStack.length === 0) return;
+    const previousCursor = cursorStack[cursorStack.length - 1];
+    setCursorStack((prev) => prev.slice(0, -1));
+    setCurrentCursor(previousCursor);
+  };
+
+  // Tab Filtering logic (Client-side risk filter as backend doesn't calculate risk score)
+  const filteredUsers = useMemo(() => {
+    if (filterRisk === "ALL") return users;
+    return users.filter((u) => (u.riskLevel || "LOW") === filterRisk);
+  }, [users, filterRisk]);
 
   // Bulk Selection Handlers
   const handleToggleSelectAll = () => {
@@ -155,68 +225,88 @@ export function OpsUsersView() {
   }, [users, selectedUserIds]);
 
   // Suspension
-  const handleConfirmSuspension = (
+  const handleConfirmSuspension = async (
     userId: string,
     category: string,
     reason: string
   ) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          return {
-            ...u,
-            accountStatus: "SUSPENDED",
-            suspensionCategory: category,
-            suspensionReason: reason,
-            suspendedAt: new Date().toLocaleString(),
-          };
-        }
-        return u;
-      })
-    );
-    if (inspectUser && inspectUser.id === userId) {
-      setInspectUser((prev) =>
-        prev
-          ? {
-            ...prev,
-            accountStatus: "SUSPENDED",
-            suspensionCategory: category,
-            suspensionReason: reason,
-            suspendedAt: new Date().toLocaleString(),
+    try {
+      await updateAdminAccountStatusApi(userId, {
+        enabled: false,
+        reason: `${category}: ${reason}`,
+      });
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === userId) {
+            return {
+              ...u,
+              accountStatus: "SUSPENDED",
+              suspensionCategory: category,
+              suspensionReason: reason,
+              suspendedAt: new Date().toISOString(),
+            };
           }
-          : null
+          return u;
+        })
       );
+      if (inspectUser && inspectUser.id === userId) {
+        setInspectUser((prev) =>
+          prev
+            ? {
+              ...prev,
+              accountStatus: "SUSPENDED",
+              suspensionCategory: category,
+              suspensionReason: reason,
+              suspendedAt: new Date().toISOString(),
+            }
+            : null
+        );
+      }
+      toast.success("User account suspended.");
+    } catch (err: any) {
+      console.error("Failed to suspend user:", err);
+      toast.error(err?.message || "Failed to suspend account.");
     }
   };
 
-  const handleReactivateUser = (user: AdminUser) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === user.id) {
-          return {
-            ...u,
-            accountStatus: "ACTIVE",
-            suspensionCategory: undefined,
-            suspensionReason: undefined,
-          };
-        }
-        return u;
-      })
-    );
-    if (inspectUser && inspectUser.id === user.id) {
-      setInspectUser((prev) =>
-        prev
-          ? {
-            ...prev,
-            accountStatus: "ACTIVE",
-            suspensionCategory: undefined,
-            suspensionReason: undefined,
+  const handleReactivateUser = async (user: AdminUser) => {
+    try {
+      await updateAdminAccountStatusApi(user.id, {
+        enabled: true,
+        reason: "Account reactivated by admin from Operations Console",
+      });
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === user.id) {
+            return {
+              ...u,
+              accountStatus: "ACTIVE",
+              suspensionCategory: undefined,
+              suspensionReason: undefined,
+            };
           }
-          : null
+          return u;
+        })
       );
+      if (inspectUser && inspectUser.id === user.id) {
+        setInspectUser((prev) =>
+          prev
+            ? {
+              ...prev,
+              accountStatus: "ACTIVE",
+              suspensionCategory: undefined,
+              suspensionReason: undefined,
+            }
+            : null
+        );
+      }
+      toast.success(`Account for ${user.fullName} reactivated.`);
+    } catch (err: any) {
+      console.error("Failed to reactivate user:", err);
+      toast.error(err?.message || "Failed to reactivate account.");
+    } finally {
+      setActiveMenuUserId(null);
     }
-    toast.success(`Account for ${user.fullName} reactivated.`);
-    setActiveMenuUserId(null);
   };
 
   const handleExportCSV = () => {
@@ -559,7 +649,46 @@ export function OpsUsersView() {
             </thead>
 
             <tbody className="divide-y divide-neutral-100">
-              {filteredUsers.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={`skeleton-${idx}`} className="animate-pulse">
+                    <td className="py-4 pl-5 pr-2">
+                      <div className="w-4 h-4 bg-neutral-200 rounded"></div>
+                    </td>
+                    <td className="py-4 px-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-neutral-200"></div>
+                        <div className="space-y-1.5">
+                          <div className="w-24 h-3 bg-neutral-200 rounded"></div>
+                          <div className="w-16 h-2 bg-neutral-100 rounded"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-3"><div className="w-14 h-4 bg-neutral-200 rounded-md"></div></td>
+                    <td className="py-4 px-3"><div className="w-28 h-3 bg-neutral-200 rounded"></div></td>
+                    <td className="py-4 px-3"><div className="w-20 h-3 bg-neutral-200 rounded"></div></td>
+                    <td className="py-4 px-3"><div className="w-20 h-3 bg-neutral-200 rounded"></div></td>
+                    <td className="py-4 px-3"><div className="w-16 h-4 bg-neutral-200 rounded-full"></div></td>
+                    <td className="py-4 px-3"><div className="w-16 h-4 bg-neutral-200 rounded-full"></div></td>
+                    <td className="py-4 px-3"><div className="w-12 h-3 bg-neutral-200 rounded"></div></td>
+                    <td className="py-4 px-3"><div className="w-16 h-3 bg-neutral-200 rounded"></div></td>
+                    <td className="py-4 pr-5 pl-2 text-right"><div className="w-6 h-6 bg-neutral-200 rounded ml-auto"></div></td>
+                  </tr>
+                ))
+              ) : fetchError ? (
+                <tr>
+                  <td colSpan={11} className="py-12 text-center">
+                    <p className="text-red-600 font-bold text-xs">{fetchError}</p>
+                    <button
+                      type="button"
+                      onClick={() => fetchUsers(currentCursor)}
+                      className="mt-2 text-xs text-[#001B40] font-bold underline cursor-pointer"
+                    >
+                      Retry loading accounts
+                    </button>
+                  </td>
+                </tr>
+              ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-12 text-center text-neutral-400">
                     No users match the selected filters or search query.
@@ -829,21 +958,24 @@ export function OpsUsersView() {
         {/* Table Footer Pagination */}
         <div className="p-4 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500">
           <span>
-            Showing 1-{filteredUsers.length} of {users.length} users
+            Showing {users.length > 0 ? cursorStack.length * 30 + 1 : 0}-
+            {cursorStack.length * 30 + users.length} of {totalCount} users
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled
-              className="px-3 py-1.5 rounded-lg border border-neutral-200 text-neutral-400 disabled:opacity-50 text-xs font-semibold cursor-not-allowed"
+              onClick={handlePrevPage}
+              disabled={cursorStack.length === 0 || isLoading}
+              className="px-3 py-1.5 rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold cursor-pointer transition-colors"
             >
               Previous
             </button>
-            <span className="font-bold text-[#001B40]">Page 1</span>
+            <span className="font-bold text-[#001B40]">Page {cursorStack.length + 1}</span>
             <button
               type="button"
-              disabled
-              className="px-3 py-1.5 rounded-lg border border-neutral-200 text-neutral-400 disabled:opacity-50 text-xs font-semibold cursor-not-allowed"
+              onClick={handleNextPage}
+              disabled={!nextCursor || isLoading}
+              className="px-3 py-1.5 rounded-lg border border-neutral-200 text-neutral-700 hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold cursor-pointer transition-colors"
             >
               Next
             </button>

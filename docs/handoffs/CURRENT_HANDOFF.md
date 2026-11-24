@@ -1,6 +1,63 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-23 (Full Operations Console Complete: Reports & Analytics, Referrals & Anti-Fraud, Settings, Categories, Content, Notifications, Admins, Activity Logs)*
+*Last updated: 2026-11-24 (Admin Users Console Live API Integration Complete: All Endpoints, Zero Mock Data, Strict Type Safety)*
+
+---
+
+## 0. Latest Session — Admin Users Console Live API Integration
+
+### A. Core Deliverables & Live Endpoints Integrated
+1. **API Client Module (`lib/api/admin-users.ts`)**:
+   - Built full API contract implementation according to `admin-users.md`:
+     - `getAdminAccountsApi(params)`: `GET /admin/accounts` with filters (`q`, `role`, `status`, `verification`, `location`, `cursor`, `limit`).
+     - `getAdminAccountDetailApi(id)`: `GET /admin/accounts/{id}` for rich 360° user profile.
+     - `updateAdminAccountStatusApi(id, { enabled, reason })`: `PATCH /admin/accounts/{id}/status` for account suspension & reactivation.
+     - `sendAdminAccountNotificationApi({ userIds, title, message, channel, priority })`: `POST /admin/accounts/notifications`.
+     - `updateAdminAccountPayoutHoldApi(id, { enabled, reason })`: `PATCH /admin/accounts/{id}/payout-hold` for compliance payout freezing.
+     - `updateAdminAccountTagsApi(id, { tags })`: `PATCH /admin/accounts/{id}/tags` for admin tagging.
+     - `createAdminAccountNoteApi(id, { text })`: `POST /admin/accounts/{id}/notes` for private operational notes.
+     - `revokeAdminAccountSessionsApi(id)`: `POST /admin/accounts/{id}/sessions/revoke` for security session invalidation.
+     - `resetAdminAccountPasswordApi(id)`: `POST /admin/accounts/{id}/password-reset` for recovery dispatch.
+     - `adjustAdminAccountWalletApi(id, { direction, amountKobo, reason })`: `POST /admin/accounts/{id}/wallet-adjustments` for manual credit/debit.
+     - `getAdminArtisanIdentityApi(id)`: `GET /admin/artisans/{id}/identity` for audited identity evidence documents (NIN, ID card, selfie, certificates).
+   - `mapBackendAccountToAdminUser`: robust adapter converting backend responses (`ARTISAN`, integer kobo strings, nested objects) to frontend `AdminUser` representation.
+   - Exported through `lib/api/index.ts`.
+
+2. **Users Directory Table View (`features/admin/components/OpsUsersView.tsx`)**:
+   - Eliminated initial `MOCK_ADMIN_USERS` dependency; now runs purely on live backend data.
+   - Connected `useEffect` with 300ms debounce on search queries (`q`) and instant updates on sidebar tabs & dropdown filters.
+   - Implemented cursor-based pagination with `cursorStack`, `nextCursor`, and dynamic page numbering.
+   - Added animated loading skeletons and server error states with retry actions.
+   - Connected live account suspension and reactivation with toast feedback.
+   - Preserved UI layout, theme tokens, bulk action bars, and CSV export.
+
+3. **User 360° Profile Workstation (`app/(admin)/ops/users/[id]/page.tsx` & `features/admin/components/OpsUserDetailView.tsx`)**:
+   - Replaced mock user lookup with live data fetching via `getAdminAccountDetailApi(id)`.
+   - Wired all 9 tabs to real backend collections:
+     - **Overview**: Trust metrics, completed jobs, dispute counts, rating, wallet balances, active jobs and open cases previews.
+     - **Jobs**: Live `accountDetail.jobs` and `accountDetail.bookings` with values, statuses, and dates.
+     - **Payments**: Live `accountDetail.payments` and `accountDetail.transfers` with reference codes, channels, and amounts.
+     - **Wallet**: Available kobo and reserved escrow balances, linked payout bank details, payout hold toggle button, and ledger.
+     - **Reviews**: Live `accountDetail.reviews` with star ratings, reviewer names, comments, and timestamps.
+     - **Complaints**: Live `accountDetail.cases` with ticket numbers, priorities, and statuses.
+     - **Disputes**: Live `accountDetail.disputes` with dispute codes, titles, and amounts.
+     - **Documents**: Live NIN/BVN statuses and artisan identity evidence (`getAdminArtisanIdentityApi`) with document links.
+     - **Activity**: Live `accountDetail.audits` and internal admin notes with interactive live note creation via `createAdminAccountNoteApi`.
+   - Connected Suspend/Reactivate modal to `updateAdminAccountStatusApi`.
+   - Connected Contact modal to `sendAdminAccountNotificationApi`.
+
+4. **Modals & Drawers Integrated**:
+   - `OpsUserProfileDrawer.tsx`: Notes, payout holds, tags, session revocation, password resets, and artisan identity evidence.
+   - `OpsSuspendModal.tsx`: Suspension category and reason dispatch to backend.
+   - `OpsSendNotificationModal.tsx`: In-app/SMS/Email notification dispatch.
+   - `OpsWalletAdjustmentModal.tsx`: Live credit/debit adjustments.
+   - `OpsBulkActionModal.tsx`: Bulk tags, payout freeze/unfreeze, and document requests.
+
+### B. Flags & Backend Contract Observations
+1. **Risk Scoring & Last Active**: As documented in the backend API contract, the backend does not currently calculate user risk scores or a last-active timestamp independent of recorded sessions. Absent risk data is safely handled on the frontend without assuming low risk or crashing.
+2. **Identity Review Isolation**: Identity documents (ID card, selfie, trade cert) are retrieved on-demand via `GET /admin/artisans/{id}/identity` rather than bundled in the general account list.
+
+---
 
 ---
 

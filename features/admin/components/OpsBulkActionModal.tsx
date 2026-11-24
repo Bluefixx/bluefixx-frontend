@@ -3,6 +3,11 @@
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { AdminUser } from "../types";
+import {
+  updateAdminAccountPayoutHoldApi,
+  updateAdminAccountTagsApi,
+  sendAdminAccountNotificationApi,
+} from "@/lib/api/admin-users";
 
 export type BulkActionType =
   | "VERIFY_KYC"
@@ -36,9 +41,9 @@ export function OpsBulkActionModal({
 
   const count = selectedUsers.length;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       let updated: AdminUser[] = [];
 
       if (actionType === "VERIFY_KYC") {
@@ -57,6 +62,14 @@ export function OpsBulkActionModal({
         }));
         toast.success(`Verified KYC for ${count} users!`);
       } else if (actionType === "REQUEST_DOCS") {
+        await sendAdminAccountNotificationApi({
+          userIds: selectedUsers.map((u) => u.id),
+          title: "Action Required: Re-submit Identification Documents",
+          message: reRequestReason.trim(),
+          channel: "ALL",
+          priority: "HIGH",
+        });
+
         updated = selectedUsers.map((u) => ({
           ...u,
           verificationStatus: "UNDER_REVIEW" as const,
@@ -78,12 +91,29 @@ export function OpsBulkActionModal({
           setIsSubmitting(false);
           return;
         }
+
+        await Promise.all(
+          selectedUsers.map((u) => {
+            const nextTags = Array.from(new Set([...(u.tags || []), cleanTag]));
+            return updateAdminAccountTagsApi(u.id, { tags: nextTags });
+          })
+        );
+
         updated = selectedUsers.map((u) => ({
           ...u,
           tags: Array.from(new Set([...(u.tags || []), cleanTag])),
         }));
         toast.success(`Tag "${cleanTag}" added to ${count} users.`);
       } else if (actionType === "FREEZE_PAYOUTS") {
+        await Promise.all(
+          selectedUsers.map((u) =>
+            updateAdminAccountPayoutHoldApi(u.id, {
+              enabled: true,
+              reason: "Bulk compliance safeguard hold",
+            })
+          )
+        );
+
         updated = selectedUsers.map((u) => ({
           ...u,
           payoutsFrozen: true,
@@ -99,6 +129,15 @@ export function OpsBulkActionModal({
         }));
         toast.success(`Payouts frozen for ${count} users.`);
       } else if (actionType === "UNFREEZE_PAYOUTS") {
+        await Promise.all(
+          selectedUsers.map((u) =>
+            updateAdminAccountPayoutHoldApi(u.id, {
+              enabled: false,
+              reason: "Bulk hold restored by operational review",
+            })
+          )
+        );
+
         updated = selectedUsers.map((u) => ({
           ...u,
           payoutsFrozen: false,
@@ -107,9 +146,12 @@ export function OpsBulkActionModal({
       }
 
       onApplyBulkAction(updated);
-      setIsSubmitting(false);
       onClose();
-    }, 500);
+    } catch (err: any) {
+      toast.error(err?.message || "Bulk action encountered an error.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

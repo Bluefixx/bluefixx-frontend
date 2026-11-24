@@ -116,6 +116,7 @@ export type JobAttentionReason =
 
 export interface AdminJob {
   id: string;
+  bookingId?: string | null;
   title: string;
   customer: {
     id: string;

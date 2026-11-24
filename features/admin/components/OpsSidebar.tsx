@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
+import { getAdminVerificationStatsApi } from "@/lib/api/admin-verification";
+import { getAdminJobsApi } from "@/lib/api/admin-jobs";
 
 interface OpsSidebarProps {
   onCloseMobile?: () => void;
@@ -34,6 +36,42 @@ interface NavGroup {
 export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  // Dynamic badge counts from live APIs
+  const [pendingVerificationCount, setPendingVerificationCount] = useState<number | undefined>(undefined);
+  const [disputedJobsCount, setDisputedJobsCount] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    // Load live verification stats for pending count
+    getAdminVerificationStatsApi()
+      .then((stats) => {
+        if (!isMounted) return;
+        if (typeof stats.pending === "number") {
+          setPendingVerificationCount(stats.pending);
+        }
+      })
+      .catch(() => {
+        // Silently handled
+      });
+
+    // Load live disputed jobs count
+    getAdminJobsApi({ status: "DISPUTED", limit: 1 })
+      .then((res) => {
+        if (!isMounted) return;
+        if (typeof res.totalCount === "number") {
+          setDisputedJobsCount(res.totalCount);
+        }
+      })
+      .catch(() => {
+        // Silently handled
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname]);
 
   // Control which dropdowns are expanded
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -85,7 +123,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
               name: "Pending verification",
               href: "/ops/users?tab=pending-verification",
               paramTab: "pending-verification",
-              badge: 24,
+              badge: pendingVerificationCount,
               badgeColor: "orange",
             },
             {
@@ -110,13 +148,19 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
             { name: "Pending", href: "/ops/jobs?tab=pending", paramTab: "pending" },
             { name: "Completed", href: "/ops/jobs?tab=completed", paramTab: "completed" },
             { name: "Cancelled", href: "/ops/jobs?tab=cancelled", paramTab: "cancelled" },
-            { name: "Disputed", href: "/ops/jobs?tab=disputed", paramTab: "disputed", badge: 2, badgeColor: "red" },
+            {
+              name: "Disputed",
+              href: "/ops/jobs?tab=disputed",
+              paramTab: "disputed",
+              badge: disputedJobsCount,
+              badgeColor: "red",
+            },
           ],
         },
         {
           name: "Worker verification",
           href: "/ops/verification",
-          badge: 24,
+          badge: pendingVerificationCount,
           badgeColor: "orange",
           icon: () => (
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -420,7 +464,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                           <span>{item.name}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          {item.badge && (
+                          {typeof item.badge === "number" && item.badge > 0 && (
                             <span
                               className={`whitespace-nowrap shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded-md ${item.badgeColor === "red"
                                   ? "bg-red-100 text-red-700"
@@ -457,7 +501,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                           {item.icon(isExactActive)}
                           <span>{item.name}</span>
                         </div>
-                        {item.badge && (
+                        {typeof item.badge === "number" && item.badge > 0 && (
                           <span
                             className={`whitespace-nowrap shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded-md ${isExactActive
                                 ? "bg-white/20 text-white"
@@ -491,7 +535,7 @@ export function OpsSidebar({ onCloseMobile }: OpsSidebarProps) {
                                 }`}
                             >
                               <span className="truncate">{sub.name}</span>
-                              {sub.badge && (
+                              {typeof sub.badge === "number" && sub.badge > 0 && (
                                 <span
                                   className={`whitespace-nowrap shrink-0 px-1.5 py-0.2 text-[9px] font-bold rounded-sm ml-1.5 ${isSubActive
                                       ? "bg-white/20 text-white"

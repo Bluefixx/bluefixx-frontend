@@ -27,7 +27,13 @@ export function OpsDisputeArbitrationModal({
   const [justification, setJustification] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isOpen || !job || !job.disputeDetails) return null;
+  if (!isOpen || !job) return null;
+
+  const dispute = job.disputeDetails || {
+    customerClaim: "Customer filed for arbitration on this job.",
+    workerRebuttal: "No formal rebuttal filed yet.",
+    status: "OPEN" as const,
+  };
 
   const totalValue = job.value;
   const workerPayout = Math.round((totalValue * workerSharePercent) / 100);
@@ -40,11 +46,12 @@ export function OpsDisputeArbitrationModal({
       return;
     }
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       onResolve(job, outcome, workerSharePercent, justification);
-      setIsSubmitting(false);
       onClose();
-    }, 500);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -76,7 +83,7 @@ export function OpsDisputeArbitrationModal({
               <span className="text-[11px] text-rose-600">{job.customer.name}</span>
             </div>
             <p className="text-xs text-neutral-700 leading-relaxed italic">
-              &ldquo;{job.disputeDetails.customerClaim}&rdquo;
+              &ldquo;{dispute.customerClaim}&rdquo;
             </p>
           </div>
 
@@ -86,7 +93,7 @@ export function OpsDisputeArbitrationModal({
               <span className="text-[11px] text-blue-600">{job.worker?.name || "Artisan"}</span>
             </div>
             <p className="text-xs text-neutral-700 leading-relaxed italic">
-              &ldquo;{job.disputeDetails.workerRebuttal || "No formal rebuttal filed yet."}&rdquo;
+              &ldquo;{dispute.workerRebuttal || "No formal rebuttal filed yet."}&rdquo;
             </p>
           </div>
         </div>

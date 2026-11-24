@@ -1,12 +1,25 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/stores/auth-store";
 import CustomerHomeView from "@/features/dashboard/components/CustomerHomeView";
 import ArtisanHomeView from "@/features/dashboard/components/ArtisanHomeView";
 
 function DashboardHomeContent() {
-  const { activeRole, setActiveRole } = useAuth();
+  const router = useRouter();
+  const { user, activeRole, setActiveRole } = useAuth();
+
+  useEffect(() => {
+    const userObj = user as any;
+    const roleStr = String(userObj?.role || "").toLowerCase();
+    const rolesArr = Array.isArray(userObj?.roles)
+      ? userObj.roles.map((r: any) => String(r).toLowerCase())
+      : [];
+    if (roleStr === "admin" || rolesArr.includes("admin")) {
+      router.replace("/ops");
+    }
+  }, [user, router]);
 
   return (
     <>

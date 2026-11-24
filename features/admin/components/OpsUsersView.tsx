@@ -138,11 +138,11 @@ export function OpsUsersView() {
 
       // Map status
       if (currentTab === "suspended") {
-        params.status = "disabled";
+        params.status = "suspended";
       } else if (filterAccount === "ACTIVE") {
         params.status = "active";
       } else if (filterAccount === "SUSPENDED") {
-        params.status = "disabled";
+        params.status = "suspended";
       }
 
       // Map location

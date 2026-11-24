@@ -109,16 +109,28 @@ export function useGoogleAuth() {
   const routeAfterAuth = useCallback(
     (response: LoginResponse) => {
       toast.success(`Welcome, ${response.user.fullName || "User"}!`);
-      if (!response.user.role) {
+      const userObj = response.user as any;
+      const roleStr = String(userObj?.role || "").toLowerCase();
+      const rolesArr: string[] = Array.isArray(userObj?.roles)
+        ? userObj.roles.map((r: any) => String(r).toLowerCase())
+        : [];
+
+      if (roleStr === "admin" || rolesArr.includes("admin")) {
+        router.push("/ops");
+      } else if (roleStr === "artisan" || rolesArr.includes("artisan")) {
+        router.push("/artisan");
+      } else if (
+        roleStr === "apprentice" ||
+        roleStr === "talent" ||
+        roleStr === "learner" ||
+        rolesArr.includes("learner") ||
+        rolesArr.includes("talent") ||
+        rolesArr.includes("apprentice")
+      ) {
+        router.push("/talent/home");
+      } else if (!userObj?.role && rolesArr.length === 0) {
         setRegistrationStep(6);
         router.push("/signup");
-        return;
-      }
-      const role = response.user.role.toLowerCase();
-      if (role === "artisan") {
-        router.push("/artisan");
-      } else if (role === "apprentice" || role === "talent" || role === "learner") {
-        router.push("/talent/home");
       } else {
         router.push("/dashboard");
       }

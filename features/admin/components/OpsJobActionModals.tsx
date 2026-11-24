@@ -28,11 +28,12 @@ export function OpsForceReleaseModal({ job, isOpen, onClose, onConfirm }: ForceR
       return;
     }
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       onConfirm(job, reason);
-      setIsSubmitting(false);
       onClose();
-    }, 400);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -129,11 +130,12 @@ export function OpsRefundModal({ job, isOpen, onClose, onConfirm }: RefundModalP
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
       onConfirm(job, amount, reason);
-      setIsSubmitting(false);
       onClose();
-    }, 400);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -241,41 +243,80 @@ export function OpsRefundModal({ job, isOpen, onClose, onConfirm }: RefundModalP
 // Emergency Reassign Worker Modal
 // ==========================================
 
+import { getAdminAccountsApi } from "@/lib/api/admin-users";
+
 interface ReassignModalProps {
   job: AdminJob | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (job: AdminJob, newWorkerId: string, newWorkerName: string) => void;
+  onConfirm: (
+    job: AdminJob,
+    newWorkerId: string,
+    newWorkerName: string,
+    reason: string
+  ) => Promise<void> | void;
 }
-
-const AVAILABLE_WORKERS_MOCK = [
-  { id: "work-10", name: "Ibrahim Salisu", trade: "Plumbing", location: "Lagos — Ikeja", rating: 4.9 },
-  { id: "work-11", name: "Emeka Eze", trade: "Electrical", location: "Lagos — VI", rating: 4.8 },
-  { id: "work-12", name: "Kolapo Jinadu", trade: "Air conditioning", location: "Enugu — Independence", rating: 4.7 },
-  { id: "work-13", name: "David Adeleke", trade: "Carpentry", location: "Abuja — Garki", rating: 4.8 },
-];
 
 export function OpsReassignWorkerModal({ job, isOpen, onClose, onConfirm }: ReassignModalProps) {
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
+  const [customWorkerId, setCustomWorkerId] = useState("");
+  const [customWorkerName, setCustomWorkerName] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [artisanList, setArtisanList] = useState<Array<{ id: string; name: string; trade: string; location: string; rating: number }>>([]);
+  const [isLoadingArtisans, setIsLoadingArtisans] = useState(false);
+
+  React.useEffect(() => {
+    if (!isOpen || !job) return;
+    let isMounted = true;
+    setIsLoadingArtisans(true);
+    getAdminAccountsApi({ role: "ARTISAN", status: "active", limit: 20 })
+      .then((res) => {
+        if (!isMounted) return;
+        const mapped = (res.items || []).map((item) => ({
+          id: item.id,
+          name: item.fullName || "Artisan",
+          trade: item.artisan?.trade || item.location || "General Artisan",
+          location: item.location || item.artisan?.area || "Lagos",
+          rating: item.artisan?.ratingCount ? Number((item.artisan.ratingTotal! / item.artisan.ratingCount).toFixed(1)) : 4.8,
+        }));
+        setArtisanList(mapped);
+      })
+      .catch((err) => {
+        console.warn("Failed to load active artisans for reassignment:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingArtisans(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, job]);
 
   if (!isOpen || !job) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const worker = AVAILABLE_WORKERS_MOCK.find((w) => w.id === selectedWorkerId);
-    if (!worker) {
-      toast.error("Please select a verified replacement artisan.");
+    const finalWorkerId = selectedWorkerId || customWorkerId.trim();
+    const selectedArtisan = artisanList.find((w) => w.id === selectedWorkerId);
+    const finalWorkerName = selectedArtisan ? selectedArtisan.name : (customWorkerName.trim() || "Replacement Artisan");
+
+    if (!finalWorkerId) {
+      toast.error("Please select or enter a verified replacement artisan UUID.");
       return;
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      onConfirm(job, worker.id, worker.name);
-      setIsSubmitting(false);
+    try {
+      const reason = notes.trim() || `Reassigned from ${job.worker?.name || "previous worker"} to ${finalWorkerName}`;
+      await onConfirm(job, finalWorkerId, finalWorkerName, reason);
       onClose();
-    }, 400);
+    } catch {
+      // Error handled by parent
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -300,30 +341,57 @@ export function OpsReassignWorkerModal({ job, isOpen, onClose, onConfirm }: Reas
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-neutral-700 mb-2">
-              Select Verified Replacement Artisan in {job.trade} *
+              Select Verified Replacement Artisan {job.trade ? `in ${job.trade}` : ""} *
             </label>
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {AVAILABLE_WORKERS_MOCK.map((w) => (
-                <div
-                  key={w.id}
-                  onClick={() => setSelectedWorkerId(w.id)}
-                  className={`p-3 rounded-xl border text-xs cursor-pointer transition-colors flex items-center justify-between ${
-                    selectedWorkerId === w.id
-                      ? "border-[#001B40] bg-neutral-50"
-                      : "border-neutral-200 hover:border-neutral-300"
-                  }`}
-                >
-                  <div>
-                    <div className="font-bold text-neutral-900">{w.name}</div>
-                    <div className="text-[11px] text-neutral-500">{w.trade} • {w.location}</div>
+            {isLoadingArtisans ? (
+              <div className="p-4 text-center text-xs text-neutral-400">Loading active artisans...</div>
+            ) : artisanList.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {artisanList.map((w) => (
+                  <div
+                    key={w.id}
+                    onClick={() => {
+                      setSelectedWorkerId(w.id);
+                      setCustomWorkerId("");
+                    }}
+                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-colors flex items-center justify-between ${
+                      selectedWorkerId === w.id
+                        ? "border-[#001B40] bg-neutral-50"
+                        : "border-neutral-200 hover:border-neutral-300"
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold text-neutral-900">{w.name}</div>
+                      <div className="text-[11px] text-neutral-500">{w.trade} • {w.location}</div>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-600 font-bold">
+                      <span>★</span>
+                      <span>{w.rating}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-amber-600 font-bold">
-                    <span>★</span>
-                    <span>{w.rating}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Enter replacement artisan UUID (e.g. 00000000-0000-4000-8000-000000000001)"
+                  value={customWorkerId}
+                  onChange={(e) => {
+                    setCustomWorkerId(e.target.value);
+                    setSelectedWorkerId("");
+                  }}
+                  className="w-full text-xs p-3 rounded-xl border border-neutral-300 focus:outline-none focus:border-[#001B40]"
+                />
+                <input
+                  type="text"
+                  placeholder="Artisan full name"
+                  value={customWorkerName}
+                  onChange={(e) => setCustomWorkerName(e.target.value)}
+                  className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 focus:outline-none focus:border-[#001B40]"
+                />
+              </div>
+            )}
           </div>
 
           <div>

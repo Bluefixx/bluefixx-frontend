@@ -7,6 +7,33 @@ This document tracks current progress, backlog, known issues, and next actions f
 ---
 
 ## 1. Completed Work
+- [x] **Operations Console — Admin Jobs Module Live API Integration (`lib/api/admin-jobs.ts`)**:
+  - Implemented typed domain contracts and endpoints matching `admin-jobs.md`:
+    - `getAdminJobsApi` (`GET /admin/jobs` with `limit`, `cursor`, `q`, `status`, `payment`, `trade`, `location`, `needsAttention`).
+    - `getAdminJobDetailApi` (`GET /admin/jobs/{id}` for rich job/booking details).
+    - `getAdminJobMediaUrlApi` (`GET /admin/jobs/{bookingId}/media/{mediaId}/url`).
+    - `forceReleaseEscrowApi` (`POST /admin/bookings/{id}/release`).
+    - `refundEscrowApi` (`POST /admin/bookings/{id}/refund`).
+    - `reassignBookingWorkerApi` (`POST /admin/bookings/{id}/reassign`).
+    - `arbitrateBookingDisputeApi` (`POST /admin/bookings/{id}/arbitration`).
+  - Wired live endpoints into all Jobs console UI components:
+    - `OpsJobsView.tsx`: Real-time job listing, attention banner filter, debounced search (`q`), server-side status/payment/trade/location filters, cursor pagination, and live action triggers.
+    - `OpsJobDetailsDrawer.tsx`: Loads full job details on open, displaying transaction payments, refunds, work gallery proofs, support tickets, and audit timeline.
+    - `OpsJobActionModals.tsx`: Force release, customer refund, and dynamic artisan reassignment with active worker search.
+    - `OpsDisputeArbitrationModal.tsx`: Live binding arbitration ruling (`WORKER_FULL`, `CUSTOMER_FULL`, `SPLIT`) with worker share percentage and logged justification.
+  - Eliminated mock data dependencies from the Jobs module. Strict TypeScript 5 with zero `any` additions (`npx tsc --noEmit` verified 0 errors).
+- [x] **Operations Console — Admin Worker Verification Module Live API Integration (`lib/api/admin-verification.ts`)**:
+  - Implemented typed domain contracts and endpoints matching `admin-worker-verification.md`:
+    - `getAdminVerificationStatsApi` (`GET /admin/verification/stats`).
+    - `getAdminVerificationQueueApi` (`GET /admin/verification` with `limit`, `cursor`, `q`, `status`, `trade`).
+    - `getAdminWorkerVerificationDetailApi` (`GET /admin/verification/{artisanId}`).
+    - `getAdminArtisanIdentityEvidenceApi` (`GET /admin/artisans/{artisanId}/identity`).
+    - `assignVerificationReviewerApi` (`POST /admin/verification/{artisanId}/assign`).
+    - `requestVerificationInfoApi` (`POST /admin/verification/{artisanId}/request-info`).
+    - `reviewArtisanDecisionApi` (`POST /admin/artisans/{artisanId}/review`).
+  - Wired live endpoints into `OpsWorkerVerificationsView.tsx`, `OpsVerificationReviewer.tsx`, and `OpsVerificationModals.tsx`.
+- [x] **Admin Login Redirection Fix**:
+  - Fixed post-login redirection in `LoginPage.tsx` and `useGoogleAuth.ts` so admin users are immediately routed to `/ops` instead of the customer `/dashboard`. Added guard in `/dashboard/page.tsx` as fallback.
 - [x] **Operations Console — Admin Users Module Live API Integration (`lib/api/admin-users.ts`)**:
   - Implemented typed domain contracts and endpoints matching `admin-users.md`:
     - `getAdminAccountsApi` (`GET /admin/accounts` with `limit`, `cursor`, `q`, `role`, `status`, `verification`, `location`).

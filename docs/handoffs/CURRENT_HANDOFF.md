@@ -1,10 +1,57 @@
 # Current Session Handoff
 
-*Last updated: 2026-11-24 (Admin Worker Verification Console Live API Integration Complete: Queue, 3-Column Reviewer, Modals, Stats, Strict Type Safety)*
+*Last updated: 2026-11-24 (Admin Jobs Module Live API Integration Complete: Jobs List, Attention Filter, Details Drawer, Escrow Actions, Dispute Arbitration, Admin Login Redirection Fixed, Strict Type Safety)*
 
 ---
 
-## 0. Latest Session — Admin Worker Verification API Integration
+## 0. Latest Session — Admin Jobs Module API Integration & Login Redirection
+
+### A. Core Deliverables & Live Endpoints Integrated
+1. **API Client Module (`lib/api/admin-jobs.ts`)**:
+   - Implemented full API contract matching `admin-jobs.md`:
+     - `getAdminJobsApi(params)`: `GET /admin/jobs` with filters (`q`, `status`, `payment`, `trade`, `location`, `needsAttention`, `cursor`, `limit`).
+     - `getAdminJobDetailApi(id)`: `GET /admin/jobs/{id}` for rich job and booking details (escrow details, payment logs, refund logs, proofs, support cases, disputes, and audit timeline).
+     - `getAdminJobMediaUrlApi(bookingId, mediaId)`: `GET /admin/jobs/{bookingId}/media/{mediaId}/url` for signed download URLs.
+     - `forceReleaseEscrowApi(bookingId, payload)`: `POST /admin/bookings/{id}/release` for administrative escrow release with audit justification.
+     - `refundEscrowApi(bookingId, payload)`: `POST /admin/bookings/{id}/refund` for full or partial escrow refunds (with automatic dispute resolution if fully refunded).
+     - `reassignBookingWorkerApi(bookingId, payload)`: `POST /admin/bookings/{id}/reassign` for emergency replacement of artisans.
+     - `arbitrateBookingDisputeApi(bookingId, payload)`: `POST /admin/bookings/{id}/arbitration` for binding dispute arbitrations (`WORKER_FULL`, `CUSTOMER_FULL`, `SPLIT`).
+   - Added `mapBackendJobToAdminJob` data adapter converting backend response structures to `AdminJob`.
+   - Exported through `lib/api/index.ts`.
+
+2. **Admin Login Redirection Fixed**:
+   - `features/onboarding/components/LoginPage.tsx`: Updated post-login routing so that `role === "admin"` or `roles.includes("admin")` redirects to `/ops` (instead of customer `/dashboard`).
+   - `features/onboarding/hooks/useGoogleAuth.ts`: Updated Google sign-in role routing to redirect admin users to `/ops`.
+   - `app/(dashboard)/dashboard/page.tsx`: Added safety role check redirecting any admin session landing on `/dashboard` to `/ops`.
+
+3. **Jobs Table & Attention Filter (`features/admin/components/OpsJobsView.tsx`)**:
+   - Eliminated initial `MOCK_ADMIN_JOBS` dependency; now runs purely on live backend data.
+   - Connected live Attention banner with dynamic `attentionCount` returned from the API.
+   - Connected tab filters (`all`, `active` -> `IN_PROGRESS`, `pending` -> `PENDING`, `completed` -> `COMPLETED`, `cancelled` -> `CANCELLED`, `disputed` -> `DISPUTED`).
+   - Connected debounced search (`q`, 300ms), dropdown filters (`payment`, `trade`, `location`), and `needsAttention` toggle.
+   - Added animated loading skeletons and server error handling with retry actions.
+   - Connected cursor-based pagination with Prev/Next history stack.
+   - Connected live action handlers for force release, customer refund, worker reassignment, and dispute arbitration with automatic table refresh.
+
+4. **Job Details Drawer (`features/admin/components/OpsJobDetailsDrawer.tsx`)**:
+   - Automatically loads full live job detail on open via `getAdminJobDetailApi(job.id)`.
+   - Displays real payments and refunds in the "Escrow & Ledger" tab.
+   - Displays uploaded proof of work photos and notes in the "Proof & Work Gallery" tab.
+   - Displays related customer support cases and tickets in the "Overview & Parties" tab.
+   - Displays full audit timeline and events in the "Audit Timeline" tab.
+
+5. **Action Modals (`features/admin/components/OpsJobActionModals.tsx`, `OpsDisputeArbitrationModal.tsx`)**:
+   - `OpsForceReleaseModal`: Direct live submission with administrative justification.
+   - `OpsRefundModal`: Direct live submission with full/partial refund amount in kobo.
+   - `OpsReassignWorkerModal`: Dynamically fetches active artisans via `getAdminAccountsApi` with search fallback and calls `reassignBookingWorkerApi`.
+   - `OpsDisputeArbitrationModal`: Direct live submission to `arbitrateBookingDisputeApi` with outcome, worker share percentage, and binding justification.
+
+6. **Strict Type Safety**:
+   - Verified clean compilation with `npx tsc --noEmit` (0 errors).
+
+---
+
+## 1. Prior Session — Admin Worker Verification API Integration
 
 ### A. Core Deliverables & Live Endpoints Integrated
 1. **API Client Module (`lib/api/admin-verification.ts`)**:

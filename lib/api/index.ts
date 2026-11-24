@@ -19,3 +19,4 @@ export * from "./artisan";
 export * from "./admin-finance";
 export * from "./admin-users";
 export * from "./admin-verification";
+export * from "./admin-jobs";

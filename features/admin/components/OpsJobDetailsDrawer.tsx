@@ -1,7 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminJob } from "../types";
+import {
+  getAdminJobDetailApi,
+  mapBackendJobToAdminJob,
+  BackendAdminJobDetailResponse,
+} from "@/lib/api/admin-jobs";
 import toast from "react-hot-toast";
 
 interface OpsJobDetailsDrawerProps {
@@ -14,7 +19,7 @@ interface OpsJobDetailsDrawerProps {
 }
 
 export function OpsJobDetailsDrawer({
-  job,
+  job: initialJob,
   onClose,
   onForceReleaseEscrow,
   onIssueRefund,
@@ -22,6 +27,37 @@ export function OpsJobDetailsDrawer({
   onOpenArbitration,
 }: OpsJobDetailsDrawerProps) {
   const [activeTab, setActiveTab] = useState<"overview" | "escrow" | "proof" | "history">("overview");
+  const [job, setJob] = useState<AdminJob | null>(initialJob);
+  const [detailRaw, setDetailRaw] = useState<BackendAdminJobDetailResponse | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+
+  useEffect(() => {
+    if (!initialJob) {
+      setJob(null);
+      setDetailRaw(null);
+      return;
+    }
+    setJob(initialJob);
+    let isMounted = true;
+    setIsLoadingDetail(true);
+
+    getAdminJobDetailApi(initialJob.id)
+      .then((res) => {
+        if (!isMounted) return;
+        setDetailRaw(res);
+        setJob(mapBackendJobToAdminJob(res));
+      })
+      .catch((err) => {
+        console.warn("Could not fetch full job detail, using summary item:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingDetail(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialJob?.id]);
 
   if (!job) return null;
 
@@ -133,6 +169,9 @@ export function OpsJobDetailsDrawer({
                   {job.id}
                 </span>
                 <span className="text-xs text-neutral-500">Posted on {job.postedDate}</span>
+                {isLoadingDetail && (
+                  <span className="text-[10px] text-neutral-400 animate-pulse font-medium">Updating...</span>
+                )}
                 {job.needsAttention && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
                     ⚠️ Needs Attention
@@ -323,6 +362,33 @@ export function OpsJobDetailsDrawer({
                     )}
                   </div>
                 )}
+
+                {/* Related Support Cases if any */}
+                {detailRaw?.supportCases && detailRaw.supportCases.length > 0 && (
+                  <div className="p-4 rounded-xl border border-neutral-200 bg-white space-y-2">
+                    <div className="text-xs font-bold text-neutral-800">Support Cases & Tickets</div>
+                    <div className="divide-y divide-neutral-100">
+                      {detailRaw.supportCases.map((c) => (
+                        <div key={c.id} className="py-2 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="font-mono font-bold text-neutral-800">
+                              {c.ticketNumber || c.id.slice(0, 8)}
+                            </span>
+                            <span className="text-neutral-600 ml-2">{c.subject}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-neutral-100 text-neutral-700">
+                              {c.status}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 uppercase font-mono">
+                              {c.priority}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -356,13 +422,91 @@ export function OpsJobDetailsDrawer({
                   <div>Released to Worker: {job.escrowDetails.escrowReleasedAt || "Not released"}</div>
                   <div>Gateway Settlement ID: {job.escrowDetails.gatewayRef || "N/A"}</div>
                 </div>
+
+                {/* Payments & Refunds Ledger */}
+                {detailRaw?.payments && detailRaw.payments.length > 0 && (
+                  <div className="p-4 rounded-xl border border-neutral-200 bg-white space-y-2">
+                    <div className="text-xs font-bold text-neutral-800">Transaction Payments</div>
+                    <div className="divide-y divide-neutral-100">
+                      {detailRaw.payments.map((p) => (
+                        <div key={p.id} className="py-2 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="font-mono font-bold text-neutral-800">{p.reference}</span>
+                            {p.channel && <span className="text-[10px] text-neutral-400 ml-2">({p.channel})</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-neutral-900">
+                              ₦{(Number(p.amountKobo) / 100).toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700">
+                              {p.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {detailRaw?.refunds && detailRaw.refunds.length > 0 && (
+                  <div className="p-4 rounded-xl border border-neutral-200 bg-white space-y-2">
+                    <div className="text-xs font-bold text-neutral-800">Processed Customer Refunds</div>
+                    <div className="divide-y divide-neutral-100">
+                      {detailRaw.refunds.map((r) => (
+                        <div key={r.id} className="py-2 flex items-center justify-between text-xs">
+                          <div>
+                            <span className="text-neutral-700 font-medium">{r.reason || "Customer refund"}</span>
+                            <div className="text-[10px] text-neutral-400">
+                              {r.createdAt ? new Date(r.createdAt).toLocaleString("en-GB") : "Recently"}
+                            </div>
+                          </div>
+                          <span className="font-bold text-rose-700">
+                            -₦{(Number(r.amountKobo) / 100).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === "proof" && (
               <div className="space-y-4">
                 <div className="text-xs font-bold text-neutral-700">Artisan Proof of Work</div>
-                {job.proofOfWork ? (
+                {detailRaw?.proofs && detailRaw.proofs.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {detailRaw.proofs.map((p) => (
+                        <div key={p.id} className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 uppercase">
+                              {p.type} Evidence
+                            </span>
+                            <span className="text-[10px] text-neutral-400">
+                              {p.createdAt ? new Date(p.createdAt).toLocaleDateString("en-GB") : ""}
+                            </span>
+                          </div>
+                          {p.url ? (
+                            <a
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block aspect-video bg-neutral-200 rounded-lg overflow-hidden border border-neutral-200 hover:opacity-90 transition-opacity"
+                            >
+                              <img src={p.url} alt={`${p.type} proof`} className="w-full h-full object-cover" />
+                            </a>
+                          ) : (
+                            <div className="aspect-video bg-neutral-100 rounded-lg border border-dashed border-neutral-300 flex items-center justify-center text-xs text-neutral-400">
+                              Photo File on Record
+                            </div>
+                          )}
+                          {p.notes && <p className="text-xs text-neutral-600 italic">&ldquo;{p.notes}&rdquo;</p>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : job.proofOfWork ? (
                   <div className="space-y-3">
                     <div className="p-3 bg-neutral-50 rounded-xl border border-neutral-200 text-xs text-neutral-600">
                       <strong>Worker Notes:</strong> {job.proofOfWork.notes || "No notes provided"}

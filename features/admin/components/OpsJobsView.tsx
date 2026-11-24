@@ -1,10 +1,19 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { AdminJob, JobPaymentStatus, JobDeliveryStatus } from "../types";
-import { MOCK_ADMIN_JOBS } from "../mockJobsData";
+import { AdminJob } from "../types";
+import {
+  getAdminJobsApi,
+  forceReleaseEscrowApi,
+  refundEscrowApi,
+  reassignBookingWorkerApi,
+  arbitrateBookingDisputeApi,
+  mapBackendJobToAdminJob,
+  BackendJobStatus,
+  BackendJobPaymentStatus,
+} from "@/lib/api/admin-jobs";
 import { OpsJobDetailsDrawer } from "./OpsJobDetailsDrawer";
 import {
   OpsForceReleaseModal,
@@ -18,18 +27,27 @@ export function OpsJobsView() {
   const router = useRouter();
   const currentTab = searchParams.get("tab") || "all";
 
-  const [hasMounted, setHasMounted] = useState(false);
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  const [jobs, setJobs] = useState<AdminJob[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [attentionJobsCount, setAttentionJobsCount] = useState(0);
+  const [disputedCount, setDisputedCount] = useState<number | undefined>(undefined);
 
-  const [jobs, setJobs] = useState<AdminJob[]>(MOCK_ADMIN_JOBS);
+  // Pagination with cursor stack
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [cursorStack, setCursorStack] = useState<string[]>([]);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
+
+  // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterJobStatus, setFilterJobStatus] = useState<string>("ALL");
   const [filterPayment, setFilterPayment] = useState<string>("ALL");
   const [filterTrade, setFilterTrade] = useState<string>("ALL");
   const [filterLocation, setFilterLocation] = useState<string>("ALL");
   const [showNeedsAttentionOnly, setShowNeedsAttentionOnly] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Modals & Drawers state
   const [selectedJobForDrawer, setSelectedJobForDrawer] = useState<AdminJob | null>(null);
@@ -39,61 +57,97 @@ export function OpsJobsView() {
   const [jobForArbitration, setJobForArbitration] = useState<AdminJob | null>(null);
   const [activeMenuJobId, setActiveMenuJobId] = useState<string | null>(null);
 
-  // Attention count
-  const attentionJobsCount = useMemo(() => {
-    return jobs.filter((j) => j.needsAttention).length;
-  }, [jobs]);
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  // Tab mapping
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((j) => {
-      // 1. Attention override toggle
-      if (showNeedsAttentionOnly && !j.needsAttention) return false;
-
-      // 2. Tab filter
-      if (currentTab === "active" && j.deliveryStatus !== "IN_PROGRESS") return false;
-      if (currentTab === "pending" && j.deliveryStatus !== "POSTED" && j.deliveryStatus !== "PENDING") return false;
-      if (currentTab === "completed" && j.deliveryStatus !== "COMPLETED") return false;
-      if (currentTab === "cancelled" && j.deliveryStatus !== "CANCELLED") return false;
-      if (currentTab === "disputed" && j.deliveryStatus !== "DISPUTED") return false;
-
-      // 3. Search query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          Boolean(j.id && j.id.toLowerCase().includes(q)) ||
-          Boolean(j.title && j.title.toLowerCase().includes(q)) ||
-          Boolean(j.customer?.name && j.customer.name.toLowerCase().includes(q)) ||
-          Boolean(j.customer?.code && j.customer.code.toLowerCase().includes(q)) ||
-          Boolean(j.worker?.name && j.worker.name.toLowerCase().includes(q)) ||
-          Boolean(j.worker?.code && j.worker.code.toLowerCase().includes(q)) ||
-          Boolean(j.trade && j.trade.toLowerCase().includes(q)) ||
-          Boolean(j.location && j.location.toLowerCase().includes(q));
-        if (!match) return false;
-      }
-
-      // 4. Dropdown filters
-      if (filterJobStatus !== "ALL" && j.deliveryStatus !== filterJobStatus) return false;
-      if (filterPayment !== "ALL" && j.paymentStatus !== filterPayment) return false;
-      if (filterTrade !== "ALL" && j.trade !== filterTrade) return false;
-      if (
-        filterLocation !== "ALL" &&
-        (!j.location || !j.location.toLowerCase().includes(filterLocation.toLowerCase()))
-      )
-        return false;
-
-      return true;
-    });
+  // Reset pagination cursor when filters or search change
+  useEffect(() => {
+    setCurrentCursor(undefined);
+    setCursorStack([]);
   }, [
-    jobs,
+    debouncedSearch,
     currentTab,
-    showNeedsAttentionOnly,
-    searchQuery,
     filterJobStatus,
     filterPayment,
     filterTrade,
     filterLocation,
+    showNeedsAttentionOnly,
   ]);
+
+  // Fetch jobs from backend
+  const fetchJobs = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      let statusParam: BackendJobStatus | undefined = undefined;
+      if (currentTab === "active") statusParam = "IN_PROGRESS";
+      else if (currentTab === "pending") statusParam = "PENDING";
+      else if (currentTab === "completed") statusParam = "COMPLETED";
+      else if (currentTab === "cancelled") statusParam = "CANCELLED";
+      else if (currentTab === "disputed") statusParam = "DISPUTED";
+      else if (filterJobStatus !== "ALL") statusParam = filterJobStatus as BackendJobStatus;
+
+      const res = await getAdminJobsApi({
+        limit: 30,
+        cursor: currentCursor,
+        q: debouncedSearch.trim() || undefined,
+        status: statusParam,
+        payment: filterPayment !== "ALL" ? (filterPayment as BackendJobPaymentStatus) : undefined,
+        trade: filterTrade !== "ALL" ? filterTrade : undefined,
+        location: filterLocation !== "ALL" ? filterLocation : undefined,
+        needsAttention: showNeedsAttentionOnly ? true : undefined,
+      });
+
+      const mapped = (res.items || []).map(mapBackendJobToAdminJob);
+      setJobs(mapped);
+      setTotalCount(typeof res.totalCount === "number" ? res.totalCount : mapped.length);
+      setAttentionJobsCount(typeof res.attentionCount === "number" ? res.attentionCount : 0);
+      setNextCursor(res.nextCursor || null);
+    } catch (err: any) {
+      console.error("Failed to load admin jobs:", err);
+      setFetchError(err?.message || "Failed to load jobs");
+      setJobs([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    currentCursor,
+    debouncedSearch,
+    currentTab,
+    filterJobStatus,
+    filterPayment,
+    filterTrade,
+    filterLocation,
+    showNeedsAttentionOnly,
+  ]);
+
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs, refreshTrigger]);
+
+  // Load dynamic disputed count across all jobs
+  useEffect(() => {
+    let isMounted = true;
+    getAdminJobsApi({ status: "DISPUTED", limit: 1 })
+      .then((res) => {
+        if (!isMounted) return;
+        if (typeof res.totalCount === "number") {
+          setDisputedCount(res.totalCount);
+        }
+      })
+      .catch(() => {
+        // Silently handled
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshTrigger]);
 
   const handleTabChange = (tab: string) => {
     setShowNeedsAttentionOnly(false);
@@ -104,13 +158,30 @@ export function OpsJobsView() {
     }
   };
 
+  const handlePrevPage = () => {
+    if (cursorStack.length === 0 || isLoading) return;
+    const newStack = [...cursorStack];
+    const prevCursor = newStack.pop();
+    setCursorStack(newStack);
+    setCurrentCursor(prevCursor || undefined);
+  };
+
+  const handleNextPage = () => {
+    if (!nextCursor || isLoading) return;
+    setCursorStack((prev) => [...prev, currentCursor || ""]);
+    setCurrentCursor(nextCursor);
+  };
+
   const handleExportCSV = () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || jobs.length === 0) {
+      toast.error("No jobs available to export.");
+      return;
+    }
     const header = "Job ID,Title,Customer,Worker,Trade,Location,Value,Payment Status,Delivery Status,Posted Date\n";
-    const rows = filteredJobs
+    const rows = jobs
       .map(
         (j) =>
-          `"${j.id}","${j.title.replace(/"/g, '""')}","${j.customer.name}","${j.worker?.name || "Unassigned"}","${j.trade}","${j.location}",${j.value},"${j.paymentStatus}","${j.deliveryStatus}","${j.postedDate}"`
+          `"${j.id}","${(j.title || "").replace(/"/g, '""')}","${j.customer.name}","${j.worker?.name || "Unassigned"}","${j.trade}","${j.location}",${j.value},"${j.paymentStatus}","${j.deliveryStatus}","${j.postedDate}"`
       )
       .join("\n");
     const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
@@ -123,134 +194,68 @@ export function OpsJobsView() {
     toast.success("Jobs exported to CSV successfully.");
   };
 
-  const handleForceReleaseConfirm = (job: AdminJob, reason: string) => {
-    setJobs((prev) =>
-      prev.map((j) => {
-        if (j.id === job.id) {
-          return {
-            ...j,
-            paymentStatus: "RELEASED",
-            deliveryStatus: "COMPLETED",
-            needsAttention: false,
-            escrowDetails: {
-              ...j.escrowDetails,
-              escrowReleasedAt: new Date().toISOString(),
-            },
-            activityLog: [
-              {
-                id: `act-${Date.now()}`,
-                timestamp: "Just now",
-                action: "Force Escrow Release Executed",
-                actor: "Admin (Simeon Daniel)",
-                details: reason,
-              },
-              ...(j.activityLog || []),
-            ],
-          };
-        }
-        return j;
-      })
-    );
-    toast.success(`Escrow released for ${job.id}. Worker wallet credited.`);
+  const handleForceReleaseConfirm = async (job: AdminJob, reason: string) => {
+    const targetId = job.bookingId || job.id;
+    try {
+      await forceReleaseEscrowApi(targetId, { reason });
+      toast.success(`Escrow released for ${job.id}. Worker wallet credited.`);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to release escrow.");
+    }
   };
 
-  const handleRefundConfirm = (job: AdminJob, amount: number, reason: string) => {
-    setJobs((prev) =>
-      prev.map((j) => {
-        if (j.id === job.id) {
-          const isFull = amount >= j.value;
-          return {
-            ...j,
-            paymentStatus: isFull ? "REFUNDED" : j.paymentStatus,
-            deliveryStatus: isFull ? "CANCELLED" : j.deliveryStatus,
-            needsAttention: false,
-            activityLog: [
-              {
-                id: `act-${Date.now()}`,
-                timestamp: "Just now",
-                action: `Refund Issued (₦${amount.toLocaleString()})`,
-                actor: "Admin (Simeon Daniel)",
-                details: reason,
-              },
-              ...(j.activityLog || []),
-            ],
-          };
-        }
-        return j;
-      })
-    );
-    toast.success(`Refund of ₦${amount.toLocaleString()} issued to customer for ${job.id}.`);
+  const handleRefundConfirm = async (job: AdminJob, amount: number, reason: string) => {
+    const targetId = job.bookingId || job.id;
+    try {
+      await refundEscrowApi(targetId, {
+        amountKobo: Math.round(amount * 100),
+        reason,
+      });
+      toast.success(`Refund of ₦${amount.toLocaleString()} issued successfully.`);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to issue refund.");
+    }
   };
 
-  const handleReassignConfirm = (job: AdminJob, newWorkerId: string, newWorkerName: string) => {
-    setJobs((prev) =>
-      prev.map((j) => {
-        if (j.id === job.id) {
-          return {
-            ...j,
-            worker: {
-              id: newWorkerId,
-              code: "w-new",
-              name: newWorkerName,
-              phone: "0800 000 0000",
-              trade: j.trade,
-            },
-            needsAttention: false,
-            activityLog: [
-              {
-                id: `act-${Date.now()}`,
-                timestamp: "Just now",
-                action: "Artisan Reassigned",
-                actor: "Admin (Simeon Daniel)",
-                details: `Reassigned from ${job.worker?.name || "previous"} to ${newWorkerName}.`,
-              },
-              ...(j.activityLog || []),
-            ],
-          };
-        }
-        return j;
-      })
-    );
-    toast.success(`Job ${job.id} reassigned to ${newWorkerName}.`);
+  const handleReassignConfirm = async (
+    job: AdminJob,
+    newWorkerId: string,
+    newWorkerName: string,
+    reason?: string
+  ) => {
+    const targetId = job.bookingId || job.id;
+    try {
+      await reassignBookingWorkerApi(targetId, {
+        artisanId: newWorkerId,
+        reason: reason || `Reassigned from ${job.worker?.name || "previous worker"} to ${newWorkerName}`,
+      });
+      toast.success(`Job ${job.id} reassigned to ${newWorkerName}.`);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reassign artisan.");
+    }
   };
 
-  const handleArbitrationResolve = (
+  const handleArbitrationResolve = async (
     job: AdminJob,
     outcome: "WORKER_FULL" | "CUSTOMER_FULL" | "SPLIT",
     workerSharePercent: number,
     justification: string
   ) => {
-    setJobs((prev) =>
-      prev.map((j) => {
-        if (j.id === job.id) {
-          return {
-            ...j,
-            paymentStatus: outcome === "CUSTOMER_FULL" ? "REFUNDED" : "RELEASED",
-            deliveryStatus: "COMPLETED",
-            needsAttention: false,
-            disputeDetails: j.disputeDetails
-              ? {
-                  ...j.disputeDetails,
-                  status: "RESOLVED",
-                  resolutionProposal: `Arbitrated as ${outcome} (${workerSharePercent}% worker share). Justification: ${justification}`,
-                }
-              : undefined,
-            activityLog: [
-              {
-                id: `act-${Date.now()}`,
-                timestamp: "Just now",
-                action: "Binding Arbitration Executed",
-                actor: "Admin (Simeon Daniel)",
-                details: `Outcome: ${outcome}. ${justification}`,
-              },
-              ...(j.activityLog || []),
-            ],
-          };
-        }
-        return j;
-      })
-    );
-    toast.success(`Dispute for ${job.id} arbitrated and settlement executed.`);
+    const targetId = job.bookingId || job.id;
+    try {
+      await arbitrateBookingDisputeApi(targetId, {
+        outcome,
+        workerSharePercent,
+        justification,
+      });
+      toast.success(`Dispute for ${job.id} arbitrated and settlement executed.`);
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to arbitrate dispute.");
+    }
   };
 
   return (
@@ -344,7 +349,11 @@ export function OpsJobsView() {
             { id: "pending", label: "Pending" },
             { id: "completed", label: "Completed" },
             { id: "cancelled", label: "Cancelled" },
-            { id: "disputed", label: "Disputed", count: 2 },
+            {
+              id: "disputed",
+              label: "Disputed",
+              count: typeof disputedCount === "number" && disputedCount > 0 ? disputedCount : undefined,
+            },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -491,16 +500,69 @@ export function OpsJobsView() {
             </thead>
 
             <tbody className="divide-y divide-neutral-100 text-neutral-800 font-normal">
-              {filteredJobs.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <tr key={`skel-${idx}`} className="animate-pulse">
+                    <td className="py-4 px-4">
+                      <div className="h-3.5 bg-neutral-200 rounded w-20 mb-1.5" />
+                      <div className="h-2.5 bg-neutral-100 rounded w-28" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-3.5 bg-neutral-200 rounded w-24 mb-1" />
+                      <div className="h-2.5 bg-neutral-100 rounded w-16" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-3.5 bg-neutral-200 rounded w-24 mb-1" />
+                      <div className="h-2.5 bg-neutral-100 rounded w-16" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-3.5 bg-neutral-100 rounded w-16" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-3.5 bg-neutral-100 rounded w-20" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-3.5 bg-neutral-200 rounded w-16" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-5 bg-neutral-100 rounded-full w-20" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-5 bg-neutral-100 rounded-full w-20" />
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="h-3 bg-neutral-100 rounded w-16" />
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="h-6 w-6 bg-neutral-100 rounded ml-auto" />
+                    </td>
+                  </tr>
+                ))
+              ) : fetchError ? (
+                <tr>
+                  <td colSpan={10} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <span className="text-rose-600 font-semibold">{fetchError}</span>
+                      <button
+                        type="button"
+                        onClick={() => fetchJobs()}
+                        className="px-3.5 py-1.5 bg-[#001B40] text-white text-xs font-semibold rounded-xl hover:bg-neutral-800 transition-colors shadow-xs"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ) : jobs.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="py-12 text-center text-neutral-400">
                     No jobs match the specified criteria.
                   </td>
                 </tr>
               ) : (
-                filteredJobs.map((job, index) => {
+                jobs.map((job, index) => {
                   const isMenuOpen = activeMenuJobId === job.id;
-                  const openUpwards = index >= Math.max(0, filteredJobs.length - 2);
+                  const openUpwards = index >= Math.max(0, jobs.length - 2);
 
                   return (
                     <tr
@@ -735,22 +797,26 @@ export function OpsJobsView() {
         {/* Footer */}
         <div className="p-4 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-500 bg-neutral-50/50">
           <div>
-            Showing <strong className="text-neutral-800">{filteredJobs.length}</strong> of{" "}
-            <strong className="text-neutral-800">{jobs.length}</strong> jobs
+            Showing <strong className="text-neutral-800">{jobs.length}</strong> of{" "}
+            <strong className="text-neutral-800">{totalCount}</strong> jobs
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled
-              className="px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-400 disabled:opacity-50"
+              disabled={cursorStack.length === 0 || isLoading}
+              onClick={handlePrevPage}
+              className="px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
             >
               Prev
             </button>
-            <span className="font-semibold text-neutral-800">1</span>
+            <span className="font-semibold text-neutral-800 px-1">
+              Page {cursorStack.length + 1}
+            </span>
             <button
               type="button"
-              disabled
-              className="px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-400 disabled:opacity-50"
+              disabled={!nextCursor || isLoading}
+              onClick={handleNextPage}
+              className="px-2.5 py-1 rounded-lg border border-neutral-200 text-neutral-600 hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors font-medium"
             >
               Next
             </button>

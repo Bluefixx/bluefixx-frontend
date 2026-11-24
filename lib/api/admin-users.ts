@@ -176,7 +176,7 @@ export interface GetAdminAccountsQueryParams {
   limit?: number; // 1-100, default 30
   q?: string;     // Name, email, or phone
   role?: "CUSTOMER" | "ARTISAN" | "TALENT" | "ADMIN";
-  status?: "active" | "disabled";
+  status?: "active" | "suspended" | "dormant" | "disabled";
   verification?: "VERIFIED" | "PENDING" | "UNDER_REVIEW" | "REJECTED" | "unverified";
   location?: string;
 }

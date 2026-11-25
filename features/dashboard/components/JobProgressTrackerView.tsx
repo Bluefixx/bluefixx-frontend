@@ -12,6 +12,7 @@ import {
 import { createSupportCaseApi } from "@/lib/api/support";
 import { BookingDetail } from "@/types/customer";
 import { koboToNaira } from "@/lib/utils/currency";
+import BookingLiveTracker from "./BookingLiveTracker";
 
 export type TrackerStage =
   | "job_posted"
@@ -614,6 +615,17 @@ export default function JobProgressTrackerView({
           </p>
         </div>
       </div>
+
+      {/* ────────────────────────────────────────────────────────── */}
+      {/* Live GPS Location Tracker (Customer + Artisan)             */}
+      {/* ────────────────────────────────────────────────────────── */}
+      {jobId && (
+        <BookingLiveTracker
+          bookingId={jobId}
+          role="customer"
+          onStatusChanged={() => void fetchBookingState()}
+        />
+      )}
 
       {/* ────────────────────────────────────────────────────────── */}
       {/* Main Two-Column Layout                                     */}

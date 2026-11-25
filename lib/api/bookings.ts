@@ -97,3 +97,61 @@ export async function updateBookingMilestoneApi(
 ): Promise<unknown> {
   return apiClient.patch(`/milestones/${milestoneId}`, payload);
 }
+
+export interface LiveLocationPoint {
+  latitude: number;
+  longitude: number;
+  accuracyMeters: number;
+  heading: number | null;
+  speedMps: number | null;
+  capturedAt: string;
+  updatedAt: string;
+}
+
+export interface BookingTrackingSnapshot {
+  bookingId: string;
+  status: string;
+  trackingActive: boolean;
+  artisan: LiveLocationPoint | null;
+  customer: LiveLocationPoint | null;
+  destination: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters: number | null;
+    source: "LIVE_GPS" | "BOOKING_ADDRESS";
+    label: string | null;
+    address: string | null;
+    instructions: string | null;
+  } | null;
+  distanceKm: number | null;
+  etaMinutes: number | null;
+  encodedPolyline: string | null;
+  etaSource: "GOOGLE_ROUTES" | "HAVERSINE" | null;
+  navigationUrl: string | null;
+}
+
+export async function getBookingTrackingApi(bookingId: string): Promise<BookingTrackingSnapshot> {
+  return apiClient.get<BookingTrackingSnapshot>(`/bookings/${bookingId}/tracking`);
+}
+
+export async function updateBookingLocationApi(
+  bookingId: string,
+  payload: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters: number;
+    source?: "GPS" | "MAP_PIN";
+    heading?: number;
+    speedMps?: number;
+    capturedAt: string;
+  }
+): Promise<BookingTrackingSnapshot> {
+  return apiClient.post<BookingTrackingSnapshot>(`/bookings/${bookingId}/tracking/location`, payload);
+}
+
+export async function advanceBookingStatusApi(
+  bookingId: string,
+  status: "ON_THE_WAY" | "ARRIVED" | "IN_PROGRESS"
+): Promise<{ status: string }> {
+  return apiClient.post<{ status: string }>(`/bookings/${bookingId}/status`, { status });
+}

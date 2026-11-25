@@ -16,6 +16,7 @@ import { uploadMediaFile } from "@/lib/api/media";
 import { ArtisanBookingDetail } from "@/types/artisan";
 import { generateIdempotencyKey } from "@/lib/utils/idempotency";
 import { formatNaira, koboToNaira, nairaToKobo } from "@/lib/utils/currency";
+import BookingLiveTracker from "../BookingLiveTracker";
 
 interface WorkUpdateItem {
   id: string;
@@ -465,6 +466,11 @@ export function ArtisanActiveJobDetailView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: 8 COLS */}
         <div className="lg:col-span-8 space-y-6">
+          {/* Live GPS Location Tracker */}
+          {resolvedBookingId && (
+            <BookingLiveTracker bookingId={resolvedBookingId} role="artisan" />
+          )}
+
           {/* Card 1: Job Details */}
           <div className="bg-white rounded-3xl p-6 sm:p-7 border border-neutral-200/80 shadow-2xs space-y-5">
             <h2 className="font-heading font-extrabold text-base sm:text-lg text-[#0F1115]">

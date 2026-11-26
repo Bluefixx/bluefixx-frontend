@@ -171,8 +171,8 @@ export default function SignupPage() {
         toast.error("Please enter a valid email address.");
         return;
       }
-      if (!password || password.length < 6) {
-        toast.error("Password must be at least 6 characters.");
+      if (!password || password.length < 8 || password.length > 128) {
+        toast.error("Password must be between 8 and 128 characters.");
         return;
       }
       if (password !== confirmPassword) {

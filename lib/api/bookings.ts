@@ -72,6 +72,20 @@ export async function decideAdditionApi(additionId: string, accept: boolean): Pr
 }
 
 /**
+ * Artisan withdraws a proposed addition before customer decision
+ */
+export async function withdrawAdditionApi(additionId: string): Promise<unknown> {
+  return apiClient.post(`/additions/${additionId}/withdraw`, {});
+}
+
+/**
+ * Cancel an accepted but unfunded addition
+ */
+export async function cancelAdditionApi(additionId: string): Promise<unknown> {
+  return apiClient.post(`/additions/${additionId}/cancel`, {});
+}
+
+/**
  * Customer confirms the funded booking visit window
  */
 export async function confirmBookingScheduleVisitApi(bookingId: string): Promise<unknown> {

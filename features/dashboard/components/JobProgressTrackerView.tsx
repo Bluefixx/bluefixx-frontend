@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import {
   getBookingByIdApi,
   decideAdditionApi,
+  cancelAdditionApi,
   confirmBookingApi,
 } from "@/lib/api/bookings";
 import { createSupportCaseApi } from "@/lib/api/support";
@@ -84,13 +85,13 @@ export default function JobProgressTrackerView({
       const detailWithAdditions = detail as BookingDetail & {
         additions?: Array<{ id: string; status: string }>;
       };
-      const pendingAdd = (detailWithAdditions.additions || []).find(
-        (a) => a.status === "PROPOSED"
+      const unresolvedAdd = (detailWithAdditions.additions || []).find(
+        (a) => a.status === "PROPOSED" || a.status === "ACCEPTED"
       );
-      if (pendingAdd) {
-        setPendingAdditionId(pendingAdd.id);
+      if (unresolvedAdd) {
+        setPendingAdditionId(unresolvedAdd.id);
         setHasAdditionalCost(true);
-        setAdditionalCostStatus("pending");
+        setAdditionalCostStatus(unresolvedAdd.status === "ACCEPTED" ? "approved" : "pending");
       }
     } catch {
       // Keep current view state if fetch fails
@@ -177,6 +178,22 @@ export default function JobProgressTrackerView({
       toast("Additional cost declined. Artisan will proceed with original scope.", { icon: "ℹ️" });
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to decline additional cost.");
+    }
+  };
+
+  const handleCancelUnfundedAddition = async () => {
+    if (!pendingAdditionId) {
+      toast.error("No pending addition reference found.");
+      return;
+    }
+    try {
+      await cancelAdditionApi(pendingAdditionId);
+      setAdditionalCostStatus("declined");
+      setHasAdditionalCost(false);
+      setPendingAdditionId(null);
+      toast.success("Unfunded addition cancelled.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel addition.");
     }
   };
 
@@ -691,6 +708,17 @@ export default function JobProgressTrackerView({
               </p>
 
               {/* Action Buttons */}
+              {additionalCostStatus === "approved" && pendingAdditionId && (
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelUnfundedAddition}
+                    className="py-2.5 px-4 rounded-xl border border-rose-300 hover:bg-rose-50 text-rose-700 font-semibold text-xs sm:text-sm transition-colors cursor-pointer text-center"
+                  >
+                    Cancel Unfunded Addition
+                  </button>
+                </div>
+              )}
               {additionalCostStatus === "pending" && (
                 <div className="flex items-center gap-3 pt-2 flex-wrap sm:flex-nowrap">
                   <button
